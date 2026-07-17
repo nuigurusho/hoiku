@@ -17,9 +17,22 @@
 <main>
   <div id="selectScreen" class="panel">
     <h2>こえを だすと キャラが とぶよ!</h2>
-    <p style="font-size:20px">「わーーー!」って いっぱい こえを だして ⭐を あつめよう</p>
+    <p style="font-size:20px">「わーーー!」って いっぱい こえを だしてね</p>
     <div class="gallery" id="gallery"></div>
-    <div class="row"><button class="btn big pink" id="startBtn">🎤 スタート!</button></div>
+
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">こえで ふわふわ・タイマーなし(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" data-mode="yuru">🌈 ふわふわ あそぶ</button></div>
+
+    <div class="mode-sec">🎵 れんしゅう<span class="tag">45びょうで ⭐を あつめるだけ</span></div>
+    <div class="row"><button class="btn big blue" data-mode="ren">🎵 ⭐あつめ(45びょう)</button></div>
+
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">⭐ノルマ&ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="row" id="gachiRow">
+      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">⭐8こ</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">⭐12こ</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">⭐16こ</span></button>
+    </div>
+    <div class="rank" id="rankView"></div>
     <p class="note" id="micNote">マイクの使用を「許可」してください。マイクが使えないときは、がめんを「おしているあいだ」うきあがります。</p>
   </div>
 
@@ -28,6 +41,7 @@
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
+      <button class="btn gray" id="backBtn">えらびなおす</button>
     </div>
   </div>
 </main>
@@ -38,7 +52,16 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
-const GROUND = 640, TIME = 45;
+const GROUND = 640;
+const GAME = "voice";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  yuru: { label: "ゆるふわ", yuru: true },
+  ren:  { label: "れんしゅう", time: 45 },
+  g1: { label: "かんたん",   time: 45, goal: 8,  lv: 1 },
+  g2: { label: "ふつう",     time: 45, goal: 12, lv: 2 },
+  g3: { label: "むずかしい", time: 45, goal: 16, lv: 3 },
+};
 
 let selChar = null, G = null, mic = null;
 
@@ -86,24 +109,51 @@ let pressing = false;
 cv.addEventListener("pointerdown", () => { pressing = true; });
 window.addEventListener("pointerup", () => { pressing = false; });
 
-$("startBtn").onclick = async () => {
-  Sound.tap();
-  const hasMic = await setupMic();
-  if (!hasMic) $("micNote").textContent = "マイクが使えないので、がめんをおしているあいだ うきあがります!";
-  start();
-};
-$("againBtn").onclick = () => start();
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "こ" });
+}
+refreshLocks();
 
-async function start() {
+document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
+  b.onclick = async () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
+    Sound.tap();
+    const hasMic = await setupMic();
+    if (!hasMic) $("micNote").textContent = "マイクが使えないので、がめんをおしているあいだ うきあがります!";
+    start(m);
+  };
+});
+$("againBtn").onclick = () => start(G.mode);
+$("backBtn").onclick = () => {
+  if (G) G.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+  refreshLocks();
+};
+
+async function start(mode) {
   if (G) G.stop = true;
   const parts = await Rig.load(selChar);
   const puppet = new Puppet(parts, { x: 300, y: GROUND, h: 170, facing: 1 });
-  G = { stop: false, y: GROUND, vy: 0, stars: [], score: 0, t: TIME, spawn: 0, over: false };
+  G = { stop: false, mode, y: GROUND, vy: 0, stars: [], score: 0, t: mode.time || 0, spawn: 0, over: false, cleared: false };
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
-  $("scoreHud").textContent = "⭐ 0";
+  $("timeHud").classList.toggle("hidden", !mode.time);
+  updateScoreHud();
 
   const starCv = Util.emojiCanvas("⭐", 84);
   const cloudCv = Util.emojiCanvas("☁️", 140);
@@ -115,7 +165,7 @@ async function start() {
     if (g.stop) return;
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
 
-    if (!g.over) {
+    if (!g.over && g.mode.time) {
       g.t -= dt;
       if (g.t <= 0) { g.t = 0; finish(); }
     }
@@ -141,12 +191,18 @@ async function start() {
     for (const s of g.stars) {
       if (!s.got && Math.abs(s.x - 300) < 75 && Math.abs(s.y - py) < 90) {
         s.got = true; s.x = -999;
-        g.score++;
         Sound.pop();
-        $("scoreHud").textContent = `⭐ ${g.score}`;
+        if (!g.mode.yuru) {
+          g.score++;
+          updateScoreHud();
+          if (g.mode.goal && !g.cleared && g.score >= g.mode.goal) {
+            g.cleared = true;
+            Ui.msg("ノルマ クリア!⭐", 1200, "#51cf66");  // のこり時間で もっと あつめよう
+          }
+        }
       }
     }
-    $("timeHud").textContent = `⏰ ${Math.ceil(g.t)}`;
+    if (g.mode.time) $("timeHud").textContent = `⏰ ${Math.ceil(g.t)}`;
 
     puppet.walking = g.y >= GROUND - 2;
     puppet.update(dt);
@@ -184,10 +240,28 @@ async function start() {
   function finish() {
     g.over = true;
     Sound.fanfare();
-    if (g.score >= 10) Ui.confetti();
-    Ui.msg(`⭐ ${g.score}こ あつめた!`, 3000);
+    if (g.mode.goal) {
+      Tiers.addRank(GAME, g.mode.lv, (selChar && selChar.name) || "?", g.score);
+      if (g.cleared) {
+        Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
+        Ui.confetti();
+        Ui.msg(`クリア!🏆 ⭐${g.score}こ!`, 3000);
+      } else {
+        Ui.msg(`ざんねん!⭐${g.score}/${g.mode.goal}こ`, 3000, "#9775fa");
+      }
+    } else {
+      if (g.score >= 10) Ui.confetti();
+      Ui.msg(`⭐ ${g.score}こ あつめた!`, 3000);
+    }
     $("endRow").classList.remove("hidden");
   }
+}
+
+function updateScoreHud() {
+  if (!G) return;
+  if (G.mode.yuru) $("scoreHud").textContent = "こえを だそう!🎤";
+  else if (G.mode.goal) $("scoreHud").textContent = `⭐ ${G.score} / ${G.mode.goal}`;
+  else $("scoreHud").textContent = `⭐ ${G.score}`;
 }
 </script>
 </body>
