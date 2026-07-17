@@ -108,6 +108,7 @@
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
     <div class="row">
       <button class="btn green" id="cropSave">✂ きりだして ほぞん</button>
+      <button class="btn yellow" id="cropRotate">↻ かいてん</button>
       <button class="btn blue" id="cropWhole">□ ページぜんぶ ほぞん</button>
       <button class="btn purple hidden" id="cropNext">つぎのページ ▶</button>
       <button class="btn gray" id="cropClose">とじる</button>
@@ -346,6 +347,17 @@ $("cropSave").onclick = () => {
 $("cropWhole").onclick = () => {
   const cv = $("cropCanvas");
   saveCropRegion({ x: 0, y: 0, w: cv.width, h: cv.height });
+};
+$("cropRotate").onclick = () => {
+  Sound.tap();
+  const src = cropEd.pages[cropEd.idx];
+  const r = Util.makeCanvas(src.height, src.width);   // 90°回転で たてよこ入れかえ
+  const ctx = r.getContext("2d");
+  ctx.translate(r.width / 2, r.height / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+  cropEd.pages[cropEd.idx] = r;
+  showCropPage();
 };
 $("cropNext").onclick = () => { Sound.tap(); cropEd.idx++; showCropPage(); };
 $("cropClose").onclick = () => $("cropModal").classList.add("hidden");
