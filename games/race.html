@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>よーいどん!</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🏁 よーいどん!</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="selectScreen">
+    <div class="panel">
+      <h2>はしる キャラを えらんでね(タッチで えらぶ/はずす)</h2>
+      <div class="gallery" id="gallery"></div>
+      <div class="row">
+        <button class="btn big pink" id="vsBtn">🎮 2にんで たいせん</button>
+        <button class="btn big blue" id="cheerBtn">📣 おうえんレース(みんなでみる)</button>
+      </div>
+      <p class="note">
+        たいせん:ひだりがわを れんだ = 1P、みぎがわを れんだ = 2P(キーボードは F と J)<br>
+        おうえんレース:キャラたちが かってに はしるよ。だれが かつか おうえんしよう!
+      </p>
+    </div>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+    <div class="row hidden" id="endRow">
+      <button class="btn big green" id="againBtn">もういちど</button>
+      <button class="btn gray" id="backBtn">キャラをえらびなおす</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const GOAL = 2400;
+
+let allChars = [], selectedIds = new Set(), G = null, lastMode = null;
+
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  allChars = recs.filter((r) => r.cat === "char");
+  allChars.slice(0, 2).forEach((r) => selectedIds.add(r.id));
+  renderGal();
+}
+function renderGal() {
+  const el = $("gallery");
+  el.innerHTML = "";
+  for (const r of allChars) {
+    const d = document.createElement("div");
+    d.className = "thumb" + (selectedIds.has(r.id) ? " selected" : "");
+    d.innerHTML = `<img src="${r.dataURL}"><div class="name">${r.name || ""}</div>`;
+    d.onclick = () => {
+      Sound.tap();
+      selectedIds.has(r.id) ? selectedIds.delete(r.id) : selectedIds.add(r.id);
+      renderGal();
+    };
+    el.appendChild(d);
+  }
+}
+initSelect();
+
+function picked(n) {
+  let recs = allChars.filter((r) => selectedIds.has(r.id));
+  if (recs.length < 2) recs = allChars.slice();
+  return recs.slice(0, n);
+}
+
+$("vsBtn").onclick = () => start("vs");
+$("cheerBtn").onclick = () => start("cheer");
+$("againBtn").onclick = () => start(lastMode);
+$("backBtn").onclick = () => {
+  if (G) G.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+};
+
+async function start(mode) {
+  Sound.tap();
+  lastMode = mode;
+  if (G) G.stop = true;
+  const recs = picked(mode === "vs" ? 2 : 6);
+  const racers = [];
+  for (const rec of recs) {
+    const parts = await Rig.load(rec);
+    racers.push({
+      name: rec.name || "",
+      puppet: new Puppet(parts, { h: mode === "vs" ? 150 : Math.min(150, 560 / recs.length + 60) }),
+      prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
+    });
+  }
+  G = { mode, racers, stop: false, state: "ready", t: 0, finished: 0 };
+
+  $("selectScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  $("endRow").classList.add("hidden");
+
+  // よーい…どん!
+  Ui.msg("よーい…", 1100, "#4dabf7");
+  Sound.tick();
+  setTimeout(() => {
+    if (G.stop) return;
+    Ui.msg("どん!", 900, "#ff6b9d");
+    Sound.pon();
+    G.state = "run";
+  }, 1300);
+
+  let last = performance.now();
+  (function loop(now) {
+    if (G.stop) return;
+    const dt = Math.min(0.04, (now - last) / 1000); last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  })(last);
+}
+
+/* たいせんのタップ入力:がめんの左半分=1P、右半分=2P */
+cv.addEventListener("pointerdown", (e) => {
+  if (!G || G.mode !== "vs" || G.state !== "run") return;
+  const p = Util.canvasPos(cv, e);
+  dash(p.x < 640 ? 0 : 1);
+});
+window.addEventListener("keydown", (e) => {
+  if (!G || G.mode !== "vs" || G.state !== "run" || e.repeat) return;
+  if (e.code === "KeyF") dash(0);
+  if (e.code === "KeyJ") dash(1);
+});
+function dash(i) {
+  const r = G.racers[i];
+  if (!r || r.rank) return;
+  r.prog += 30;
+  r.puppet.phase += 0.65;
+  Sound.step();
+}
+
+function update(dt) {
+  const g = G;
+  g.t += dt;
+  for (const r of g.racers) {
+    if (g.state === "run" && !r.rank) {
+      if (g.mode === "cheer") {
+        r.wob += dt;
+        r.v = 190 + Math.sin(r.wob * 1.7) * 90 + Math.sin(r.wob * 4.3 + 1) * 60;
+        r.prog += Math.max(40, r.v) * dt;
+        r.puppet.walking = true;
+      } else {
+        r.prog = Math.max(0, r.prog - 14 * dt); // れんだしないと ちょっともどる
+        r.puppet.walking = false;
+      }
+      if (r.prog >= GOAL) {
+        r.rank = ++g.finished;
+        r.puppet.walking = false;
+        if (r.rank === 1) { Sound.fanfare(); Ui.confetti(); Ui.msg(`${r.name || "1ばん"} のかち!🏆`, 2400); }
+        else Sound.good();
+        if (g.finished === g.racers.length) {
+          g.state = "end";
+          $("endRow").classList.remove("hidden");
+        }
+      }
+    }
+    r.puppet.update(dt);
+  }
+}
+
+function draw() {
+  const g = G;
+  ctx.clearRect(0, 0, 1280, 720);
+  const sky = ctx.createLinearGradient(0, 0, 0, 720);
+  sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#e7f5ff");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
+
+  const n = g.racers.length;
+  const laneH = 620 / n;
+  g.racers.forEach((r, i) => {
+    const laneY = 80 + laneH * (i + 1);
+    // コース
+    ctx.fillStyle = i % 2 ? "#96d06c" : "#a9dd7e";
+    ctx.fillRect(0, laneY - laneH + 24, 1280, laneH - 8);
+    // ゴールライン
+    ctx.fillStyle = "#fff";
+    for (let k = 0; k < 8; k++) {
+      ctx.fillStyle = k % 2 ? "#fff" : "#4a3f35";
+      ctx.fillRect(1190, laneY - laneH + 24 + (laneH - 8) / 8 * k, 16, (laneH - 8) / 8);
+    }
+    // はしるひと
+    const x = 80 + (r.prog / GOAL) * 1100;
+    r.puppet.x = x;
+    r.puppet.y = laneY;
+    r.puppet.facing = 1;
+    r.puppet.draw(ctx);
+    // なまえ・じゅんい
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillStyle = "#4a3f35";
+    ctx.fillText(r.name, 16, laneY - laneH + 52);
+    if (r.rank) {
+      const medal = ["", "🥇", "🥈", "🥉"][r.rank] || `${r.rank}い`;
+      ctx.font = "44px serif";
+      ctx.fillText(medal, x - 20, laneY - r.puppet.h - 16);
+    }
+  });
+
+  if (g.mode === "vs" && g.state === "run") {
+    ctx.font = "bold 30px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,107,157,.85)";
+    ctx.fillText("← ひだりを れんだ!", 320, 60);
+    ctx.fillStyle = "rgba(77,171,247,.85)";
+    ctx.fillText("みぎを れんだ! →", 960, 60);
+    ctx.textAlign = "left";
+  }
+}
+</script>
+</body>
+</html>

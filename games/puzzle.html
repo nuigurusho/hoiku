@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>ぱずる</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🧩 ぱずる</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <!-- えらぶ画面 -->
+  <div id="selectScreen">
+    <div class="panel">
+      <h2>どの えで あそぶ?</h2>
+      <div class="gallery" id="gallery"></div>
+      <h2 style="margin-top:20px">ピースのかず</h2>
+      <div class="row" id="countRow">
+        <button class="btn big pink"   data-n="4">4</button>
+        <button class="btn big blue"   data-n="6">6</button>
+        <button class="btn big green"  data-n="9">9</button>
+        <button class="btn big orange" data-n="12">12</button>
+        <button class="btn big purple" data-n="20">20</button>
+      </div>
+      <p class="note">えをえらんでから、かずのボタンをおしてね(小さい子は4がおすすめ)</p>
+    </div>
+  </div>
+
+  <!-- あそぶ画面 -->
+  <div id="playScreen" class="hidden">
+    <div class="hud"><span id="progress"></span></div>
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="800"></canvas></div>
+    <div class="row"><button class="btn gray" id="againBtn">べつの えで あそぶ</button></div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const GRID = { 4: [2, 2], 6: [3, 2], 9: [3, 3], 12: [4, 3], 20: [5, 4] };
+
+let selected = null;
+let game = null;
+
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  Ui.renderGallery($("gallery"), recs, (r, el) => {
+    selected = r;
+    document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
+    el.classList.add("selected");
+  });
+}
+initSelect();
+
+document.querySelectorAll("#countRow .btn").forEach((b) => {
+  b.onclick = async () => {
+    if (!selected) { Ui.msg("えを えらんでね", 1200, "#4dabf7"); return; }
+    Sound.tap();
+    await startGame(selected, +b.dataset.n);
+  };
+});
+$("againBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+};
+
+/* ---------------- パズル本体 ---------------- */
+async function startGame(rec, count) {
+  const img = await Util.loadImage(rec.dataURL);
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const [cols, rows] = GRID[count];
+
+  // ボード(左側)に画像をフィット
+  const bx = 40, by = 50, bmaxW = 770, bmaxH = 700;
+  const sc = Math.min(bmaxW / img.width, bmaxH / img.height);
+  const bw = Math.round(img.width * sc), bh = Math.round(img.height * sc);
+  const board = Util.makeCanvas(bw, bh);
+  board.getContext("2d").drawImage(img, 0, 0, bw, bh);
+
+  const pw = bw / cols, ph = bh / rows;
+  const amp = Math.min(pw, ph) * 0.18;   // ランダム形状のゆれ幅
+  const margin = Math.ceil(amp + 8);
+
+  // ふちのランダム曲線(となりあうピースで共有するので ぴったり かみあう)
+  const wavyEdge = (x1, y1, x2, y2) => {
+    const N = 8, pts = [];
+    let off = 0;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      if (i === 0 || i === N) off = 0;
+      else off = Util.clamp(off + Util.rand(-amp * 0.7, amp * 0.7), -amp, amp);
+      const nx = -(y2 - y1), ny = x2 - x1;                 // 法線方向
+      const nl = Math.hypot(nx, ny) || 1;
+      pts.push([x1 + (x2 - x1) * t + (nx / nl) * off,
+                y1 + (y2 - y1) * t + (ny / nl) * off]);
+    }
+    return pts;
+  };
+  const straightEdge = (x1, y1, x2, y2) => [[x1, y1], [x2, y2]];
+
+  // hE[r][c]: 上下方向の境界線(r=0..rows) / vE[c][r]: 左右方向の境界線(c=0..cols)
+  const hE = [], vE = [];
+  for (let r = 0; r <= rows; r++) {
+    hE[r] = [];
+    for (let c = 0; c < cols; c++) {
+      const f = (r === 0 || r === rows) ? straightEdge : wavyEdge;
+      hE[r][c] = f(c * pw, r * ph, (c + 1) * pw, r * ph);
+    }
+  }
+  for (let c = 0; c <= cols; c++) {
+    vE[c] = [];
+    for (let r = 0; r < rows; r++) {
+      const f = (c === 0 || c === cols) ? straightEdge : wavyEdge;
+      vE[c][r] = f(c * pw, r * ph, c * pw, (r + 1) * ph);
+    }
+  }
+
+  // ピースを切り出す
+  const pieces = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const path = [
+        ...hE[r][c],
+        ...vE[c + 1][r].slice(1),
+        ...hE[r + 1][c].slice().reverse().slice(1),
+        ...vE[c][r].slice().reverse().slice(1),
+      ];
+      const px = c * pw - margin, py = r * ph - margin;
+      const pc = Util.makeCanvas(Math.ceil(pw + margin * 2), Math.ceil(ph + margin * 2));
+      const pctx = pc.getContext("2d");
+      pctx.save();
+      pctx.translate(-px, -py);
+      pctx.beginPath();
+      path.forEach(([x, y], i) => (i === 0 ? pctx.moveTo(x, y) : pctx.lineTo(x, y)));
+      pctx.closePath();
+      pctx.clip();
+      pctx.drawImage(board, 0, 0);
+      pctx.restore();
+      // ふちどり
+      pctx.save();
+      pctx.translate(-px, -py);
+      pctx.beginPath();
+      path.forEach(([x, y], i) => (i === 0 ? pctx.moveTo(x, y) : pctx.lineTo(x, y)));
+      pctx.closePath();
+      pctx.strokeStyle = "rgba(255,255,255,.9)"; pctx.lineWidth = 3; pctx.stroke();
+      pctx.strokeStyle = "rgba(0,0,0,.25)"; pctx.lineWidth = 1.5; pctx.stroke();
+      pctx.restore();
+
+      pieces.push({
+        cv: pc,
+        tx: bx + px, ty: by + py,                    // 正解位置
+        x: Util.rand(850, 1280 - pc.width - 10),     // トレイにばらまく
+        y: Util.rand(60, 800 - pc.height - 20),
+        locked: false,
+      });
+    }
+  }
+
+  game = { cv, ctx, board, bx, by, bw, bh, pieces, drag: null, done: false };
+  $("selectScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  bindPointer();
+  render();
+}
+
+function updateProgress() {
+  const left = game.pieces.filter((p) => !p.locked).length;
+  $("progress").textContent = left ? `のこり ${left} ピース` : "かんせい!🎉";
+}
+
+function render() {
+  const g = game, ctx = g.ctx;
+  ctx.clearRect(0, 0, g.cv.width, g.cv.height);
+  // トレイ背景
+  ctx.fillStyle = "#fdf3e3";
+  ctx.fillRect(830, 20, 430, 760);
+  // ボード:うすいガイド
+  ctx.save();
+  ctx.globalAlpha = 0.13;
+  ctx.drawImage(g.board, g.bx, g.by, g.bw, g.bh);
+  ctx.restore();
+  ctx.strokeStyle = "#c8b295";
+  ctx.setLineDash([10, 8]);
+  ctx.lineWidth = 3;
+  ctx.strokeRect(g.bx - 4, g.by - 4, g.bw + 8, g.bh + 8);
+  ctx.setLineDash([]);
+  // ピース:はまったもの → うごかせるもの の順
+  for (const p of g.pieces) if (p.locked) ctx.drawImage(p.cv, p.tx, p.ty);
+  for (const p of g.pieces) {
+    if (p.locked) continue;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.3)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 4;
+    ctx.drawImage(p.cv, p.x, p.y);
+    ctx.restore();
+  }
+  updateProgress();
+}
+
+function bindPointer() {
+  const cv = game.cv;
+  cv.onpointerdown = (e) => {
+    const g = game;
+    if (g.done) return;
+    const p = Util.canvasPos(cv, e);
+    // 上に描かれているものから順にさがす(透明部分は無視)
+    for (let i = g.pieces.length - 1; i >= 0; i--) {
+      const pc = g.pieces[i];
+      if (pc.locked) continue;
+      const lx = p.x - pc.x, ly = p.y - pc.y;
+      if (lx < 0 || ly < 0 || lx >= pc.cv.width || ly >= pc.cv.height) continue;
+      const a = pc.cv.getContext("2d").getImageData(Math.floor(lx), Math.floor(ly), 1, 1).data[3];
+      if (a < 20) continue;
+      g.pieces.splice(i, 1);
+      g.pieces.push(pc);                       // いちばん上へ
+      g.drag = { pc, dx: lx, dy: ly };
+      Sound.tap();
+      cv.setPointerCapture(e.pointerId);
+      render();
+      return;
+    }
+  };
+  cv.onpointermove = (e) => {
+    if (!game.drag) return;
+    const p = Util.canvasPos(cv, e);
+    game.drag.pc.x = p.x - game.drag.dx;
+    game.drag.pc.y = p.y - game.drag.dy;
+    render();
+  };
+  cv.onpointerup = () => {
+    const g = game;
+    if (!g.drag) return;
+    const pc = g.drag.pc;
+    g.drag = null;
+    if (Math.hypot(pc.x - pc.tx, pc.y - pc.ty) < 34) {   // スナップ!
+      pc.x = pc.tx; pc.y = pc.ty; pc.locked = true;
+      Sound.pop();
+      if (g.pieces.every((q) => q.locked)) {
+        g.done = true;
+        Sound.fanfare();
+        Ui.confetti();
+        Ui.msg("かんせい!", 2200);
+      }
+    }
+    render();
+  };
+}
+</script>
+</body>
+</html>

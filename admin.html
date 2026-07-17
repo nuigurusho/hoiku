@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>とりこみ・せってい</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .edit-canvas { border-radius: 12px; background:
+    repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 0 / 24px 24px;
+    touch-action: none; max-width: 100%; }
+  .rig-flex { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="index.html">← もどる</a>
+  <h1>📷 とりこみ・せってい</h1>
+  <div class="spacer"></div>
+</header>
+
+<main class="admin-list">
+  <div class="panel" style="text-align:left">
+    <h2>あたらしい絵・写真をとりこむ</h2>
+    <p>
+      <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
+      <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
+      <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵(パズル/まちがいさがし用)</label>
+    </p>
+    <p class="note">
+      キャラクターの絵は「白い紙に、こく・はっきり」描いたものを、明るい場所でまっすぐ撮ると
+      きれいに切りぬけます。とりこんだら「うごきせってい」で くび・こし・まんなか の線をあわせてください。
+    </p>
+    <div class="row" style="justify-content:flex-start">
+      <button class="btn green" id="pickBtn">📁 ファイルをえらぶ</button>
+      <button class="btn blue" id="cameraBtn">📷 カメラでとる</button>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+    </div>
+  </div>
+
+  <div class="admin-sec"><h3>🧍 キャラクターの絵</h3><div id="listChar"></div></div>
+  <div class="admin-sec"><h3>🏞️ はいけいの絵</h3><div id="listBg"></div></div>
+  <div class="admin-sec"><h3>🖼️ 写真・絵</h3><div id="listPic"></div></div>
+
+  <div class="panel" style="text-align:left">
+    <h2>そのほか</h2>
+    <div class="row" style="justify-content:flex-start">
+      <button class="btn yellow" id="resampleBtn">サンプルをもういちど入れる</button>
+      <button class="btn gray" id="wipeBtn">ぜんぶ削除する</button>
+    </div>
+    <p class="note">クイズの問題は <code>js/quiz-data.js</code> をテキストエディタで編集してください(README参照)。</p>
+  </div>
+</main>
+
+<!-- うごきせってい(リグ編集)モーダル -->
+<div class="modal hidden" id="rigModal">
+  <div class="panel">
+    <h2>うごきせってい</h2>
+    <p class="note">線をドラッグ:<b style="color:#4dabf7">青=くび</b> /
+      <b style="color:#51cf66">緑=こし(あしのつけね)</b> /
+      <b style="color:#ff6b9d">ピンク=からだのまんなか</b></p>
+    <div class="rig-flex">
+      <canvas id="rigCanvas" class="edit-canvas" width="340" height="440"></canvas>
+      <div>
+        <p style="margin:0 0 6px"><b>あるきプレビュー</b></p>
+        <canvas id="rigPreview" width="220" height="280" style="background:#e7f5ff;border-radius:12px"></canvas>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn green" id="rigSave">✔ ほぞんする</button>
+      <button class="btn gray" id="rigCancel">やめる</button>
+    </div>
+  </div>
+</div>
+
+<!-- まちがいスポット編集モーダル -->
+<div class="modal hidden" id="spotModal">
+  <div class="panel">
+    <h2>まちがいスポットせってい</h2>
+    <p class="note">タップで「まちがい」を作る場所を追加(最大8こ)。もういちどタップで削除。</p>
+    <canvas id="spotCanvas" class="edit-canvas" width="640" height="440"></canvas>
+    <div class="row">
+      <button class="btn green" id="spotSave">✔ ほぞんする</button>
+      <button class="btn gray" id="spotCancel">やめる</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const CATS = { char: "listChar", bg: "listBg", pic: "listPic" };
+
+async function refresh() {
+  await Store.ensureSamples();
+  for (const [cat, elId] of Object.entries(CATS)) {
+    const el = $(elId);
+    el.innerHTML = "";
+    const recs = await Store.all(cat);
+    if (!recs.length) el.innerHTML = '<p class="note">まだありません</p>';
+    for (const r of recs) el.appendChild(row(r));
+  }
+}
+
+function row(r) {
+  const d = document.createElement("div");
+  d.className = "admin-row";
+  d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(なまえなし)"}</span>`;
+  const mk = (label, cls, fn) => {
+    const b = document.createElement("button");
+    b.className = "btn " + cls;
+    b.textContent = label;
+    b.onclick = fn;
+    d.appendChild(b);
+  };
+  mk("なまえ", "blue", async () => {
+    const nm = prompt("なまえをいれてください", r.name || "");
+    if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
+  });
+  if (r.cat === "char") mk("うごきせってい", "purple", () => openRig(r));
+  if (r.cat === "pic") mk("まちがいスポット", "orange", () => openSpot(r));
+  mk("カテゴリ", "yellow", async () => {
+    const order = ["char", "bg", "pic"];
+    r.cat = order[(order.indexOf(r.cat) + 1) % 3];
+    await Store.put(r); refresh();
+  });
+  mk("削除", "gray", async () => {
+    if (confirm(`「${r.name}」を削除しますか?`)) { await Store.remove(r.id); refresh(); }
+  });
+  return d;
+}
+
+/* ---------- とりこみ ---------- */
+async function importFiles(files) {
+  const cat = document.querySelector('input[name="cat"]:checked').value;
+  const existing = await Store.all(cat);
+  let n = existing.length;
+  for (const f of files) {
+    try {
+      const dataURL = await Util.fileToDataURL(f, cat === "char" ? 900 : 1100);
+      const base = { char: "キャラ", bg: "はいけい", pic: "え・しゃしん" }[cat];
+      const rec = { name: `${base}${++n}`, cat, dataURL };
+      if (cat === "char") rec.rig = { ...Rig.DEFAULT };
+      await Store.put(rec);
+    } catch (e) {
+      alert("とりこみに失敗しました: " + (f.name || ""));
+    }
+  }
+  refresh();
+}
+$("pickBtn").onclick = () => $("fileInput").click();
+$("cameraBtn").onclick = () => $("cameraInput").click();
+$("fileInput").onchange = (e) => { importFiles([...e.target.files]); e.target.value = ""; };
+$("cameraInput").onchange = (e) => { importFiles([...e.target.files]); e.target.value = ""; };
+
+/* ---------- リグ編集 ---------- */
+const rigEd = { rec: null, trimmed: null, rig: null, drag: null, parts: null, puppet: null, raf: 0 };
+
+async function openRig(rec) {
+  rigEd.rec = rec;
+  rigEd.rig = { ...Rig.DEFAULT, ...(rec.rig || {}) };
+  const img = await Util.loadImage(rec.dataURL);
+  rigEd.trimmed = Util.trimCanvas(Util.keyImage(img));
+  const cv = $("rigCanvas");
+  const maxW = Math.min(360, innerWidth - 80);
+  const sc = Math.min(maxW / rigEd.trimmed.width, 440 / rigEd.trimmed.height);
+  cv.width = Math.round(rigEd.trimmed.width * sc);
+  cv.height = Math.round(rigEd.trimmed.height * sc);
+  $("rigModal").classList.remove("hidden");
+  rebuildParts();
+  drawRig();
+  animPreview();
+}
+
+function rebuildParts() {
+  rigEd.parts = Rig.makeParts(rigEd.trimmed, rigEd.rig, rigEd.rec.name);
+  const pv = $("rigPreview");
+  rigEd.puppet = new Puppet(rigEd.parts, { x: pv.width / 2, y: pv.height - 16, h: pv.height - 60 });
+  rigEd.puppet.walking = true;
+}
+
+function drawRig() {
+  const cv = $("rigCanvas"), ctx = cv.getContext("2d");
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(rigEd.trimmed, 0, 0, cv.width, cv.height);
+  const { neckY, hipY, centerX } = rigEd.rig;
+  const line = (col, x1, y1, x2, y2, label, lx, ly) => {
+    ctx.strokeStyle = col; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.fillStyle = col; ctx.font = "bold 15px sans-serif";
+    ctx.fillText(label, lx, ly);
+  };
+  line("#4dabf7", 0, neckY * cv.height, cv.width, neckY * cv.height, "くび", 6, neckY * cv.height - 6);
+  line("#51cf66", 0, hipY * cv.height, cv.width, hipY * cv.height, "こし", 6, hipY * cv.height - 6);
+  line("#ff6b9d", centerX * cv.width, hipY * cv.height, centerX * cv.width, cv.height, "まんなか", centerX * cv.width + 6, cv.height - 8);
+}
+
+function animPreview() {
+  cancelAnimationFrame(rigEd.raf);
+  let last = performance.now();
+  const pv = $("rigPreview"), ctx = pv.getContext("2d");
+  (function loop(now) {
+    if ($("rigModal").classList.contains("hidden")) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    ctx.clearRect(0, 0, pv.width, pv.height);
+    ctx.fillStyle = "#96d06c"; ctx.fillRect(0, pv.height - 16, pv.width, 16);
+    rigEd.puppet.update(dt);
+    rigEd.puppet.draw(ctx);
+    rigEd.raf = requestAnimationFrame(loop);
+  })(last);
+}
+
+(() => {
+  const cv = $("rigCanvas");
+  const pick = (p) => {
+    const r = rigEd.rig, t = 26;
+    const cands = [
+      ["neckY", Math.abs(p.y - r.neckY * cv.height)],
+      ["hipY", Math.abs(p.y - r.hipY * cv.height)],
+      ["centerX", Math.abs(p.x - r.centerX * cv.width)],
+    ].filter(([, d]) => d < t).sort((a, b) => a[1] - b[1]);
+    return cands.length ? cands[0][0] : null;
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    rigEd.drag = pick(Util.canvasPos(cv, e));
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!rigEd.drag) return;
+    const p = Util.canvasPos(cv, e);
+    if (rigEd.drag === "centerX") rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
+    else rigEd.rig[rigEd.drag] = Util.clamp(p.y / cv.height, 0.1, 0.92);
+    if (rigEd.rig.hipY < rigEd.rig.neckY + 0.08) {
+      if (rigEd.drag === "neckY") rigEd.rig.neckY = rigEd.rig.hipY - 0.08;
+      else rigEd.rig.hipY = rigEd.rig.neckY + 0.08;
+    }
+    drawRig();
+  });
+  cv.addEventListener("pointerup", () => { rigEd.drag = null; rebuildParts(); });
+})();
+
+$("rigSave").onclick = async () => {
+  rigEd.rec.rig = { ...rigEd.rig };
+  await Store.put(rigEd.rec);
+  $("rigModal").classList.add("hidden");
+  Sound.good();
+  refresh();
+};
+$("rigCancel").onclick = () => $("rigModal").classList.add("hidden");
+
+/* ---------- まちがいスポット編集 ---------- */
+const spotEd = { rec: null, img: null, spots: [] };
+
+async function openSpot(rec) {
+  spotEd.rec = rec;
+  spotEd.spots = (rec.diffSpots || []).map((s) => ({ ...s }));
+  spotEd.img = await Util.loadImage(rec.dataURL);
+  const cv = $("spotCanvas");
+  const maxW = Math.min(660, innerWidth - 70);
+  const sc = Math.min(maxW / spotEd.img.width, 460 / spotEd.img.height);
+  cv.width = Math.round(spotEd.img.width * sc);
+  cv.height = Math.round(spotEd.img.height * sc);
+  $("spotModal").classList.remove("hidden");
+  drawSpots();
+}
+
+function drawSpots() {
+  const cv = $("spotCanvas"), ctx = cv.getContext("2d");
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(spotEd.img, 0, 0, cv.width, cv.height);
+  spotEd.spots.forEach((s, i) => {
+    ctx.strokeStyle = "#ff6b9d"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(s.x * cv.width, s.y * cv.height, s.r * cv.width, 0, 7); ctx.stroke();
+    ctx.fillStyle = "#ff6b9d"; ctx.font = "bold 18px sans-serif";
+    ctx.fillText(i + 1, s.x * cv.width - 5, s.y * cv.height + 6);
+  });
+}
+
+$("spotCanvas").addEventListener("pointerdown", (e) => {
+  const cv = $("spotCanvas");
+  const p = Util.canvasPos(cv, e);
+  const rx = p.x / cv.width, ry = p.y / cv.height;
+  const hit = spotEd.spots.findIndex((s) => Math.hypot((s.x - rx) * cv.width, (s.y - ry) * cv.height) < s.r * cv.width);
+  if (hit >= 0) spotEd.spots.splice(hit, 1);
+  else if (spotEd.spots.length < 8) spotEd.spots.push({ x: rx, y: ry, r: 0.06 });
+  Sound.tap();
+  drawSpots();
+});
+
+$("spotSave").onclick = async () => {
+  spotEd.rec.diffSpots = spotEd.spots;
+  await Store.put(spotEd.rec);
+  $("spotModal").classList.add("hidden");
+  Sound.good();
+  refresh();
+};
+$("spotCancel").onclick = () => $("spotModal").classList.add("hidden");
+
+/* ---------- そのほか ---------- */
+$("resampleBtn").onclick = async () => {
+  for (const r of Samples.makeAll()) await Store.put(r);
+  Sound.good();
+  refresh();
+};
+$("wipeBtn").onclick = async () => {
+  if (!confirm("とりこんだ画像をぜんぶ削除します。よろしいですか?")) return;
+  for (const r of await Store.all()) await Store.remove(r.id);
+  refresh();
+};
+
+refresh();
+</script>
+</body>
+</html>

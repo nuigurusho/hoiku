@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>かげえクイズ</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .shadow-box {
+    width: min(420px, 80vw);
+    height: min(420px, 60vw);
+    margin: 10px auto;
+    background: radial-gradient(circle at 50% 40%, #fff8e1 0%, #ffe9b3 100%);
+    border-radius: 26px;
+    box-shadow: 0 8px 24px rgba(120,80,40,.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .shadow-box canvas { max-width: 92%; max-height: 92%; }
+  .revealName { text-align: center; font-size: 34px; font-weight: bold; color: var(--pink); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🔦 かげえクイズ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="startScreen" class="panel">
+    <h2>これ なんの かげ?</h2>
+    <div class="row">
+      <button class="btn big blue" id="animalBtn">🐾 どうぶつクイズ</button>
+      <button class="btn big pink" id="drawBtn">🖍️ だれの え でしょう?</button>
+    </div>
+    <p class="note">「だれのえでしょう?」は とりこんだ みんなの絵が かげになって出てきます</p>
+  </div>
+
+  <!-- どうぶつモード -->
+  <div id="animalScreen" class="hidden">
+    <div class="qnum" style="text-align:center;font-weight:bold;color:#8a7a68" id="anum"></div>
+    <div class="shadow-box"><canvas id="acv" width="420" height="420"></canvas></div>
+    <div class="choices" id="achoices"></div>
+  </div>
+
+  <!-- おえかきモード -->
+  <div id="drawScreen" class="hidden">
+    <div class="shadow-box" id="dbox"><canvas id="dcv" width="420" height="420"></canvas></div>
+    <div class="revealName" id="dname">&nbsp;</div>
+    <div class="row">
+      <button class="btn big yellow" id="revealBtn">🔆 こたえを みる!</button>
+      <button class="btn big green hidden" id="nextBtn">つぎの かげ ▶</button>
+    </div>
+  </div>
+
+  <div id="endScreen" class="panel hidden">
+    <h2>おしまい!</h2>
+    <p style="font-size:26px;font-weight:bold" id="scoreText"></p>
+    <div class="row"><button class="btn big green" id="retryBtn">もういちど</button></div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+const ANIMALS = [
+  ["🐘", "ぞう"], ["🦒", "きりん"], ["🐰", "うさぎ"], ["🐱", "ねこ"],
+  ["🐶", "いぬ"], ["🐧", "ぺんぎん"], ["🦁", "らいおん"], ["🐢", "かめ"],
+  ["🐙", "たこ"], ["🦋", "ちょうちょ"], ["🐟", "さかな"], ["🦀", "かに"],
+  ["🚒", "しょうぼうしゃ"], ["🚌", "バス"], ["✈️", "ひこうき"], ["🍌", "ばなな"],
+];
+
+function silhouette(srcCanvas, dst, black = true) {
+  const ctx = dst.getContext("2d");
+  ctx.clearRect(0, 0, dst.width, dst.height);
+  const sc = Math.min(dst.width / srcCanvas.width, dst.height / srcCanvas.height) * 0.94;
+  const w = srcCanvas.width * sc, h = srcCanvas.height * sc;
+  ctx.drawImage(srcCanvas, (dst.width - w) / 2, (dst.height - h) / 2, w, h);
+  if (black) {
+    ctx.globalCompositeOperation = "source-in";
+    ctx.fillStyle = "#3b3024";
+    ctx.fillRect(0, 0, dst.width, dst.height);
+    ctx.globalCompositeOperation = "source-over";
+  }
+}
+
+/* ---------- どうぶつクイズ ---------- */
+let apool = [], aidx = 0, ascore = 0, abusy = false;
+const ROUNDS = 5;
+
+$("animalBtn").onclick = () => {
+  Sound.tap();
+  apool = Util.shuffle(ANIMALS).slice(0, ROUNDS);
+  aidx = 0; ascore = 0;
+  swap("animalScreen");
+  aShow();
+};
+
+function aShow() {
+  abusy = false;
+  const [emoji, name] = apool[aidx];
+  $("anum").textContent = `だい ${aidx + 1} もん / ${ROUNDS} もん`;
+  silhouette(Util.emojiCanvas(emoji, 400), $("acv"));
+  const wrongs = Util.shuffle(ANIMALS.filter(([, n]) => n !== name)).slice(0, 3).map(([, n]) => n);
+  const opts = Util.shuffle([name, ...wrongs]);
+  const box = $("achoices");
+  box.innerHTML = "";
+  opts.forEach((n, i) => {
+    const b = document.createElement("button");
+    b.className = `choice c${i}`;
+    b.textContent = n;
+    b.onclick = () => {
+      if (abusy) return;
+      abusy = true;
+      const ok = n === name;
+      silhouette(Util.emojiCanvas(emoji, 400), $("acv"), false);  // 正体をみせる
+      document.querySelectorAll("#achoices .choice").forEach((c) => {
+        if (c.textContent === name) c.classList.add("correct"); else c.classList.add("dim");
+      });
+      if (ok) { ascore++; Sound.good(); Ui.msg("せいかい!⭕", 1100, "#51cf66"); }
+      else { Sound.bad(); Ui.msg(`「${name}」でした`, 1300, "#4dabf7"); }
+      setTimeout(() => {
+        aidx++;
+        if (aidx < ROUNDS) aShow();
+        else {
+          swap("endScreen");
+          $("scoreText").textContent = `${ROUNDS}もん中 ${ascore}もん せいかい!`;
+          Sound.fanfare();
+          if (ascore >= 3) Ui.confetti();
+        }
+      }, 1600);
+    };
+    box.appendChild(b);
+  });
+}
+
+/* ---------- だれのえでしょうモード ---------- */
+let dpool = [], didx = 0, dcur = null;
+
+$("drawBtn").onclick = async () => {
+  Sound.tap();
+  const recs = await Store.ensureSamples();
+  dpool = Util.shuffle(recs.filter((r) => r.cat === "char"));
+  if (!dpool.length) { Ui.msg("キャラのえが ないよ", 1500, "#4dabf7"); return; }
+  didx = 0;
+  swap("drawScreen");
+  dShow();
+};
+
+async function dShow() {
+  const rec = dpool[didx % dpool.length];
+  const img = await Util.loadImage(rec.dataURL);
+  dcur = { canvas: Util.trimCanvas(Util.keyImage(img)), rec };
+  silhouette(dcur.canvas, $("dcv"));
+  $("dname").innerHTML = "&nbsp;";
+  $("revealBtn").classList.remove("hidden");
+  $("nextBtn").classList.add("hidden");
+}
+
+$("revealBtn").onclick = () => {
+  silhouette(dcur.canvas, $("dcv"), false);
+  $("dname").textContent = dcur.rec.name ? `「${dcur.rec.name}」でした!` : "じゃーん!";
+  Sound.pon();
+  Ui.confetti(1500, 60);
+  $("revealBtn").classList.add("hidden");
+  $("nextBtn").classList.remove("hidden");
+};
+$("nextBtn").onclick = () => { Sound.tap(); didx++; dShow(); };
+
+$("retryBtn").onclick = () => swap("startScreen");
+
+function swap(id) {
+  for (const s of ["startScreen", "animalScreen", "drawScreen", "endScreen"])
+    $(s).classList.toggle("hidden", s !== id);
+}
+</script>
+</body>
+</html>

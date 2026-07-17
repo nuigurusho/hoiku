@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>まちがいさがし</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .pair {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 6px;
+  }
+  .pair canvas {
+    width: min(46vw, 560px);
+    height: auto;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(120,80,40,.22);
+    background: #fff;
+    touch-action: manipulation;
+  }
+  @media (max-width: 700px) {
+    .pair canvas { width: 92vw; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🔍 まちがいさがし</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="selectScreen" class="panel">
+    <h2>どの えで あそぶ?</h2>
+    <div class="gallery" id="gallery"></div>
+    <p class="note">「とりこみ・せってい」で写真を入れて「まちがいスポット」を設定すると、園の写真でも遊べます</p>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="hud">
+      <span id="found">みつけた: 0</span>
+      <span id="left">のこり: ?</span>
+    </div>
+    <p style="text-align:center;font-weight:bold;margin:4px">みぎの えを タッチして まちがいを さがしてね!</p>
+    <div class="pair">
+      <canvas id="cvL"></canvas>
+      <canvas id="cvR"></canvas>
+    </div>
+    <div class="row">
+      <button class="btn yellow" id="hintBtn">💡 ヒント</button>
+      <button class="btn gray" id="againBtn">べつの えで あそぶ</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let G = null;
+
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  const pics = recs.filter((r) => r.cat === "pic");
+  Ui.renderGallery($("gallery"), pics, (r) => startGame(r));
+}
+initSelect();
+
+$("againBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+};
+
+async function startGame(rec) {
+  const img = await Util.loadImage(rec.dataURL);
+  let spots = (rec.diffSpots || []).map((s) => ({ ...s, found: false }));
+  if (!spots.length) {
+    // スポット未設定なら自動でつくる(こっそりモード)
+    for (let i = 0; i < 5; i++) {
+      spots.push({ x: Util.rand(0.15, 0.85), y: Util.rand(0.15, 0.85), r: 0.06, found: false });
+    }
+  }
+
+  const W = img.width, H = img.height;
+  const cvL = $("cvL"), cvR = $("cvR");
+  cvL.width = cvR.width = W;
+  cvL.height = cvR.height = H;
+  cvL.getContext("2d").drawImage(img, 0, 0);
+
+  // 右側:スポット部分を まわりの絵で「うわがき」して消す
+  const ctxR = cvR.getContext("2d");
+  ctxR.drawImage(img, 0, 0);
+  for (const s of spots) {
+    const cx = s.x * W, cy = s.y * H, r = s.r * W;
+    // まわりから安全な「うつしもと」を決める(画面の中心方向とは逆側から)
+    let sx = cx + (cx < W / 2 ? r * 2.4 : -r * 2.4);
+    let sy = cy + (cy < H / 2 ? r * 1.6 : -r * 1.6);
+    sx = Util.clamp(sx, r, W - r);
+    sy = Util.clamp(sy, r, H - r);
+    // ふわっとぼかした円形パッチでうわがき(クローンスタンプ)
+    const patch = Util.makeCanvas(Math.ceil(r * 2), Math.ceil(r * 2));
+    const pctx = patch.getContext("2d");
+    pctx.drawImage(img, sx - r, sy - r, r * 2, r * 2, 0, 0, r * 2, r * 2);
+    pctx.globalCompositeOperation = "destination-in";
+    const grad = pctx.createRadialGradient(r, r, r * 0.55, r, r, r);
+    grad.addColorStop(0, "rgba(0,0,0,1)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    pctx.fillStyle = grad;
+    pctx.fillRect(0, 0, r * 2, r * 2);
+    ctxR.drawImage(patch, cx - r, cy - r);
+  }
+
+  G = { img, spots, W, H, done: false };
+  $("selectScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  updateHud();
+
+  cvR.onpointerdown = (e) => {
+    if (G.done) return;
+    const p = Util.canvasPos(cvR, e);
+    for (const s of G.spots) {
+      if (s.found) continue;
+      if (Math.hypot(p.x - s.x * W, p.y - s.y * H) < s.r * W * 1.35) {
+        s.found = true;
+        Sound.pop();
+        markSpot(s);
+        updateHud();
+        if (G.spots.every((q) => q.found)) {
+          G.done = true;
+          Sound.fanfare();
+          Ui.confetti();
+          Ui.msg("ぜんぶ みつけた!", 2200);
+        } else {
+          Ui.msg("あたり!", 800, "#51cf66");
+        }
+        return;
+      }
+    }
+    Sound.tap();
+  };
+}
+
+function markSpot(s) {
+  for (const cv of [$("cvL"), $("cvR")]) {
+    const ctx = cv.getContext("2d");
+    ctx.strokeStyle = "#ff6b9d";
+    ctx.lineWidth = Math.max(5, G.W * 0.008);
+    ctx.beginPath();
+    ctx.arc(s.x * G.W, s.y * G.H, s.r * G.W * 1.15, 0, 7);
+    ctx.stroke();
+  }
+}
+
+function updateHud() {
+  const f = G.spots.filter((s) => s.found).length;
+  $("found").textContent = `みつけた: ${f}`;
+  $("left").textContent = `のこり: ${G.spots.length - f}`;
+}
+
+$("hintBtn").onclick = () => {
+  if (!G || G.done) return;
+  const s = G.spots.find((q) => !q.found);
+  if (!s) return;
+  Sound.tick();
+  const ctx = $("cvR").getContext("2d");
+  ctx.save();
+  ctx.strokeStyle = "rgba(77,171,247,.8)";
+  ctx.setLineDash([12, 10]);
+  ctx.lineWidth = Math.max(5, G.W * 0.008);
+  ctx.beginPath();
+  ctx.arc(s.x * G.W, s.y * G.H, s.r * G.W * 2.2, 0, 7);
+  ctx.stroke();
+  ctx.restore();
+};
+</script>
+</body>
+</html>

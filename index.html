@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>ほいくえん ゲームパック</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .title {
+    text-align: center;
+    font-size: clamp(26px, 5vw, 44px);
+    margin: 18px 0 4px;
+    color: var(--pink);
+    text-shadow: 0 3px 0 rgba(255,255,255,.9), 0 5px 10px rgba(214,51,108,.25);
+  }
+  .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="title">🎪 ほいくえん ゲームパック 🎪</h1>
+  <p class="subtitle">あそびたい ゲームを えらんでね!</p>
+
+  <div class="tiles">
+    <a class="tile" href="games/puzzle.html"><span class="icon">🧩</span>ぱずる</a>
+    <a class="tile" href="games/quiz.html"><span class="icon">❓</span>クイズ</a>
+    <a class="tile" href="games/adventure.html"><span class="icon">🌈</span>おえかき ぼうけん</a>
+    <a class="tile" href="games/world.html"><span class="icon">🌳</span>みんなの せかい</a>
+    <a class="tile" href="games/race.html"><span class="icon">🏁</span>よーいどん!</a>
+    <a class="tile" href="games/voice.html"><span class="icon">🎤</span>こえで ジャンプ</a>
+    <a class="tile" href="games/mole.html"><span class="icon">🕳️</span>もぐらたたき</a>
+    <a class="tile" href="games/memory.html"><span class="icon">🎴</span>カードあわせ</a>
+    <a class="tile" href="games/silhouette.html"><span class="icon">🔦</span>かげえクイズ</a>
+    <a class="tile" href="games/diff.html"><span class="icon">🔍</span>まちがいさがし</a>
+    <a class="tile" href="games/fukuwarai.html"><span class="icon">😆</span>ふくわらい</a>
+    <a class="tile" href="games/janken.html"><span class="icon">✊</span>じゃんけん</a>
+  </div>
+
+  <div class="tiles" style="margin-top:26px; max-width:400px;">
+    <a class="tile admin" href="admin.html"><span class="icon">📷</span>とりこみ・せってい<br><span class="note">(おとなのひとよう)</span></a>
+  </div>
+</main>
+<script src="js/core.js"></script>
+<script>
+  // 初回アクセス時にサンプル画像を用意しておく
+  Store.ensureSamples();
+</script>
+</body>
+</html>

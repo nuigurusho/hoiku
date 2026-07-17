@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>カードあわせ</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🎴 カードあわせ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="startScreen" class="panel">
+    <h2>おなじ えを 2まい みつけてね!</h2>
+    <div class="row">
+      <button class="btn big pink" data-n="4">やさしい(4くみ)</button>
+      <button class="btn big blue" data-n="6">ふつう(6くみ)</button>
+      <button class="btn big purple" data-n="8">むずかしい(8くみ)</button>
+    </div>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="hud"><span id="pairHud"></span><span id="tryHud"></span></div>
+    <div class="cardgrid" id="grid"></div>
+    <div class="row hidden" id="endRow"><button class="btn big green" id="againBtn">もういちど</button></div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const EXTRA = ["🍎", "🚌", "🐸", "🌻", "🍙", "🐠", "🎈", "🚀", "🍰", "🐞"];
+let G = null;
+
+document.querySelectorAll("#startScreen .btn").forEach((b) => {
+  b.onclick = () => start(+b.dataset.n);
+});
+$("againBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+};
+
+async function start(pairs) {
+  Sound.tap();
+  const recs = await Store.ensureSamples();
+  let faces = Util.shuffle(recs).slice(0, pairs).map((r) => r.dataURL);
+  let ei = 0;
+  while (faces.length < pairs) faces.push(Util.emojiCanvas(EXTRA[ei++ % EXTRA.length], 200).toDataURL());
+
+  const deck = Util.shuffle([...faces, ...faces].map((src, i) => ({ src, key: src })));
+  G = { open: [], busy: false, matched: 0, pairs, tries: 0 };
+
+  const grid = $("grid");
+  grid.innerHTML = "";
+  grid.style.gridTemplateColumns = `repeat(${pairs <= 4 ? 4 : 4}, 1fr)`;
+  deck.forEach((cardDef) => {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `
+      <div class="face front">❓</div>
+      <div class="face backface"><img src="${cardDef.src}"></div>`;
+    el.onclick = () => flip(el, cardDef);
+    grid.appendChild(el);
+  });
+
+  $("startScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  $("endRow").classList.add("hidden");
+  updateHud();
+}
+
+function updateHud() {
+  $("pairHud").textContent = `みつけた: ${G.matched} / ${G.pairs}`;
+  $("tryHud").textContent = `めくった: ${G.tries}かい`;
+}
+
+function flip(el, card) {
+  if (G.busy || el.classList.contains("flipped")) return;
+  Sound.tap();
+  el.classList.add("flipped");
+  G.open.push({ el, card });
+  if (G.open.length < 2) return;
+
+  G.busy = true;
+  G.tries++;
+  const [a, b] = G.open;
+  if (a.card.key === b.card.key) {
+    setTimeout(() => {
+      a.el.classList.add("matched");
+      b.el.classList.add("matched");
+      Sound.good();
+      G.matched++;
+      G.open = [];
+      G.busy = false;
+      updateHud();
+      if (G.matched === G.pairs) {
+        Sound.fanfare();
+        Ui.confetti();
+        Ui.msg("ぜんぶ みつけた!🎉", 2500);
+        $("endRow").classList.remove("hidden");
+      }
+    }, 450);
+  } else {
+    setTimeout(() => {
+      a.el.classList.remove("flipped");
+      b.el.classList.remove("flipped");
+      G.open = [];
+      G.busy = false;
+      updateHud();
+    }, 950);
+  }
+  updateHud();
+}
+</script>
+</body>
+</html>

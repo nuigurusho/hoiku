@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>クイズ</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
+  .qtext {
+    text-align: center;
+    font-size: clamp(22px, 4.5vw, 36px);
+    font-weight: bold;
+    margin: 8px auto;
+    max-width: 900px;
+  }
+  .qnum { text-align: center; font-size: 20px; font-weight: bold; color: #8a7a68; margin-top: 10px; }
+  .stars { text-align: center; font-size: 46px; letter-spacing: 6px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>❓ クイズ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="startScreen" class="panel">
+    <h2>クイズたいかい!</h2>
+    <p style="font-size:22px">4つのなかから こたえを えらんでね</p>
+    <div class="row">
+      <button class="btn big pink" data-n="5">5もん</button>
+      <button class="btn big blue" data-n="0">ぜんぶ</button>
+    </div>
+  </div>
+
+  <div id="quizScreen" class="hidden">
+    <div class="qnum" id="qnum"></div>
+    <div class="qemoji" id="qemoji"></div>
+    <div class="qtext" id="qtext"></div>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <div id="endScreen" class="panel hidden">
+    <h2>おしまい!</h2>
+    <div class="stars" id="stars"></div>
+    <p style="font-size:26px; font-weight:bold" id="scoreText"></p>
+    <div class="row">
+      <button class="btn big green" id="retryBtn">もういちど</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/quiz-data.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let queue = [], idx = 0, score = 0, busy = false;
+
+document.querySelectorAll("#startScreen .btn").forEach((b) => {
+  b.onclick = () => {
+    Sound.tap();
+    const n = +b.dataset.n;
+    queue = Util.shuffle(window.QUIZ);
+    if (n > 0) queue = queue.slice(0, n);
+    idx = 0; score = 0;
+    $("startScreen").classList.add("hidden");
+    $("endScreen").classList.add("hidden");
+    $("quizScreen").classList.remove("hidden");
+    show();
+  };
+});
+$("retryBtn").onclick = () => {
+  $("endScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+};
+
+function show() {
+  const q = queue[idx];
+  busy = false;
+  $("qnum").textContent = `だい ${idx + 1} もん / ${queue.length} もん`;
+  $("qemoji").textContent = q.emoji || "❓";
+  $("qtext").textContent = q.q;
+  const box = $("choices");
+  box.innerHTML = "";
+  const order = Util.shuffle([0, 1, 2, 3]);
+  order.forEach((ci, i) => {
+    const b = document.createElement("button");
+    b.className = `choice c${i}`;
+    b.textContent = q.choices[ci];
+    b.onclick = () => answer(ci, b);
+    box.appendChild(b);
+  });
+}
+
+function answer(ci, btn) {
+  if (busy) return;
+  busy = true;
+  const q = queue[idx];
+  const ok = ci === q.answer;
+  document.querySelectorAll("#choices .choice").forEach((b) => {
+    if (b.textContent === q.choices[q.answer]) b.classList.add("correct");
+    else b.classList.add("dim");
+  });
+  if (ok) {
+    score++;
+    Sound.good();
+    Ui.msg("せいかい!⭕", 1100, "#51cf66");
+  } else {
+    Sound.bad();
+    Ui.msg("ざんねん…", 1100, "#4dabf7");
+  }
+  setTimeout(() => {
+    idx++;
+    if (idx < queue.length) show();
+    else finish();
+  }, 1500);
+}
+
+function finish() {
+  $("quizScreen").classList.add("hidden");
+  $("endScreen").classList.remove("hidden");
+  const rate = score / queue.length;
+  $("stars").textContent = rate === 1 ? "⭐⭐⭐" : rate >= 0.6 ? "⭐⭐" : "⭐";
+  $("scoreText").textContent = `${queue.length}もん中 ${score}もん せいかい!`;
+  Sound.fanfare();
+  if (rate >= 0.6) Ui.confetti();
+}
+</script>
+</body>
+</html>

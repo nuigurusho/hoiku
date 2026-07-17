@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>みんなの せかい</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🌳 みんなの せかい</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <p style="text-align:center;font-weight:bold;margin:6px">
+    とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!
+  </p>
+  <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const GROUND = 660;
+
+const actors = [];   // {puppet, target, pause, bubble, bubbleT, airY, vy}
+let bgImg = null;
+
+async function init() {
+  const recs = await Store.ensureSamples();
+  const bgs = recs.filter((r) => r.cat === "bg");
+  if (bgs.length) bgImg = await Util.loadImage(bgs[0].dataURL);
+
+  const chars = recs.filter((r) => r.cat === "char");
+  for (const rec of chars) {
+    const parts = await Rig.load(rec);
+    // 同じ絵でも2体まで出すとにぎやか(キャラが少ないとき)
+    const copies = chars.length < 3 ? 2 : 1;
+    for (let i = 0; i < copies; i++) {
+      actors.push({
+        puppet: new Puppet(parts, {
+          x: Util.rand(100, 1180),
+          y: GROUND,
+          h: Util.rand(120, 190),
+          facing: Math.random() < 0.5 ? 1 : -1,
+        }),
+        name: rec.name || "",
+        target: Util.rand(100, 1180),
+        pause: Util.rand(0, 2),
+        bubbleT: 0,
+        airY: 0, vy: 0,
+      });
+    }
+  }
+  requestAnimationFrame(loop);
+}
+init();
+
+cv.addEventListener("pointerdown", (e) => {
+  const p = Util.canvasPos(cv, e);
+  for (let i = actors.length - 1; i >= 0; i--) {
+    const a = actors[i];
+    const b = a.puppet.bbox(a.airY);
+    if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+      a.vy = 520;
+      a.bubbleT = 1.6;
+      Sound.pop();
+      return;
+    }
+  }
+});
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.04, (now - last) / 1000); last = now;
+
+  for (const a of actors) {
+    const pp = a.puppet;
+    /* ジャンプ(タッチされたとき) */
+    if (a.airY > 0 || a.vy > 0) {
+      a.airY += a.vy * dt;
+      a.vy -= 1900 * dt;
+      if (a.airY <= 0) { a.airY = 0; a.vy = 0; }
+    }
+    /* おさんぽAI */
+    if (a.pause > 0) {
+      a.pause -= dt;
+      pp.walking = false;
+    } else {
+      const d = a.target - pp.x;
+      if (Math.abs(d) < 12) {
+        a.pause = Util.rand(0.6, 3);
+        a.target = Util.rand(80, 1200);
+        if (Math.random() < 0.25) { a.vy = 430; Sound.jump(); }
+      } else {
+        const sp = 60 + pp.h * 0.35;
+        pp.x += Math.sign(d) * sp * dt;
+        pp.facing = Math.sign(d) || 1;
+        pp.walking = true;
+      }
+    }
+    if (a.bubbleT > 0) a.bubbleT -= dt;
+    pp.update(dt);
+  }
+
+  /* --- 描画 --- */
+  ctx.clearRect(0, 0, 1280, 720);
+  if (bgImg) ctx.drawImage(bgImg, 0, 0, 1280, 720);
+  else { ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, 1280, 720); }
+  ctx.fillStyle = "rgba(116,184,85,.9)";
+  ctx.fillRect(0, GROUND + 6, 1280, 720 - GROUND);
+
+  /* 奥のキャラ(小さい)から描く */
+  const sorted = actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
+  for (const a of sorted) {
+    a.puppet.draw(ctx, a.airY);
+    if (a.bubbleT > 0 && a.name) {
+      const b = a.puppet.bbox(a.airY);
+      ctx.font = "bold 26px sans-serif";
+      const tw = ctx.measureText(a.name).width;
+      const bx = a.puppet.x - tw / 2 - 14, by = b.y - 52;
+      ctx.fillStyle = "rgba(255,255,255,.92)";
+      ctx.beginPath();
+      ctx.roundRect(bx, by, tw + 28, 42, 20);
+      ctx.fill();
+      ctx.fillStyle = "#4a3f35";
+      ctx.fillText(a.name, bx + 14, by + 30);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

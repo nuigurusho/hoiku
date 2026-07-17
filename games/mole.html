@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>もぐらたたき</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🕳️ もぐらたたき</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="startScreen" class="panel">
+    <h2>でてきた みんなの えを タッチ!</h2>
+    <p style="font-size:20px">30びょうで なんかい タッチできるかな?</p>
+    <div class="row"><button class="btn big orange" id="startBtn">スタート!</button></div>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="hud"><span id="scoreHud">タッチ: 0</span><span id="timeHud">⏰ 30</span></div>
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1000" height="700" style="max-width:900px"></canvas></div>
+    <div class="row hidden" id="endRow"><button class="btn big green" id="againBtn">もういちど</button></div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const COLS = 3, ROWS = 3, TIME = 30;
+const CELLW = 1000 / COLS, CELLH = 620 / ROWS;
+
+let faces = [], G = null;
+
+async function loadFaces() {
+  if (faces.length) return;
+  const recs = await Store.ensureSamples();
+  for (const rec of recs.filter((r) => r.cat === "char")) {
+    const parts = await Rig.load(rec);
+    faces.push(parts.head.c);   // あたまのパーツだけ ひょっこり出す
+  }
+  if (!faces.length) faces.push(Util.emojiCanvas("🐹", 200));
+}
+
+$("startBtn").onclick = () => start();
+$("againBtn").onclick = () => start();
+
+async function start() {
+  Sound.tap();
+  await loadFaces();
+  if (G) G.stop = true;
+  G = {
+    stop: false, t: TIME, score: 0, over: false, next: 0.5,
+    holes: Array.from({ length: COLS * ROWS }, () => ({ state: "empty", y: 0, face: null, life: 0, burst: 0 })),
+  };
+  $("startScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  $("endRow").classList.add("hidden");
+  $("scoreHud").textContent = "タッチ: 0";
+
+  let last = performance.now();
+  const g = G;
+  (function loop(now) {
+    if (g.stop) return;
+    const dt = Math.min(0.04, (now - last) / 1000); last = now;
+
+    if (!g.over) {
+      g.t -= dt;
+      if (g.t <= 0) { g.t = 0; finish(); }
+      g.next -= dt;
+      if (g.next <= 0) {
+        g.next = Util.rand(0.55, Math.max(0.3, 1.1 - (TIME - g.t) * 0.02));  // だんだんはやく
+        const empt = g.holes.map((h, i) => [h, i]).filter(([h]) => h.state === "empty");
+        if (empt.length) {
+          const [h] = Util.choice(empt);
+          h.state = "up";
+          h.y = 0;
+          h.life = Util.rand(0.9, 1.5);
+          h.face = Util.choice(faces);
+        }
+      }
+    }
+    for (const h of g.holes) {
+      if (h.state === "up") {
+        h.y = Math.min(1, h.y + dt * 5);
+        if (h.y >= 1) { h.life -= dt; if (h.life <= 0) h.state = "down"; }
+      } else if (h.state === "down") {
+        h.y -= dt * 5;
+        if (h.y <= 0) { h.y = 0; h.state = "empty"; }
+      } else if (h.state === "hit") {
+        h.burst -= dt;
+        if (h.burst <= 0) { h.state = "empty"; h.y = 0; }
+      }
+    }
+    $("timeHud").textContent = `⏰ ${Math.ceil(g.t)}`;
+    draw(now);
+    requestAnimationFrame(loop);
+  })(last);
+
+  function finish() {
+    g.over = true;
+    Sound.fanfare();
+    if (g.score >= 10) Ui.confetti();
+    Ui.msg(`${g.score}かい タッチ!`, 3000);
+    $("endRow").classList.remove("hidden");
+  }
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (!G || G.over) return;
+  const p = Util.canvasPos(cv, e);
+  const c = Math.floor(p.x / CELLW), r = Math.floor((p.y - 60) / CELLH);
+  if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+  const h = G.holes[r * COLS + c];
+  if (h.state === "up" && h.y > 0.35) {
+    h.state = "hit";
+    h.burst = 0.35;
+    G.score++;
+    Sound.pop();
+    $("scoreHud").textContent = `タッチ: ${G.score}`;
+  } else {
+    Sound.tap();
+  }
+});
+
+function draw(now) {
+  ctx.clearRect(0, 0, 1000, 700);
+  ctx.fillStyle = "#d3f9d8"; ctx.fillRect(0, 0, 1000, 700);
+  G.holes.forEach((h, i) => {
+    const c = i % COLS, r = Math.floor(i / COLS);
+    const cx = c * CELLW + CELLW / 2, cy = 60 + r * CELLH + CELLH - 40;
+
+    // でてくるかお(あなの奥からクリップして描く)
+    if ((h.state === "up" || h.state === "down") && h.face) {
+      const fh = 150, fw = h.face.width * (fh / h.face.height);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(cx - CELLW / 2, cy - 190, CELLW, 190);
+      ctx.clip();
+      const py = cy - 10 - h.y * fh;
+      ctx.drawImage(h.face, cx - fw / 2, py, fw, fh);
+      ctx.restore();
+    }
+    if (h.state === "hit") {
+      ctx.font = "70px serif";
+      ctx.textAlign = "center";
+      ctx.fillText("💫", cx, cy - 80);
+      ctx.textAlign = "left";
+    }
+    // あな
+    ctx.fillStyle = "#8a6a4a";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 105, 34, 0, 0, 7);
+    ctx.fill();
+    ctx.fillStyle = "#5e452e";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 5, 92, 26, 0, 0, 7);
+    ctx.fill();
+  });
+}
+</script>
+</body>
+</html>

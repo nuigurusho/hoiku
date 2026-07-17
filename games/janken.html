@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>じゃんけん</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .hands { display: flex; gap: 18px; justify-content: center; margin: 10px 0 4px; }
+  .hbtn {
+    font-size: 64px;
+    width: 110px; height: 110px;
+    border-radius: 26px;
+    border: none;
+    background: #fff;
+    box-shadow: 0 6px 0 rgba(150,110,70,.25);
+    cursor: pointer;
+  }
+  .hbtn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(150,110,70,.25); }
+  .streak { text-align: center; font-size: 24px; font-weight: bold; min-height: 32px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>✊ じゃんけん</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="selectScreen" class="panel">
+    <h2>だれと じゃんけんする?</h2>
+    <div class="gallery" id="gallery"></div>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1000" height="540" style="max-width:900px"></canvas></div>
+    <div class="streak" id="streak"></div>
+    <p style="text-align:center;font-weight:bold;margin:4px">だすのを えらんでね!</p>
+    <div class="hands">
+      <button class="hbtn" data-h="0">✊</button>
+      <button class="hbtn" data-h="1">✌️</button>
+      <button class="hbtn" data-h="2">✋</button>
+    </div>
+    <div class="row">
+      <button class="btn purple" id="crowdBtn">📣 みんなでじゃんけん(ボタンなし)</button>
+      <button class="btn gray" id="backBtn">キャラをかえる</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const HANDS = ["✊", "✌️", "✋"];
+const HAND_CV = HANDS.map((h) => Util.emojiCanvas(h, 300));
+
+let puppet = null, charName = "", state = { mode: "idle", show: -1, t: 0, streak: 0, busy: false };
+
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  const chars = recs.filter((r) => r.cat === "char");
+  Ui.renderGallery($("gallery"), chars, async (r) => {
+    const parts = await Rig.load(r);
+    charName = r.name || "";
+    puppet = new Puppet(parts, { x: 300, y: 500, h: 330, facing: 1 });
+    $("selectScreen").classList.add("hidden");
+    $("playScreen").classList.remove("hidden");
+    $("streak").textContent = "";
+    state.show = -1;
+  });
+}
+initSelect();
+
+$("backBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+};
+
+document.querySelectorAll(".hbtn").forEach((b) => {
+  b.onclick = () => play(+b.dataset.h);
+});
+$("crowdBtn").onclick = () => play(null);
+
+function play(playerHand) {
+  if (state.busy || !puppet) return;
+  state.busy = true;
+  state.show = -1;
+  Ui.msg("じゃんけん…", 1200, "#9775fa");
+  Sound.tick();
+  setTimeout(() => Sound.tick(), 400);
+  setTimeout(() => Sound.tick(), 800);
+  state.mode = "shake";
+  setTimeout(() => {
+    state.mode = "idle";
+    state.show = Util.randInt(0, 2);
+    Sound.pon();
+    Ui.msg("ぽん!", 900, "#ff6b9d");
+    if (playerHand === null) {
+      // みんなでモード:出すだけ
+      setTimeout(() => { state.busy = false; }, 1200);
+      return;
+    }
+    setTimeout(() => {
+      const me = playerHand, cp = state.show;
+      if (me === cp) {
+        Ui.msg("あいこ!", 1200, "#ff922b");
+        Sound.tap();
+      } else if ((me === 0 && cp === 1) || (me === 1 && cp === 2) || (me === 2 && cp === 0)) {
+        state.streak++;
+        Ui.msg("かち!🎉", 1500, "#51cf66");
+        Sound.good();
+        if (state.streak >= 3) Ui.confetti(1800, 80);
+      } else {
+        state.streak = 0;
+        Ui.msg("まけ〜", 1300, "#4dabf7");
+        Sound.bad();
+      }
+      $("streak").textContent = state.streak > 0 ? `れんしょう: ${"⭐".repeat(Math.min(state.streak, 10))}` : "";
+      state.busy = false;
+    }, 1100);
+  }, 1400);
+}
+
+let last = performance.now();
+(function loop(now) {
+  const dt = Math.min(0.04, (now - last) / 1000); last = now;
+  ctx.clearRect(0, 0, 1000, 540);
+  const sky = ctx.createLinearGradient(0, 0, 0, 540);
+  sky.addColorStop(0, "#fff0f6"); sky.addColorStop(1, "#fff9db");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1000, 540);
+  ctx.fillStyle = "#96d06c"; ctx.fillRect(0, 505, 1000, 35);
+
+  if (puppet) {
+    puppet.walking = state.mode === "shake";
+    if (state.mode === "shake" && Math.random() < 0.1) puppet.hop();
+    puppet.update(dt);
+    puppet.draw(ctx);
+    if (charName) {
+      ctx.font = "bold 26px sans-serif";
+      ctx.fillStyle = "#4a3f35";
+      ctx.textAlign = "center";
+      ctx.fillText(charName, 300, 60);
+      ctx.textAlign = "left";
+    }
+  }
+
+  // キャラの出した手
+  if (state.show >= 0) {
+    const s = 1 + Math.sin(now / 180) * 0.04;
+    ctx.save();
+    ctx.translate(730, 280);
+    ctx.scale(s, s);
+    ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.beginPath(); ctx.arc(0, 0, 170, 0, 7); ctx.fill();
+    ctx.drawImage(HAND_CV[state.show], -150, -150);
+    ctx.restore();
+  } else if (state.mode === "shake") {
+    ctx.font = "bold 60px sans-serif";
+    ctx.fillStyle = "#9775fa";
+    ctx.fillText("・・・", 660, 300);
+  }
+  requestAnimationFrame(loop);
+})(last);
+</script>
+</body>
+</html>

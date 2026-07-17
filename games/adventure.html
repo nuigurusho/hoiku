@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>おえかき ぼうけん</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🌈 おえかき ぼうけん</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="selectScreen">
+    <div class="panel">
+      <h2>だれで ぼうけんする?</h2>
+      <div class="gallery" id="charGallery"></div>
+      <h2 style="margin-top:18px">どこを ぼうけんする?</h2>
+      <div class="gallery" id="bgGallery"></div>
+      <div class="row"><button class="btn big green" id="startBtn">ぼうけんに しゅっぱつ!🚀</button></div>
+      <p class="note">← → キー か ゲームパッドで移動、スペース/ボタンでジャンプ。がめんのボタンでもOK!</p>
+    </div>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="hud"><span id="starHud">⭐ 0 / 10</span></div>
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+    <div class="row hidden" id="clearRow">
+      <button class="btn big green" id="againBtn">もういちど あそぶ</button>
+      <button class="btn gray" id="selBtn">キャラをかえる</button>
+    </div>
+  </div>
+</main>
+
+<!-- タッチそうさ -->
+<div class="touchpad hidden" id="touchpad">
+  <div class="grp">
+    <button class="tbtn" id="tLeft">◀</button>
+    <button class="tbtn" id="tRight">▶</button>
+  </div>
+  <div class="grp">
+    <button class="tbtn" id="tJump">⤴</button>
+  </div>
+</div>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+let selChar = null, selBg = null, G = null;
+
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  const chars = recs.filter((r) => r.cat === "char");
+  const bgs = recs.filter((r) => r.cat === "bg");
+  selChar = chars[0] || null;
+  selBg = bgs[0] || null;
+  Ui.renderGallery($("charGallery"), chars, (r, el) => {
+    selChar = r;
+    document.querySelectorAll("#charGallery .thumb").forEach((t) => t.classList.remove("selected"));
+    el.classList.add("selected");
+  }, selChar && selChar.id);
+  Ui.renderGallery($("bgGallery"), bgs, (r, el) => {
+    selBg = r;
+    document.querySelectorAll("#bgGallery .thumb").forEach((t) => t.classList.remove("selected"));
+    el.classList.add("selected");
+  }, selBg && selBg.id);
+}
+initSelect();
+
+/* タッチボタン */
+const touch = { left: false, right: false, a: false };
+for (const [id, key] of [["tLeft", "left"], ["tRight", "right"], ["tJump", "a"]]) {
+  const b = $(id);
+  const on = (e) => { e.preventDefault(); touch[key] = true; };
+  const off = (e) => { e.preventDefault(); touch[key] = false; };
+  b.addEventListener("pointerdown", on);
+  b.addEventListener("pointerup", off);
+  b.addEventListener("pointercancel", off);
+  b.addEventListener("pointerleave", off);
+}
+
+$("startBtn").onclick = () => { if (selChar) startGame(); };
+$("againBtn").onclick = () => startGame();
+$("selBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("touchpad").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+  if (G) G.stop = true;
+};
+
+async function startGame() {
+  Sound.tap();
+  if (G) G.stop = true;
+  const parts = await Rig.load(selChar);
+  const bgImg = selBg ? await Util.loadImage(selBg.dataURL) : null;
+
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const WORLD = 3400, GROUND = 645;
+  const puppet = new Puppet(parts, { h: 175 });
+  const stars = [];
+  for (let i = 0; i < 10; i++) {
+    stars.push({
+      x: 380 + i * ((WORLD - 700) / 10) + Util.rand(-80, 80),
+      y: GROUND - (i % 3 === 2 ? Util.rand(220, 300) : Util.rand(40, 130)),
+      got: false, t: Util.rand(0, 6),
+    });
+  }
+
+  G = {
+    stop: false, px: 150, py: GROUND, vy: 0, grounded: true,
+    stars, got: 0, cleared: false, prevA: false,
+  };
+
+  $("selectScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  $("touchpad").classList.remove("hidden");
+  $("clearRow").classList.add("hidden");
+  $("starHud").textContent = "⭐ 0 / 10";
+
+  const starCv = Util.emojiCanvas("⭐", 90);
+  const flagCv = Util.emojiCanvas("🚩", 160);
+  let last = performance.now();
+  const g = G;
+
+  (function loop(now) {
+    if (g.stop) return;
+    const dt = Math.min(0.04, (now - last) / 1000); last = now;
+
+    /* --- 入力 --- */
+    const pad = Pad.read();
+    const left = pad.left || touch.left;
+    const right = pad.right || touch.right;
+    const jump = pad.a || pad.up || touch.a;
+    const SPEED = 330;
+    let vx = 0;
+    if (left) { vx = -SPEED; puppet.facing = -1; }
+    if (right) { vx = SPEED; puppet.facing = 1; }
+    g.px = Util.clamp(g.px + vx * dt, 60, WORLD - 60);
+    puppet.walking = vx !== 0 && g.grounded;
+
+    if (jump && !g.prevA && g.grounded) {
+      g.vy = -950; g.grounded = false; Sound.jump();
+    }
+    g.prevA = jump;
+    if (!g.grounded) {
+      g.vy += 2400 * dt;
+      g.py += g.vy * dt;
+      if (g.py >= GROUND) { g.py = GROUND; g.vy = 0; g.grounded = true; }
+    }
+    puppet.update(dt);
+
+    /* --- あたり判定 --- */
+    const pcx = g.px, pcy = g.py - puppet.h / 2;
+    for (const s of g.stars) {
+      if (s.got) continue;
+      s.t += dt;
+      if (Math.abs(pcx - s.x) < 60 && Math.abs(pcy - s.y) < 95) {
+        s.got = true; g.got++;
+        Sound.pop();
+        $("starHud").textContent = `⭐ ${g.got} / 10`;
+        if (g.got === 10) Ui.msg("ゴールへ いそげ!🚩", 1500, "#ff922b");
+      }
+    }
+    if (g.got === 10 && !g.cleared && g.px > WORLD - 220) {
+      g.cleared = true;
+      Sound.fanfare();
+      Ui.confetti();
+      Ui.msg("クリア!🎉", 2500);
+      $("clearRow").classList.remove("hidden");
+    }
+
+    /* --- 描画 --- */
+    const cam = Util.clamp(g.px - 500, 0, WORLD - 1280);
+    ctx.clearRect(0, 0, 1280, 720);
+    if (bgImg) {
+      const off = -(cam * 0.4) % 1280;
+      ctx.drawImage(bgImg, off, 0, 1280, 720);
+      ctx.drawImage(bgImg, off + 1280, 0, 1280, 720);
+    } else {
+      ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, 1280, 720);
+    }
+    ctx.fillStyle = "rgba(116,184,85,.95)";
+    ctx.fillRect(0, GROUND + 8, 1280, 720 - GROUND);
+
+    ctx.save();
+    ctx.translate(-cam, 0);
+    for (const s of g.stars) {
+      if (s.got) continue;
+      const bob = Math.sin(s.t * 3) * 8;
+      ctx.drawImage(starCv, s.x - 45, s.y - 45 + bob);
+    }
+    if (g.got === 10) ctx.drawImage(flagCv, WORLD - 190, GROUND - 150);
+    puppet.x = g.px;
+    puppet.y = GROUND;
+    puppet.draw(ctx, GROUND - g.py);
+    ctx.restore();
+
+    /* すすみぐあいメーター */
+    ctx.fillStyle = "rgba(255,255,255,.7)";
+    ctx.fillRect(340, 18, 600, 14);
+    ctx.fillStyle = "#ff6b9d";
+    ctx.fillRect(340, 18, 600 * (g.px / WORLD), 14);
+
+    requestAnimationFrame(loop);
+  })(last);
+}
+</script>
+</body>
+</html>

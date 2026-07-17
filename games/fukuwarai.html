@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>ふくわらい</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>😆 ふくわらい</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <p style="text-align:center;font-weight:bold;margin:6px">
+    め・まゆげ・はな・くちを ドラッグして かおを つくろう!
+  </p>
+  <div class="stage-wrap"><canvas id="cv" class="stage" width="900" height="640" style="max-width:860px"></canvas></div>
+  <div class="row">
+    <button class="btn big green" id="doneBtn">かんせい!</button>
+    <button class="btn yellow" id="shuffleBtn">🔀 シャッフル</button>
+    <button class="btn purple" id="blindBtn">🙈 めかくしモード</button>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const FACE = { x: 450, y: 330, r: 210 };
+
+let blind = false;
+let wiggle = 0;      // かんせい演出タイマー
+let drag = null;
+
+/* ---- パーツをクレヨン風に描く ---- */
+function makePart(w, h, draw) {
+  const c = Util.makeCanvas(w, h);
+  const pctx = c.getContext("2d");
+  pctx.lineWidth = 7;
+  pctx.lineCap = "round";
+  draw(pctx, w, h);
+  return c;
+}
+const eye = (flip) => makePart(90, 70, (c, w, h) => {
+  c.strokeStyle = "#4a3f35";
+  c.fillStyle = "#fff";
+  c.beginPath(); c.ellipse(w / 2, h / 2, 34, 26, 0, 0, 7); c.fill(); c.stroke();
+  c.fillStyle = "#4a3f35";
+  c.beginPath(); c.arc(w / 2 + (flip ? -8 : 8), h / 2, 12, 0, 7); c.fill();
+});
+const brow = (flip) => makePart(100, 46, (c, w, h) => {
+  c.strokeStyle = "#7f5539";
+  c.beginPath();
+  c.moveTo(12, h - 10);
+  c.quadraticCurveTo(w / 2, flip ? h : 0, w - 12, h - 10);
+  c.stroke();
+});
+const nose = () => makePart(70, 80, (c, w, h) => {
+  c.strokeStyle = "#e8590c";
+  c.fillStyle = "#ffc9a3";
+  c.beginPath(); c.ellipse(w / 2, h / 2, 22, 30, 0, 0, 7); c.fill(); c.stroke();
+});
+const mouth = () => makePart(180, 110, (c, w, h) => {
+  c.strokeStyle = "#c92a2a";
+  c.fillStyle = "#ff8787";
+  c.beginPath();
+  c.moveTo(15, 30);
+  c.quadraticCurveTo(w / 2, h + 15, w - 15, 30);
+  c.quadraticCurveTo(w / 2, 55, 15, 30);
+  c.closePath(); c.fill(); c.stroke();
+});
+
+const parts = [
+  { cv: eye(false), name: "め" },
+  { cv: eye(true), name: "め" },
+  { cv: brow(false), name: "まゆげ" },
+  { cv: brow(true), name: "まゆげ" },
+  { cv: nose(), name: "はな" },
+  { cv: mouth(), name: "くち" },
+];
+scatter();
+
+function scatter() {
+  const slots = Util.shuffle([
+    [90, 110], [90, 330], [90, 550],
+    [810, 110], [810, 330], [810, 550],
+  ]);
+  parts.forEach((p, i) => {
+    p.x = slots[i][0];
+    p.y = slots[i][1];
+    p.rot = Util.rand(-0.4, 0.4);
+    p.seed = Math.random() * 7;
+  });
+}
+
+/* ---- そうさ ---- */
+cv.addEventListener("pointerdown", (e) => {
+  const p = Util.canvasPos(cv, e);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const pt = parts[i];
+    if (Math.abs(p.x - pt.x) < pt.cv.width / 2 + 12 && Math.abs(p.y - pt.y) < pt.cv.height / 2 + 12) {
+      drag = { pt, dx: p.x - pt.x, dy: p.y - pt.y };
+      parts.splice(i, 1);
+      parts.push(pt);
+      Sound.tap();
+      cv.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const p = Util.canvasPos(cv, e);
+  drag.pt.x = p.x - drag.dx;
+  drag.pt.y = p.y - drag.dy;
+});
+cv.addEventListener("pointerup", () => { drag = null; });
+
+$("doneBtn").onclick = () => {
+  wiggle = 1.6;
+  Sound.laugh();
+  Ui.confetti(2000, 90);
+  Ui.msg("できたー!😆", 1800);
+  if (blind) { blind = false; $("blindBtn").textContent = "🙈 めかくしモード"; }
+};
+$("shuffleBtn").onclick = () => { Sound.tap(); scatter(); };
+$("blindBtn").onclick = () => {
+  blind = !blind;
+  Sound.tap();
+  $("blindBtn").textContent = blind ? "👀 かおを みせる" : "🙈 めかくしモード";
+};
+
+/* ---- 描画 ---- */
+let last = performance.now();
+(function loop(now) {
+  const dt = Math.min(0.04, (now - last) / 1000); last = now;
+  if (wiggle > 0) wiggle -= dt;
+
+  ctx.clearRect(0, 0, 900, 640);
+  ctx.fillStyle = "#fff9db";
+  ctx.fillRect(0, 0, 900, 640);
+
+  /* かおのベース */
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#c8871e";
+  ctx.fillStyle = "#ffe0b3";
+  // みみ(めかくし中もみみだけは見える)
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(FACE.x + s * FACE.r * 0.98, FACE.y - 20, 44, 0, 7);
+    ctx.fill(); ctx.stroke();
+  }
+  if (!blind) {
+    ctx.beginPath();
+    ctx.ellipse(FACE.x, FACE.y, FACE.r, FACE.r * 1.06, 0, 0, 7);
+    ctx.fill(); ctx.stroke();
+    // かみのけ
+    ctx.strokeStyle = "#7f5539";
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(FACE.x + i * 30, FACE.y - FACE.r * 1.02);
+      ctx.quadraticCurveTo(FACE.x + i * 34, FACE.y - FACE.r * 1.3, FACE.x + i * 42, FACE.y - FACE.r * 1.22);
+      ctx.stroke();
+    }
+    // ほっぺ(かんせいのとき)
+    if (wiggle > 0) {
+      ctx.fillStyle = "rgba(255,135,135,.55)";
+      ctx.beginPath(); ctx.arc(FACE.x - 120, FACE.y + 70, 34, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(FACE.x + 120, FACE.y + 70, 34, 0, 7); ctx.fill();
+    }
+  } else {
+    ctx.setLineDash([14, 12]);
+    ctx.strokeStyle = "#d8c9a8";
+    ctx.beginPath();
+    ctx.ellipse(FACE.x, FACE.y, FACE.r, FACE.r * 1.06, 0, 0, 7);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillStyle = "#b0a184";
+    ctx.textAlign = "center";
+    ctx.fillText("このへんに かおが あるよ…!", FACE.x, FACE.y);
+    ctx.textAlign = "left";
+  }
+
+  /* パーツ */
+  for (const p of parts) {
+    const w = wiggle > 0 ? Math.sin(performance.now() / 60 + p.seed) * 0.25 * wiggle : 0;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot * 0.3 + w);
+    ctx.drawImage(p.cv, -p.cv.width / 2, -p.cv.height / 2);
+    ctx.restore();
+  }
+  requestAnimationFrame(loop);
+})(last);
+</script>
+</body>
+</html>

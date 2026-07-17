@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>こえで ジャンプ</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🎤 こえで ジャンプ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="selectScreen" class="panel">
+    <h2>こえを だすと キャラが とぶよ!</h2>
+    <p style="font-size:20px">「わーーー!」って いっぱい こえを だして ⭐を あつめよう</p>
+    <div class="gallery" id="gallery"></div>
+    <div class="row"><button class="btn big pink" id="startBtn">🎤 スタート!</button></div>
+    <p class="note" id="micNote">マイクの使用を「許可」してください。マイクが使えないときは、がめんを「おしているあいだ」うきあがります。</p>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="hud"><span id="scoreHud">⭐ 0</span><span id="timeHud">⏰ 45</span></div>
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+    <div class="row hidden" id="endRow">
+      <button class="btn big green" id="againBtn">もういちど</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const GROUND = 640, TIME = 45;
+
+let selChar = null, G = null, mic = null;
+
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  const chars = recs.filter((r) => r.cat === "char");
+  selChar = chars[0];
+  Ui.renderGallery($("gallery"), chars, (r, el) => {
+    selChar = r;
+    document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
+    el.classList.add("selected");
+  }, selChar && selChar.id);
+}
+initSelect();
+
+async function setupMic() {
+  if (mic) return true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const actx = Sound.ensure();
+    const src = actx.createMediaStreamSource(stream);
+    const an = actx.createAnalyser();
+    an.fftSize = 512;
+    src.connect(an);
+    mic = { an, buf: new Uint8Array(an.fftSize) };
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function volume() {
+  if (!mic) return 0;
+  mic.an.getByteTimeDomainData(mic.buf);
+  let sum = 0;
+  for (let i = 0; i < mic.buf.length; i++) {
+    const v = (mic.buf[i] - 128) / 128;
+    sum += v * v;
+  }
+  return Math.sqrt(sum / mic.buf.length);   // 0〜1くらい
+}
+
+/* タッチフォールバック */
+let pressing = false;
+cv.addEventListener("pointerdown", () => { pressing = true; });
+window.addEventListener("pointerup", () => { pressing = false; });
+
+$("startBtn").onclick = async () => {
+  Sound.tap();
+  const hasMic = await setupMic();
+  if (!hasMic) $("micNote").textContent = "マイクが使えないので、がめんをおしているあいだ うきあがります!";
+  start();
+};
+$("againBtn").onclick = () => start();
+
+async function start() {
+  if (G) G.stop = true;
+  const parts = await Rig.load(selChar);
+  const puppet = new Puppet(parts, { x: 300, y: GROUND, h: 170, facing: 1 });
+  G = { stop: false, y: GROUND, vy: 0, stars: [], score: 0, t: TIME, spawn: 0, over: false };
+
+  $("selectScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  $("endRow").classList.add("hidden");
+  $("scoreHud").textContent = "⭐ 0";
+
+  const starCv = Util.emojiCanvas("⭐", 84);
+  const cloudCv = Util.emojiCanvas("☁️", 140);
+  const clouds = Array.from({ length: 4 }, () => ({ x: Util.rand(0, 1280), y: Util.rand(40, 300), v: Util.rand(15, 40) }));
+  let last = performance.now();
+  const g = G;
+
+  (function loop(now) {
+    if (g.stop) return;
+    const dt = Math.min(0.04, (now - last) / 1000); last = now;
+
+    if (!g.over) {
+      g.t -= dt;
+      if (g.t <= 0) { g.t = 0; finish(); }
+    }
+
+    /* こえ(またはタッチ)で うきあがる */
+    const vol = Math.max(volume(), pressing ? 0.25 : 0);
+    const lift = Util.clamp((vol - 0.04) * 26000, 0, 5200);
+    g.vy += (1500 - lift) * dt;              // 重力 - うきあがる力
+    g.vy = Util.clamp(g.vy, -620, 700);
+    g.y = Util.clamp(g.y + g.vy * dt, 130, GROUND);
+    if (g.y === GROUND && g.vy > 0) g.vy = 0;
+    if (g.y === 130 && g.vy < 0) g.vy = 0;
+
+    /* ほし */
+    g.spawn -= dt;
+    if (g.spawn <= 0 && !g.over) {
+      g.spawn = Util.rand(0.9, 1.5);
+      g.stars.push({ x: 1330, y: Util.rand(160, GROUND - 60), t: 0 });
+    }
+    for (const s of g.stars) { s.x -= 230 * dt; s.t += dt; }
+    g.stars = g.stars.filter((s) => s.x > -60);
+    const py = g.y - puppet.h / 2;
+    for (const s of g.stars) {
+      if (!s.got && Math.abs(s.x - 300) < 75 && Math.abs(s.y - py) < 90) {
+        s.got = true; s.x = -999;
+        g.score++;
+        Sound.pop();
+        $("scoreHud").textContent = `⭐ ${g.score}`;
+      }
+    }
+    $("timeHud").textContent = `⏰ ${Math.ceil(g.t)}`;
+
+    puppet.walking = g.y >= GROUND - 2;
+    puppet.update(dt);
+
+    /* --- 描画 --- */
+    ctx.clearRect(0, 0, 1280, 720);
+    const sky = ctx.createLinearGradient(0, 0, 0, 720);
+    sky.addColorStop(0, "#74c0fc"); sky.addColorStop(1, "#e7f5ff");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
+    for (const c of clouds) {
+      c.x -= c.v * dt;
+      if (c.x < -150) c.x = 1350;
+      ctx.drawImage(cloudCv, c.x, c.y);
+    }
+    ctx.fillStyle = "#96d06c"; ctx.fillRect(0, GROUND + 10, 1280, 720 - GROUND);
+
+    for (const s of g.stars) ctx.drawImage(starCv, s.x - 42, s.y - 42 + Math.sin(s.t * 4) * 6);
+
+    puppet.x = 300; puppet.y = GROUND;
+    puppet.draw(ctx, GROUND - g.y);
+
+    /* こえメーター */
+    ctx.fillStyle = "rgba(255,255,255,.75)";
+    ctx.beginPath(); ctx.roundRect(30, 80, 44, 560, 22); ctx.fill();
+    const mh = Util.clamp(vol * 4, 0, 1) * 552;
+    const mg = ctx.createLinearGradient(0, 640, 0, 88);
+    mg.addColorStop(0, "#51cf66"); mg.addColorStop(0.6, "#ffd43b"); mg.addColorStop(1, "#ff6b9d");
+    ctx.fillStyle = mg;
+    ctx.beginPath(); ctx.roundRect(34, 636 - mh, 36, mh + 2, 18); ctx.fill();
+    ctx.font = "34px serif"; ctx.fillText("🎤", 24, 700);
+
+    requestAnimationFrame(loop);
+  })(last);
+
+  function finish() {
+    g.over = true;
+    Sound.fanfare();
+    if (g.score >= 10) Ui.confetti();
+    Ui.msg(`⭐ ${g.score}こ あつめた!`, 3000);
+    $("endRow").classList.remove("hidden");
+  }
+}
+</script>
+</body>
+</html>
