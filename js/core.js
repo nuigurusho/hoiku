@@ -44,7 +44,11 @@ const Util = {
           const img = await Util.loadImage(fr.result);
           const sc = Math.min(1, max / Math.max(img.width, img.height));
           const c = Util.makeCanvas(Math.round(img.width * sc), Math.round(img.height * sc));
-          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          const ctx = c.getContext("2d");
+          // 透過PNGはJPEG化で黒くなるので、先に白でぬっておく(白は切りぬきで消える)
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(img, 0, 0, c.width, c.height);
           res(c.toDataURL("image/jpeg", 0.88));
         } catch (e) { rej(e); }
       };

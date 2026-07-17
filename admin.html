@@ -143,9 +143,12 @@ function row(r) {
 
 /* ---------- とりこみ ---------- */
 async function importFiles(files) {
+  if (!files.length) return;
   const cat = document.querySelector('input[name="cat"]:checked').value;
   const existing = await Store.all(cat);
   let n = existing.length;
+  let ok = 0;
+  const fails = [];
   for (const f of files) {
     try {
       const dataURL = await Util.fileToDataURL(f, cat === "char" ? 900 : 1100);
@@ -153,12 +156,25 @@ async function importFiles(files) {
       const rec = { name: `${base}${++n}`, cat, dataURL };
       if (cat === "char") rec.rig = { ...Rig.DEFAULT };
       await Store.put(rec);
+      ok++;
     } catch (e) {
-      alert("とりこみに失敗しました: " + (f.name || ""));
+      fails.push(`${f.name || "?"}(${(e && (e.message || e.name)) || "よみこみエラー"})`);
     }
   }
-  refresh();
+  await refresh();
+  if (ok > 0) {
+    Sound.good();
+    Ui.msg(`${ok}まい とりこんだよ!`, 1600, "#51cf66");
+  }
+  if (fails.length) {
+    alert("とりこみに失敗しました:\n" + fails.join("\n") +
+      "\n\n画像ファイル(JPG/PNGなど)か確認してください。iPhoneのHEICは「設定→カメラ→フォーマット→互換性優先」にすると確実です。");
+  }
 }
+// 予期しないエラーも見えるようにしておく(「何も起きない」の調査用)
+window.addEventListener("unhandledrejection", (e) => {
+  alert("エラーがおきました: " + (e.reason && (e.reason.message || e.reason) || "不明"));
+});
 $("pickBtn").onclick = () => $("fileInput").click();
 $("cameraBtn").onclick = () => $("cameraInput").click();
 $("fileInput").onchange = (e) => { importFiles([...e.target.files]); e.target.value = ""; };
