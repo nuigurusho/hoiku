@@ -353,7 +353,26 @@ $("cropClose").onclick = () => $("cropModal").classList.add("hidden");
 $("pickBtn").onclick = () => $("fileInput").click();
 $("cameraBtn").onclick = () => $("cameraInput").click();
 $("fileInput").onchange = (e) => { importFiles([...e.target.files]); e.target.value = ""; };
-$("cameraInput").onchange = (e) => { importFiles([...e.target.files]); e.target.value = ""; };
+/* カメラ撮影は そのまま きりだしフローへ(複数枚はページ送り) */
+$("cameraInput").onchange = async (e) => {
+  const files = [...e.target.files];
+  e.target.value = "";
+  if (!files.length) return;
+  const pages = [];
+  for (const f of files) {
+    try {
+      // 切り出し前提なので元は高めの解像度で保持(保存時に縮小される)
+      const dataURL = await Util.fileToDataURL(f, 1600);
+      const img = await Util.loadImage(dataURL);
+      const c = Util.makeCanvas(img.width, img.height);
+      c.getContext("2d").drawImage(img, 0, 0);
+      pages.push(c);
+    } catch (err) {
+      alert("しゃしんのよみこみに失敗しました: " + (f.name || ""));
+    }
+  }
+  if (pages.length) openCrop(pages, "しゃしん");
+};
 
 /* ---------- リグ編集 ---------- */
 const rigEd = { rec: null, trimmed: null, rig: null, drag: null, parts: null, puppet: null, raf: 0 };
