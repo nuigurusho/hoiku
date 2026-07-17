@@ -21,13 +21,26 @@
       <div class="gallery" id="charGallery"></div>
       <h2 style="margin-top:18px">どこを ぼうけんする?</h2>
       <div class="gallery" id="bgGallery"></div>
-      <div class="row"><button class="btn big green" id="startBtn">ぼうけんに しゅっぱつ!🚀</button></div>
+
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">じどうで ぼうけんするのを みるだけ(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="auto">🌈 じどうで ぼうけん</button></div>
+
+      <div class="mode-sec">🎵 れんしゅう<span class="tag">じかんむせいげん・⭐10こ あつめて ゴール</span></div>
+      <div class="row"><button class="btn big green" data-mode="ren">🎵 ぼうけんに しゅっぱつ!🚀</button></div>
+
+      <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・のこりタイムランキング・クリアで つぎが とけるよ</span></div>
+      <div class="row" id="gachiRow">
+        <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">90びょう</span></button>
+        <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">60びょう</span></button>
+        <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">45びょう</span></button>
+      </div>
+      <div class="rank" id="rankView"></div>
       <p class="note">← → キー か ゲームパッドで移動、スペース/ボタンでジャンプ。がめんのボタンでもOK!</p>
     </div>
   </div>
 
   <div id="playScreen" class="hidden">
-    <div class="hud"><span id="starHud">⭐ 0 / 10</span></div>
+    <div class="hud"><span id="starHud">⭐ 0 / 10</span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="clearRow">
       <button class="btn big green" id="againBtn">もういちど あそぶ</button>
@@ -52,6 +65,15 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
+const GAME = "adventure";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  auto: { label: "ゆるふわ", auto: true },
+  ren:  { label: "れんしゅう" },
+  g1: { label: "かんたん",   time: 90, lv: 1 },
+  g2: { label: "ふつう",     time: 60, lv: 2 },
+  g3: { label: "むずかしい", time: 45, lv: 3 },
+};
 
 let selChar = null, selBg = null, G = null;
 
@@ -71,8 +93,20 @@ async function initSelect() {
     document.querySelectorAll("#bgGallery .thumb").forEach((t) => t.classList.remove("selected"));
     el.classList.add("selected");
   }, selBg && selBg.id);
+  refreshLocks();
 }
 initSelect();
+
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "びょう" });
+}
 
 /* タッチボタン */
 const touch = { left: false, right: false, a: false };
@@ -86,17 +120,39 @@ for (const [id, key] of [["tLeft", "left"], ["tRight", "right"], ["tJump", "a"]]
   b.addEventListener("pointerleave", off);
 }
 
-$("startBtn").onclick = () => { if (selChar) startGame(); };
-$("againBtn").onclick = () => startGame();
+let curMode = MODES.ren;
+document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
+  b.onclick = () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
+    if (!selChar) return;
+    curMode = m;
+    startGame(m);
+  };
+});
+$("againBtn").onclick = () => startGame(curMode);
 $("selBtn").onclick = () => {
   $("playScreen").classList.add("hidden");
   $("touchpad").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
   if (G) G.stop = true;
+  refreshLocks();
 };
 
-async function startGame() {
+function failGame(g) {
+  g.cleared = true;   // タイマー停止・クリア判定も止める
+  Sound.bad();
+  Ui.msg(`じかんぎれ!⭐${g.got}/10`, 2600, "#9775fa");
+  $("clearRow").classList.remove("hidden");
+}
+
+async function startGame(mode) {
   Sound.tap();
+  curMode = mode;
   if (G) G.stop = true;
   const parts = await Rig.load(selChar);
   const bgImg = selBg ? await Util.loadImage(selBg.dataURL) : null;
@@ -114,15 +170,17 @@ async function startGame() {
   }
 
   G = {
-    stop: false, px: 150, py: GROUND, vy: 0, grounded: true,
-    stars, got: 0, cleared: false, prevA: false,
+    stop: false, mode, px: 150, py: GROUND, vy: 0, grounded: true,
+    stars, got: 0, cleared: false, prevA: false, t: mode.time || 0,
   };
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
-  $("touchpad").classList.remove("hidden");
+  $("touchpad").classList.toggle("hidden", !!mode.auto);  // オートはボタン不要
   $("clearRow").classList.add("hidden");
   $("starHud").textContent = "⭐ 0 / 10";
+  $("timeHud").classList.toggle("hidden", !mode.time);
+  if (mode.time) $("timeHud").textContent = `⏰ ${mode.time}`;
 
   const starCv = Util.emojiCanvas("⭐", 90);
   const flagCv = Util.emojiCanvas("🚩", 160);
@@ -133,11 +191,29 @@ async function startGame() {
     if (g.stop) return;
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
 
+    /* --- じかん(ガチンコ) --- */
+    if (g.mode.time && !g.cleared) {
+      g.t -= dt;
+      $("timeHud").textContent = `⏰ ${Math.ceil(Math.max(0, g.t))}`;
+      if (g.t <= 0) { g.t = 0; return failGame(g); }
+    }
+
     /* --- 入力 --- */
-    const pad = Pad.read();
-    const left = pad.left || touch.left;
-    const right = pad.right || touch.right;
-    const jump = pad.a || pad.up || touch.a;
+    let left, right, jump;
+    if (g.mode.auto) {
+      // オートプレイ:みぎへ すすみ、たかい ⭐の てまえで ジャンプ
+      right = true; left = false; jump = false;
+      for (const s of g.stars) {
+        if (s.got) continue;
+        const dx = s.x - g.px;
+        if (dx > 30 && dx < 120 && s.y < GROUND - 150 && g.grounded) { jump = true; break; }
+      }
+    } else {
+      const pad = Pad.read();
+      left = pad.left || touch.left;
+      right = pad.right || touch.right;
+      jump = pad.a || pad.up || touch.a;
+    }
     const SPEED = 330;
     let vx = 0;
     if (left) { vx = -SPEED; puppet.facing = -1; }
@@ -172,8 +248,16 @@ async function startGame() {
       g.cleared = true;
       Sound.fanfare();
       Ui.confetti();
-      Ui.msg("クリア!🎉", 2500);
+      if (g.mode.time) {
+        const left = Math.max(0, Math.round(g.t));
+        Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
+        Tiers.addRank(GAME, g.mode.lv, (selChar && selChar.name) || "?", left);
+        Ui.msg(`クリア!🏆 のこり ${left}びょう`, 2500);
+      } else {
+        Ui.msg("クリア!🎉", 2500);
+      }
       $("clearRow").classList.remove("hidden");
+      if (g.mode.auto) setTimeout(() => { if (g && !g.stop && g.mode.auto) startGame(g.mode); }, 3000);
     }
 
     /* --- 描画 --- */

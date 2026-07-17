@@ -20,21 +20,33 @@
     <div class="panel">
       <h2>どの えで あそぶ?</h2>
       <div class="gallery" id="gallery"></div>
-      <h2 style="margin-top:20px">ピースのかず</h2>
+
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">じどうで くみあがるのを みるだけ(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="demo">🌈 じどうで くみたてる</button></div>
+
+      <div class="mode-sec">🎵 れんしゅう<span class="tag">じかんむせいげん・ピースのかずを えらんでね</span></div>
       <div class="row" id="countRow">
-        <button class="btn big pink"   data-n="4">4</button>
-        <button class="btn big blue"   data-n="6">6</button>
-        <button class="btn big green"  data-n="9">9</button>
-        <button class="btn big orange" data-n="12">12</button>
-        <button class="btn big purple" data-n="20">20</button>
+        <button class="btn big blue"   data-mode="ren4">4</button>
+        <button class="btn big green"  data-mode="ren6">6</button>
+        <button class="btn big orange" data-mode="ren9">9</button>
+        <button class="btn big purple" data-mode="ren12">12</button>
+        <button class="btn big pink"   data-mode="ren20">20</button>
       </div>
-      <p class="note">えをえらんでから、かずのボタンをおしてね(小さい子は4がおすすめ)</p>
+
+      <div class="mode-sec">🔥 ガチンコ<span class="tag">タイムアタック・はやさランキング・クリアで つぎが とけるよ</span></div>
+      <div class="row" id="gachiRow">
+        <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">12ピース・90びょう</span></button>
+        <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">20ピース・120びょう</span></button>
+        <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30ピース・180びょう</span></button>
+      </div>
+      <div class="rank" id="rankView"></div>
+      <p class="note">えをえらんでから、モードのボタンをおしてね(小さい子は 🌈 か 4 がおすすめ)</p>
     </div>
   </div>
 
   <!-- あそぶ画面 -->
   <div id="playScreen" class="hidden">
-    <div class="hud"><span id="progress"></span></div>
+    <div class="hud"><span id="progress"></span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="800"></canvas></div>
     <div class="row"><button class="btn gray" id="againBtn">べつの えで あそぶ</button></div>
   </div>
@@ -44,35 +56,71 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
-const GRID = { 4: [2, 2], 6: [3, 2], 9: [3, 3], 12: [4, 3], 20: [5, 4] };
+const GRID = { 4: [2, 2], 6: [3, 2], 9: [3, 3], 12: [4, 3], 20: [5, 4], 30: [6, 5] };
+const GAME = "puzzle";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  demo:  { label: "ゆるふわ", count: 6, demo: true },
+  ren4:  { label: "れんしゅう", count: 4 },
+  ren6:  { label: "れんしゅう", count: 6 },
+  ren9:  { label: "れんしゅう", count: 9 },
+  ren12: { label: "れんしゅう", count: 12 },
+  ren20: { label: "れんしゅう", count: 20 },
+  g1: { label: "かんたん",   count: 12, limit: 90,  lv: 1 },
+  g2: { label: "ふつう",     count: 20, limit: 120, lv: 2 },
+  g3: { label: "むずかしい", count: 30, limit: 180, lv: 3 },
+};
 
 let selected = null;
 let game = null;
 
 async function initSelect() {
   const recs = await Store.ensureSamples();
+  selected = recs[0] || null;
   Ui.renderGallery($("gallery"), recs, (r, el) => {
     selected = r;
     document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
     el.classList.add("selected");
-  });
+  }, selected && selected.id);
+  refreshLocks();
 }
 initSelect();
 
-document.querySelectorAll("#countRow .btn").forEach((b) => {
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "びょう" });
+}
+
+document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
   b.onclick = async () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
     if (!selected) { Ui.msg("えを えらんでね", 1200, "#4dabf7"); return; }
     Sound.tap();
-    await startGame(selected, +b.dataset.n);
+    await startGame(selected, m);
   };
 });
 $("againBtn").onclick = () => {
+  if (game) game.stop = true;
   $("playScreen").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
+  refreshLocks();
 };
 
 /* ---------------- パズル本体 ---------------- */
-async function startGame(rec, count) {
+async function startGame(rec, mode) {
+  if (game) game.stop = true;
+  const count = mode.count;
   const img = await Util.loadImage(rec.dataURL);
   const cv = $("cv"), ctx = cv.getContext("2d");
   const [cols, rows] = GRID[count];
@@ -163,11 +211,77 @@ async function startGame(rec, count) {
     }
   }
 
-  game = { cv, ctx, board, bx, by, bw, bh, pieces, drag: null, done: false };
+  game = { cv, ctx, board, bx, by, bw, bh, pieces, drag: null, done: false,
+           mode, stop: false, elapsed: 0 };
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
-  bindPointer();
+  $("timeHud").classList.toggle("hidden", !mode.limit);
   render();
+
+  if (mode.demo) {
+    cv.onpointerdown = cv.onpointermove = cv.onpointerup = null;  // みるだけ(そうさなし)
+    runDemo();
+  } else {
+    bindPointer();
+    if (mode.limit) startTimer();
+  }
+}
+
+/* ガチンコ:せいげんじかんの カウントダウン */
+function startTimer() {
+  let last = performance.now();
+  (function tick(now) {
+    const g = game;
+    if (!g || g.stop || g.done) return;
+    g.elapsed += (now - last) / 1000; last = now;
+    const rem = Math.max(0, g.mode.limit - g.elapsed);
+    $("timeHud").textContent = `⏰ ${Math.ceil(rem)}`;
+    if (rem <= 0) {
+      g.done = true;
+      Sound.bad();
+      const left = g.pieces.filter((p) => !p.locked).length;
+      Ui.msg(`じかんぎれ!のこり ${left}ピース`, 2400, "#9775fa");
+      return;
+    }
+    requestAnimationFrame(tick);
+  })(last);
+}
+
+/* 🌈 ゆるふわ:ピースが じどうで はまっていくデモ */
+function runDemo() {
+  const g = game;
+  const queue = Util.shuffle(g.pieces.slice());
+  let i = 0;
+  const step = () => {
+    if (!g || g.stop) return;
+    if (i >= queue.length) {
+      g.done = true;
+      Sound.fanfare();
+      Ui.confetti();
+      Ui.msg("かんせい!", 2200);
+      setTimeout(() => { if (g && !g.stop && g.mode.demo) startGame(selected, g.mode); }, 2800);
+      return;
+    }
+    const pc = queue[i];
+    const from = { x: pc.x, y: pc.y };
+    const t0 = performance.now();
+    const DUR = 420;
+    (function fly(now) {
+      if (!g || g.stop) return;
+      const k = Math.min(1, (now - t0) / DUR);
+      const e = 1 - (1 - k) * (1 - k);   // ease-out
+      pc.x = from.x + (pc.tx - from.x) * e;
+      pc.y = from.y + (pc.ty - from.y) * e;
+      render();
+      if (k < 1) { requestAnimationFrame(fly); return; }
+      pc.x = pc.tx; pc.y = pc.ty; pc.locked = true;
+      Sound.pop();
+      render();
+      i++;
+      setTimeout(step, 260);
+    })(t0);
+  };
+  setTimeout(step, 500);
 }
 
 function updateProgress() {
@@ -247,7 +361,14 @@ function bindPointer() {
         g.done = true;
         Sound.fanfare();
         Ui.confetti();
-        Ui.msg("かんせい!", 2200);
+        if (g.mode.limit) {
+          const secs = Math.max(1, Math.round(g.elapsed));
+          Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
+          Tiers.addRank(GAME, g.mode.lv, "?", secs, { lowerIsBetter: true });
+          Ui.msg(`クリア!🏆 ${secs}びょう`, 2400);
+        } else {
+          Ui.msg("かんせい!", 2200);
+        }
       }
     }
     render();

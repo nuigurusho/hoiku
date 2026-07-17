@@ -19,12 +19,23 @@
     <div class="panel">
       <h2>はしる キャラを えらんでね(タッチで えらぶ/はずす)</h2>
       <div class="gallery" id="gallery"></div>
-      <div class="row">
-        <button class="btn big pink" id="vsBtn">🎮 2にんで たいせん</button>
-        <button class="btn big blue" id="cheerBtn">📣 おうえんレース(みんなでみる)</button>
+
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">キャラが かってに はしる・おうえんするだけ(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="cheer">📣 おうえんレース</button></div>
+
+      <div class="mode-sec">🎵 れんしゅう<span class="tag">2にんで れんだたいせん・かちまけを たのしむ</span></div>
+      <div class="row"><button class="btn big green" data-mode="vs">🎮 2にんで たいせん</button></div>
+
+      <div class="mode-sec">🔥 ガチンコ<span class="tag">CPUたいせん・かつと つぎが とける・かちタイムランキング</span></div>
+      <div class="row" id="gachiRow">
+        <button class="btn big blue"   data-mode="c1">かんたん<br><span style="font-size:14px">CPU ゆっくり</span></button>
+        <button class="btn big orange" data-mode="c2">ふつう<br><span style="font-size:14px">CPU ふつう</span></button>
+        <button class="btn big purple" data-mode="c3">むずかしい<br><span style="font-size:14px">CPU はやい</span></button>
       </div>
+      <div class="rank" id="rankView"></div>
       <p class="note">
         たいせん:ひだりがわを れんだ = 1P、みぎがわを れんだ = 2P(キーボードは F と J)<br>
+        CPUたいせん:がめんを れんだ(スペースでもOK)して CPUより はやく ゴール!<br>
         おうえんレース:キャラたちが かってに はしるよ。だれが かつか おうえんしよう!
       </p>
     </div>
@@ -46,14 +57,24 @@
 const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 const GOAL = 2400;
+const GAME = "race";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  cheer: { label: "おうえんレース", kind: "cheer" },
+  vs:    { label: "2にんたいせん", kind: "vs" },
+  c1: { label: "かんたん",   kind: "cpu", speed: 170, lv: 1 },
+  c2: { label: "ふつう",     kind: "cpu", speed: 235, lv: 2 },
+  c3: { label: "むずかしい", kind: "cpu", speed: 300, lv: 3 },
+};
 
-let allChars = [], selectedIds = new Set(), G = null, lastMode = null;
+let allChars = [], selectedIds = new Set(), G = null, lastMode = "cheer";
 
 async function initSelect() {
   const recs = await Store.ensureSamples();
   allChars = recs.filter((r) => r.cat === "char");
   allChars.slice(0, 2).forEach((r) => selectedIds.add(r.id));
   renderGal();
+  refreshLocks();
 }
 function renderGal() {
   const el = $("gallery");
@@ -78,30 +99,71 @@ function picked(n) {
   return recs.slice(0, n);
 }
 
-$("vsBtn").onclick = () => start("vs");
-$("cheerBtn").onclick = () => start("cheer");
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "びょう" });
+}
+
+document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
+  b.onclick = () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
+    start(b.dataset.mode);
+  };
+});
 $("againBtn").onclick = () => start(lastMode);
 $("backBtn").onclick = () => {
   if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
+  refreshLocks();
 };
 
-async function start(mode) {
+async function start(modeKey) {
   Sound.tap();
-  lastMode = mode;
+  lastMode = modeKey;
+  const mode = MODES[modeKey];
+  const kind = mode.kind;
   if (G) G.stop = true;
-  const recs = picked(mode === "vs" ? 2 : 6);
+
   const racers = [];
-  for (const rec of recs) {
-    const parts = await Rig.load(rec);
-    racers.push({
-      name: rec.name || "",
-      puppet: new Puppet(parts, { h: mode === "vs" ? 150 : Math.min(150, 560 / recs.length + 60) }),
-      prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
-    });
+  if (kind === "cpu") {
+    // プレイヤー + CPU の 1たい1
+    const sel = picked(1);
+    const playerRec = sel[0];
+    const others = allChars.filter((r) => r.id !== playerRec.id);
+    const cpuRec = others.length ? Util.choice(others) : playerRec;
+    for (const [rec, isAi] of [[playerRec, false], [cpuRec, true]]) {
+      const parts = await Rig.load(rec);
+      racers.push({
+        name: (isAi ? "CPU " : "") + (rec.name || ""),
+        puppet: new Puppet(parts, { h: 150 }),
+        prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
+        player: !isAi, ai: isAi,
+      });
+    }
+  } else {
+    const recs = picked(kind === "vs" ? 2 : 6);
+    for (const rec of recs) {
+      const parts = await Rig.load(rec);
+      racers.push({
+        name: rec.name || "",
+        puppet: new Puppet(parts, { h: kind === "vs" ? 150 : Math.min(150, 560 / recs.length + 60) }),
+        prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
+      });
+    }
   }
-  G = { mode, racers, stop: false, state: "ready", t: 0, finished: 0 };
+  G = { mode, kind, cpuSpeed: mode.speed || 0, racers, stop: false, state: "ready", t: 0, finished: 0, ended: false };
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
@@ -127,34 +189,45 @@ async function start(mode) {
   })(last);
 }
 
-/* たいせんのタップ入力:がめんの左半分=1P、右半分=2P */
+/* れんだ入力:たいせん=左1P/右2P、CPUたいせん=どこでも1P */
 cv.addEventListener("pointerdown", (e) => {
-  if (!G || G.mode !== "vs" || G.state !== "run") return;
-  const p = Util.canvasPos(cv, e);
-  dash(p.x < 640 ? 0 : 1);
+  if (!G || G.state !== "run") return;
+  if (G.kind === "vs") {
+    const p = Util.canvasPos(cv, e);
+    dash(p.x < 640 ? 0 : 1);
+  } else if (G.kind === "cpu") {
+    dash(0);
+  }
 });
 window.addEventListener("keydown", (e) => {
-  if (!G || G.mode !== "vs" || G.state !== "run" || e.repeat) return;
-  if (e.code === "KeyF") dash(0);
-  if (e.code === "KeyJ") dash(1);
+  if (!G || G.state !== "run" || e.repeat) return;
+  if (G.kind === "vs") {
+    if (e.code === "KeyF") dash(0);
+    if (e.code === "KeyJ") dash(1);
+  } else if (G.kind === "cpu") {
+    if (e.code === "KeyF" || e.code === "Space" || e.code === "Enter") { dash(0); e.preventDefault(); }
+  }
 });
 function dash(i) {
   const r = G.racers[i];
-  if (!r || r.rank) return;
-  r.prog += 30;
+  if (!r || r.rank || r.ai) return;
+  r.prog += 34;
   r.puppet.phase += 0.65;
   Sound.step();
 }
 
 function update(dt) {
   const g = G;
-  g.t += dt;
+  if (g.state === "run") g.t += dt;
   for (const r of g.racers) {
     if (g.state === "run" && !r.rank) {
-      if (g.mode === "cheer") {
+      if (g.kind === "cheer") {
         r.wob += dt;
         r.v = 190 + Math.sin(r.wob * 1.7) * 90 + Math.sin(r.wob * 4.3 + 1) * 60;
         r.prog += Math.max(40, r.v) * dt;
+        r.puppet.walking = true;
+      } else if (r.ai) {
+        r.prog += g.cpuSpeed * dt;            // CPUは いっていの はやさ
         r.puppet.walking = true;
       } else {
         r.prog = Math.max(0, r.prog - 14 * dt); // れんだしないと ちょっともどる
@@ -163,6 +236,7 @@ function update(dt) {
       if (r.prog >= GOAL) {
         r.rank = ++g.finished;
         r.puppet.walking = false;
+        if (g.kind === "cpu" && !g.ended) return finishCpu(g, r);
         if (r.rank === 1) { Sound.fanfare(); Ui.confetti(); Ui.msg(`${r.name || "1ばん"} のかち!🏆`, 2400); }
         else Sound.good();
         if (g.finished === g.racers.length) {
@@ -172,6 +246,23 @@ function update(dt) {
       }
     }
     r.puppet.update(dt);
+  }
+}
+
+/* CPUたいせん:さきに ゴールした ほうで しょうはい */
+function finishCpu(g, r) {
+  g.ended = true;
+  g.state = "end";
+  $("endRow").classList.remove("hidden");
+  if (r.player) {
+    const secs = Math.max(1, Math.round(g.t * 10) / 10);
+    Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
+    Tiers.addRank(GAME, g.mode.lv, r.name || "?", secs, { lowerIsBetter: true });
+    Sound.fanfare(); Ui.confetti();
+    Ui.msg(`かち!🏆 ${secs}びょう`, 2600);
+  } else {
+    Sound.bad();
+    Ui.msg("CPUの かち…ざんねん!", 2400, "#9775fa");
   }
 }
 
@@ -212,13 +303,19 @@ function draw() {
     }
   });
 
-  if (g.mode === "vs" && g.state === "run") {
+  if (g.kind === "vs" && g.state === "run") {
     ctx.font = "bold 30px sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,107,157,.85)";
     ctx.fillText("← ひだりを れんだ!", 320, 60);
     ctx.fillStyle = "rgba(77,171,247,.85)";
     ctx.fillText("みぎを れんだ! →", 960, 60);
+    ctx.textAlign = "left";
+  } else if (g.kind === "cpu" && g.state === "run") {
+    ctx.font = "bold 30px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,107,157,.9)";
+    ctx.fillText("がめんを れんだして CPUに かとう!", 640, 60);
     ctx.textAlign = "left";
   }
 }
