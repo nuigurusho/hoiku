@@ -355,6 +355,65 @@ const Samples = {
              rig: { neckY: 0.48, hipY: 0.72, centerX: 0.5 } };
   },
 
+  /* キャラ4: スカートのこ(type:'skirt' / 下半身は割らない) */
+  charSkirt() {
+    const c = Util.makeCanvas(420, 560);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 420, 560);
+    ctx.lineWidth = 9; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#a5682a";                          // かみのけ
+    this._circle(ctx, 210, 100, 90, "#c8863c");
+    ctx.strokeStyle = "#e8a87c";                          // 頭
+    this._circle(ctx, 210, 132, 76, "#ffe0b3");
+    this._face(ctx, 210, 132, 76);
+    ctx.strokeStyle = "#f06595";                          // うわぎ
+    this._circle(ctx, 210, 250, 58, "#ffc9de");
+    this._line(ctx, 158, 236, 96, 300);                   // うで
+    this._line(ctx, 262, 236, 324, 300);
+    ctx.strokeStyle = "#e64980"; ctx.fillStyle = "#ff8cc0"; // スカート(三角)
+    ctx.beginPath();
+    ctx.moveTo(210, 300); ctx.lineTo(118, 502); ctx.lineTo(302, 502);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#8a5a2b";                          // あし
+    this._line(ctx, 182, 502, 180, 534);
+    this._line(ctx, 238, 502, 240, 534);
+    ctx.strokeStyle = "#495057";                          // くつ
+    this._line(ctx, 180, 534, 158, 540);
+    this._line(ctx, 240, 534, 262, 540);
+    return { name: "スカートのこ", cat: "char", dataURL: c.toDataURL("image/png"),
+             rig: { type: "skirt", neckY: 0.37, hipY: 0.55, centerX: 0.5 } };
+  },
+
+  /* キャラ5: おばけちゃん(type:'float' / 人外・分割なし) */
+  charFloat() {
+    const c = Util.makeCanvas(400, 460);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 400, 460);
+    ctx.lineWidth = 9; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#adb5bd"; ctx.fillStyle = "#f1f3f5";
+    ctx.beginPath();                                      // ぷにっとしたおばけ
+    ctx.moveTo(72, 300);
+    ctx.quadraticCurveTo(72, 82, 200, 82);
+    ctx.quadraticCurveTo(328, 82, 328, 300);
+    const n = 6;                                          // すそのなみなみ
+    for (let i = 0; i <= n; i++) {
+      const x = 328 - (328 - 72) * (i / n);
+      const y = i % 2 === 0 ? 340 : 300;
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#343a40";                            // め
+    ctx.beginPath(); ctx.ellipse(162, 168, 15, 21, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(238, 168, 15, 21, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#ffc9c9";                            // ほっぺ
+    ctx.beginPath(); ctx.arc(132, 210, 14, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(268, 210, 14, 0, 7); ctx.fill();
+    ctx.fillStyle = "#868e96";                            // くち
+    ctx.beginPath(); ctx.arc(200, 220, 24, 0.1 * Math.PI, 0.9 * Math.PI); ctx.fill();
+    return { name: "おばけちゃん", cat: "char", dataURL: c.toDataURL("image/png"),
+             rig: { type: "float" } };
+  },
+
   /* 背景: おそらとおやま */
   bgA() {
     const c = Util.makeCanvas(1280, 720);
@@ -463,7 +522,8 @@ const Samples = {
   },
 
   makeAll() {
-    return [this.charA(), this.charB(), this.charC(), this.bgA(), this.picA(), this.picB()];
+    return [this.charA(), this.charB(), this.charC(), this.charSkirt(), this.charFloat(),
+            this.bgA(), this.picA(), this.picB()];
   },
 };
 

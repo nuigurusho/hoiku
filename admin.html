@@ -11,6 +11,9 @@
     repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 0 / 24px 24px;
     touch-action: none; max-width: 100%; }
   .rig-flex { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  .rig-types { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 4px 0 12px; }
+  .rig-types .btn { opacity: 0.55; }
+  .rig-types .btn.active { opacity: 1; outline: 3px solid #212529; transform: translateY(1px); }
 </style>
 </head>
 <body>
@@ -58,9 +61,13 @@
 <div class="modal hidden" id="rigModal">
   <div class="panel">
     <h2>うごきせってい</h2>
-    <p class="note">線をドラッグ:<b style="color:#4dabf7">青=くび</b> /
-      <b style="color:#51cf66">緑=こし(あしのつけね)</b> /
-      <b style="color:#ff6b9d">ピンク=からだのまんなか</b></p>
+    <p class="note">まず「うごきのタイプ」をえらんで、せんをドラッグしてあわせてね。</p>
+    <div class="rig-types" id="rigTypes">
+      <button class="btn purple" data-type="biped">🧍にほんあし</button>
+      <button class="btn pink" data-type="skirt">👗スカート</button>
+      <button class="btn orange" data-type="quad">🐕よつあし</button>
+      <button class="btn blue" data-type="float">👻ふわふわ</button>
+    </div>
     <div class="rig-flex">
       <canvas id="rigCanvas" class="edit-canvas" width="340" height="440"></canvas>
       <div>
@@ -171,10 +178,28 @@ async function openRig(rec) {
   cv.width = Math.round(rigEd.trimmed.width * sc);
   cv.height = Math.round(rigEd.trimmed.height * sc);
   $("rigModal").classList.remove("hidden");
+  syncTypeButtons();
   rebuildParts();
   drawRig();
   animPreview();
 }
+
+function syncTypeButtons() {
+  const t = rigEd.rig.type || "biped";
+  $("rigTypes").querySelectorAll("button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.type === t));
+}
+
+function setRigType(t) {
+  if (!Rig.TYPES.includes(t)) return;
+  rigEd.rig.type = t;
+  syncTypeButtons();
+  rebuildParts();
+  drawRig();
+}
+$("rigTypes").querySelectorAll("button").forEach((b) => {
+  b.onclick = () => { Sound.tap(); setRigType(b.dataset.type); };
+});
 
 function rebuildParts() {
   rigEd.parts = Rig.makeParts(rigEd.trimmed, rigEd.rig, rigEd.rec.name);
@@ -185,18 +210,38 @@ function rebuildParts() {
 
 function drawRig() {
   const cv = $("rigCanvas"), ctx = cv.getContext("2d");
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.drawImage(rigEd.trimmed, 0, 0, cv.width, cv.height);
-  const { neckY, hipY, centerX } = rigEd.rig;
-  const line = (col, x1, y1, x2, y2, label, lx, ly) => {
+  const W = cv.width, Hc = cv.height;
+  ctx.clearRect(0, 0, W, Hc);
+  ctx.drawImage(rigEd.trimmed, 0, 0, W, Hc);
+  const r = rigEd.rig, t = r.type || "biped";
+  const hLine = (col, ry, label) => {
+    const y = ry * Hc;
     ctx.strokeStyle = col; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.fillStyle = col; ctx.font = "bold 15px sans-serif";
-    ctx.fillText(label, lx, ly);
+    ctx.fillText(label, 6, y - 6);
   };
-  line("#4dabf7", 0, neckY * cv.height, cv.width, neckY * cv.height, "くび", 6, neckY * cv.height - 6);
-  line("#51cf66", 0, hipY * cv.height, cv.width, hipY * cv.height, "こし", 6, hipY * cv.height - 6);
-  line("#ff6b9d", centerX * cv.width, hipY * cv.height, centerX * cv.width, cv.height, "まんなか", centerX * cv.width + 6, cv.height - 8);
+  const vLine = (col, rx, ry0, label) => {
+    const x = rx * W, y0 = ry0 * Hc;
+    ctx.strokeStyle = col; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, Hc); ctx.stroke();
+    ctx.fillStyle = col; ctx.font = "bold 15px sans-serif";
+    ctx.fillText(label, x + 6, Hc - 8);
+  };
+  if (t === "biped") {
+    hLine("#4dabf7", r.neckY, "くび");
+    hLine("#51cf66", r.hipY, "こし");
+    vLine("#ff6b9d", r.centerX, r.hipY, "まんなか");
+  } else if (t === "skirt") {
+    hLine("#4dabf7", r.neckY, "くび");
+    hLine("#51cf66", r.hipY, "こし");
+  } else if (t === "quad") {
+    hLine("#f59f00", r.bellyY, "おなか");
+    vLine("#ff6b9d", r.centerX, r.bellyY, "まんなか");
+  } else { // float
+    ctx.fillStyle = "#868e96"; ctx.font = "bold 15px sans-serif";
+    ctx.fillText("せんなし(そのままうごきます)", 10, 24);
+  }
 }
 
 function animPreview() {
@@ -217,13 +262,21 @@ function animPreview() {
 (() => {
   const cv = $("rigCanvas");
   const pick = (p) => {
-    const r = rigEd.rig, t = 26;
-    const cands = [
-      ["neckY", Math.abs(p.y - r.neckY * cv.height)],
-      ["hipY", Math.abs(p.y - r.hipY * cv.height)],
-      ["centerX", Math.abs(p.x - r.centerX * cv.width)],
-    ].filter(([, d]) => d < t).sort((a, b) => a[1] - b[1]);
-    return cands.length ? cands[0][0] : null;
+    const r = rigEd.rig, t = 26, ty = r.type || "biped";
+    const cands = [];
+    if (ty === "biped") {
+      cands.push(["neckY", Math.abs(p.y - r.neckY * cv.height)]);
+      cands.push(["hipY", Math.abs(p.y - r.hipY * cv.height)]);
+      cands.push(["centerX", Math.abs(p.x - r.centerX * cv.width)]);
+    } else if (ty === "skirt") {
+      cands.push(["neckY", Math.abs(p.y - r.neckY * cv.height)]);
+      cands.push(["hipY", Math.abs(p.y - r.hipY * cv.height)]);
+    } else if (ty === "quad") {
+      cands.push(["bellyY", Math.abs(p.y - r.bellyY * cv.height)]);
+      cands.push(["centerX", Math.abs(p.x - r.centerX * cv.width)]);
+    }
+    const f = cands.filter(([, d]) => d < t).sort((a, b) => a[1] - b[1]);
+    return f.length ? f[0][0] : null;
   };
   cv.addEventListener("pointerdown", (e) => {
     rigEd.drag = pick(Util.canvasPos(cv, e));
@@ -233,8 +286,9 @@ function animPreview() {
     if (!rigEd.drag) return;
     const p = Util.canvasPos(cv, e);
     if (rigEd.drag === "centerX") rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
+    else if (rigEd.drag === "bellyY") rigEd.rig.bellyY = Util.clamp(p.y / cv.height, 0.2, 0.85);
     else rigEd.rig[rigEd.drag] = Util.clamp(p.y / cv.height, 0.1, 0.92);
-    if (rigEd.rig.hipY < rigEd.rig.neckY + 0.08) {
+    if ((rigEd.drag === "neckY" || rigEd.drag === "hipY") && rigEd.rig.hipY < rigEd.rig.neckY + 0.08) {
       if (rigEd.drag === "neckY") rigEd.rig.neckY = rigEd.rig.hipY - 0.08;
       else rigEd.rig.hipY = rigEd.rig.neckY + 0.08;
     }
