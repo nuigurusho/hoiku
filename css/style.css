@@ -117,6 +117,7 @@ main { padding: 14px; }
 .tile:active { transform: scale(.95); }
 .tile .icon { font-size: 56px; line-height: 1; }
 .tile.admin { background: #f2ede4; font-size: 16px; }
+.tile .badges { font-size: 17px; letter-spacing: 3px; margin-top: 2px; line-height: 1; }
 
 /* ---------- 4択などの選択ボタン ---------- */
 .choices {
@@ -211,6 +212,12 @@ canvas.stage {
 }
 .panel h2 { margin-top: 0; font-size: 26px; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
+
+/* ---------- モードのカテゴリ(🌈ゆるふわ/🎵れんしゅう/🔥ガチンコ) ---------- */
+.mode-sec { margin: 16px 0 4px; font-size: 19px; font-weight: bold; }
+.mode-sec .tag { font-size: 13px; color: #8a7a68; font-weight: normal; margin-left: 8px; }
+.btn.locked { opacity: .4; }
+.rank { font-size: 15px; color: #6a5c4c; margin: 10px 0 0; line-height: 1.5; }
 
 /* ---------- モーダル ---------- */
 .modal {

@@ -630,3 +630,65 @@ const Ui = {
     }
   },
 };
+
+/* ---------------- Tiers(ガチンコの解放レベル & ランキング) ----------------
+   ゲームを 🌈ゆるふわ / 🎵れんしゅう / 🔥ガチンコ の3層で あそぶための共通基盤。
+   ガチンコは「かんたん→ふつう→むずかしい」を クリアで順に解放し、
+   段階ごとに TOP5 ランキングを のこす。
+   localStorageキー:
+     tier_unlock_<game>       解放レベル(1〜3)
+     tier_rank_<game>_<lv>    その段階の TOP5 [{name,score}]
+   タイム系(みじかいほど よい)は addRank/rankHtml に lowerIsBetter を わたす。 */
+const Tiers = {
+  _uKey(game) { return "tier_unlock_" + game; },
+  _rKey(game, lv) { return "tier_rank_" + game + "_" + lv; },
+
+  /* 解放レベル(デフォルト1) */
+  unlock(game) {
+    const v = parseInt(localStorage.getItem(this._uKey(game)), 10);
+    return v >= 1 ? v : 1;
+  },
+
+  /* いまより 大きいレベルだけ 保存する */
+  setUnlock(game, lv) {
+    const cur = this.unlock(game);
+    const next = Math.max(cur, lv | 0);
+    if (next > cur) localStorage.setItem(this._uKey(game), String(next));
+    return next;
+  },
+
+  /* その段階の ランキング配列 [{name,score}] */
+  rank(game, lv) {
+    try {
+      const a = JSON.parse(localStorage.getItem(this._rKey(game, lv)) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  },
+
+  /* スコアを 入れて TOP5 を保存(lowerIsBetter=タイム系はみじかい順) */
+  addRank(game, lv, name, score, opts) {
+    opts = opts || {};
+    if (score == null || !isFinite(score)) return this.rank(game, lv);
+    const list = this.rank(game, lv);
+    list.push({ name: name || "?", score });
+    list.sort((a, b) => opts.lowerIsBetter ? a.score - b.score : b.score - a.score);
+    const top = list.slice(0, 5);
+    localStorage.setItem(this._rKey(game, lv), JSON.stringify(top));
+    return top;
+  },
+
+  /* 選択画面用の ランキングHTML(labels=段階名の配列, opts.unit=たんい) */
+  rankHtml(game, labels, opts) {
+    opts = opts || {};
+    const unit = opts.unit || "";
+    const parts = [];
+    for (let lv = 1; lv <= labels.length; lv++) {
+      const r = this.rank(game, lv);
+      if (r.length) {
+        parts.push(`【${labels[lv - 1]}】` +
+          r.slice(0, 3).map((e, i) => `${i + 1}い ${e.name} ${e.score}${unit}`).join(" / "));
+      }
+    }
+    return parts.length ? "🏆 ランキング<br>" + parts.join("<br>") : "";
+  },
+};

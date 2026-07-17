@@ -6,12 +6,6 @@
 <title>なわとび</title>
 <link rel="icon" href="../favicon.svg">
 <link rel="stylesheet" href="../css/style.css">
-<style>
-  .mode-sec { margin: 14px 0 4px; font-size: 19px; font-weight: bold; }
-  .mode-sec .tag { font-size: 13px; color: #8a7a68; font-weight: normal; margin-left: 8px; }
-  .btn.locked { opacity: .4; }
-  .rank { font-size: 15px; color: #6a5c4c; margin: 2px 0 0; }
-</style>
 </head>
 <body>
 <header class="bar">
@@ -75,9 +69,9 @@ const MODES = {
   g2:   { label: "ふつう",     period: 1.4, goal: 20, missLimit: 3, lv: 2 },
   g3:   { label: "むずかしい", period: 1.15, goal: 30, missLimit: 3, lv: 3, accel: true },
 };
-const unlockLv = () => +(localStorage.getItem("ropeUnlock") || 1);
-const rankKey = (lv) => "ropeRank" + lv;
-const getRank = (lv) => JSON.parse(localStorage.getItem(rankKey(lv)) || "[]");
+const GAME = "rope";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const unlockLv = () => Tiers.unlock(GAME);
 
 let selChar = null, allChars = [], G = null;
 
@@ -101,13 +95,7 @@ function refreshLocks() {
     b.classList.toggle("locked", need > lv);
     b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
   });
-  const parts = [];
-  for (const l of [1, 2, 3]) {
-    const r = getRank(l);
-    if (r.length) parts.push(`【${["かんたん", "ふつう", "むずかしい"][l - 1]}】` +
-      r.slice(0, 3).map((e, i) => `${i + 1}い ${e.name} ${e.score}かい`).join(" / "));
-  }
-  $("rankView").innerHTML = parts.length ? "🏆 ランキング<br>" + parts.join("<br>") : "";
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "かい" });
 }
 initSelect();
 
@@ -292,7 +280,7 @@ function clearGame() {
   Ui.confetti();
   Ui.msg("クリア!🏆", 2600);
   const lv = g.mode.lv;
-  localStorage.setItem("ropeUnlock", Math.max(unlockLv(), Math.min(3, lv + 1)));
+  Tiers.setUnlock(GAME, Math.min(3, lv + 1));
   saveRank(lv, g.best);
   $("endRow").classList.remove("hidden");
 }
@@ -307,10 +295,7 @@ function failGame() {
 }
 function saveRank(lv, score) {
   if (!lv || score <= 0) return;
-  const list = getRank(lv);
-  list.push({ name: (selChar && selChar.name) || "?", score });
-  list.sort((a, b) => b.score - a.score);
-  localStorage.setItem(rankKey(lv), JSON.stringify(list.slice(0, 5)));
+  Tiers.addRank(GAME, lv, (selChar && selChar.name) || "?", score);
 }
 
 /* ---------- 描画 ---------- */

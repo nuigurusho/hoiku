@@ -32,16 +32,27 @@
 <main>
   <div id="startScreen" class="panel">
     <h2>これ なんの かげ?</h2>
-    <div class="row">
-      <button class="btn big blue" id="animalBtn">🐾 どうぶつクイズ</button>
-      <button class="btn big pink" id="drawBtn">🖍️ だれの え でしょう?</button>
+
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">みんなの えが かげで とうじょう・はっぴょうかいに(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" id="drawBtn">🖍️ だれの え でしょう?</button></div>
+
+    <div class="mode-sec">🎵 れんしゅう<span class="tag">どうぶつの かげあて・5もん・まちがえても へいき</span></div>
+    <div class="row"><button class="btn big blue" id="animalBtn">🐾 どうぶつクイズ</button></div>
+
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="row" id="gachiRow">
+      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">3もん れんぞく</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">5もん れんぞく</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">8もん れんぞく</span></button>
     </div>
+    <div class="rank" id="rankView"></div>
     <p class="note">「だれのえでしょう?」は とりこんだ みんなの絵が かげになって出てきます</p>
   </div>
 
   <!-- どうぶつモード -->
   <div id="animalScreen" class="hidden">
     <div class="qnum" style="text-align:center;font-weight:bold;color:#8a7a68" id="anum"></div>
+    <div class="hud hidden" id="agHud"><span id="agStreak"></span><span id="agHeart"></span></div>
     <div class="shadow-box"><canvas id="acv" width="420" height="420"></canvas></div>
     <div class="choices" id="achoices"></div>
   </div>
@@ -89,22 +100,64 @@ function silhouette(srcCanvas, dst, black = true) {
   }
 }
 
-/* ---------- どうぶつクイズ ---------- */
+/* ---------- どうぶつクイズ(れんしゅう & ガチンコ) ---------- */
 let apool = [], aidx = 0, ascore = 0, abusy = false;
 const ROUNDS = 5;
-
-$("animalBtn").onclick = () => {
-  Sound.tap();
-  apool = Util.shuffle(ANIMALS).slice(0, ROUNDS);
-  aidx = 0; ascore = 0;
-  swap("animalScreen");
-  aShow();
+let gmode = null, astreak = 0, amiss = 0;
+const GAME = "silhouette";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const GMODES = {
+  g1: { label: "かんたん",   goal: 3, missLimit: 3, lv: 1 },
+  g2: { label: "ふつう",     goal: 5, missLimit: 3, lv: 2 },
+  g3: { label: "むずかしい", goal: 8, missLimit: 3, lv: 3 },
 };
+
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = GMODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "もん" });
+}
+refreshLocks();
+
+$("animalBtn").onclick = () => { gmode = null; startAnimal(); };
+document.querySelectorAll("#gachiRow [data-mode]").forEach((b) => {
+  b.onclick = () => {
+    const m = GMODES[b.dataset.mode];
+    if (m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
+    gmode = m; startAnimal();
+  };
+});
+
+function startAnimal() {
+  Sound.tap();
+  apool = Util.shuffle(ANIMALS);
+  if (!gmode) apool = apool.slice(0, ROUNDS);
+  aidx = 0; ascore = 0; astreak = 0; amiss = 0;
+  swap("animalScreen");
+  $("agHud").classList.toggle("hidden", !gmode);
+  updateAgHud();
+  aShow();
+}
+
+function updateAgHud() {
+  if (!gmode) return;
+  $("agStreak").textContent = `れんぞく: ${astreak} / ${gmode.goal}`;
+  $("agHeart").textContent = "❤".repeat(Math.max(0, gmode.missLimit - amiss));
+}
 
 function aShow() {
   abusy = false;
   const [emoji, name] = apool[aidx];
-  $("anum").textContent = `だい ${aidx + 1} もん / ${ROUNDS} もん`;
+  $("anum").textContent = gmode ? `だい ${aidx + 1} もん` : `だい ${aidx + 1} もん / ${ROUNDS} もん`;
   silhouette(Util.emojiCanvas(emoji, 400), $("acv"));
   const wrongs = Util.shuffle(ANIMALS.filter(([, n]) => n !== name)).slice(0, 3).map(([, n]) => n);
   const opts = Util.shuffle([name, ...wrongs]);
@@ -122,21 +175,46 @@ function aShow() {
       document.querySelectorAll("#achoices .choice").forEach((c) => {
         if (c.textContent === name) c.classList.add("correct"); else c.classList.add("dim");
       });
-      if (ok) { ascore++; Sound.good(); Ui.msg("せいかい!⭕", 1100, "#51cf66"); }
-      else { Sound.bad(); Ui.msg(`「${name}」でした`, 1300, "#4dabf7"); }
+      if (ok) { ascore++; astreak++; Sound.good(); Ui.msg("せいかい!⭕", 1100, "#51cf66"); }
+      else { astreak = 0; if (gmode) amiss++; Sound.bad(); Ui.msg(`「${name}」でした`, 1300, "#4dabf7"); }
+      if (gmode) updateAgHud();
       setTimeout(() => {
-        aidx++;
-        if (aidx < ROUNDS) aShow();
-        else {
-          swap("endScreen");
-          $("scoreText").textContent = `${ROUNDS}もん中 ${ascore}もん せいかい!`;
-          Sound.fanfare();
-          if (ascore >= 3) Ui.confetti();
+        if (gmode) {
+          if (astreak >= gmode.goal) return clearGachi();
+          if (amiss >= gmode.missLimit) return failGachi();
+          aidx = (aidx + 1) % apool.length;
+          if (aidx === 0) apool = Util.shuffle(apool);
+          aShow();
+        } else {
+          aidx++;
+          if (aidx < ROUNDS) aShow();
+          else {
+            swap("endScreen");
+            $("scoreText").textContent = `${ROUNDS}もん中 ${ascore}もん せいかい!`;
+            Sound.fanfare();
+            if (ascore >= 3) Ui.confetti();
+          }
         }
       }, 1600);
     };
     box.appendChild(b);
   });
+}
+
+function clearGachi() {
+  swap("endScreen");
+  $("scoreText").textContent = `クリア!🏆 ${ascore}もん せいかい!`;
+  Tiers.setUnlock(GAME, Math.min(3, gmode.lv + 1));
+  Tiers.addRank(GAME, gmode.lv, "?", ascore);
+  Sound.fanfare();
+  Ui.confetti();
+  Ui.msg("クリア!🏆", 2200);
+}
+function failGachi() {
+  swap("endScreen");
+  $("scoreText").textContent = `ざんねん!${ascore}もん せいかい`;
+  Tiers.addRank(GAME, gmode.lv, "?", ascore);
+  Sound.bad();
 }
 
 /* ---------- だれのえでしょうモード ---------- */
@@ -172,7 +250,7 @@ $("revealBtn").onclick = () => {
 };
 $("nextBtn").onclick = () => { Sound.tap(); didx++; dShow(); };
 
-$("retryBtn").onclick = () => swap("startScreen");
+$("retryBtn").onclick = () => { swap("startScreen"); refreshLocks(); };
 
 function swap(id) {
   for (const s of ["startScreen", "animalScreen", "drawScreen", "endScreen"])

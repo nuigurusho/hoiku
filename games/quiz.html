@@ -30,14 +30,25 @@
   <div id="startScreen" class="panel">
     <h2>クイズたいかい!</h2>
     <p style="font-size:22px">4つのなかから こたえを えらんでね</p>
+
+    <div class="mode-sec">🎵 れんしゅう<span class="tag">スコアを ためるだけ・まちがえても へいき</span></div>
     <div class="row">
-      <button class="btn big pink" data-n="5">5もん</button>
-      <button class="btn big blue" data-n="0">ぜんぶ</button>
+      <button class="btn big pink" data-mode="ren5">5もん</button>
+      <button class="btn big blue" data-mode="renAll">ぜんぶ</button>
     </div>
+
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="row" id="gachiRow">
+      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">5もん れんぞく</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">8もん れんぞく</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">10もん れんぞく</span></button>
+    </div>
+    <div class="rank" id="rankView"></div>
   </div>
 
   <div id="quizScreen" class="hidden">
     <div class="qnum" id="qnum"></div>
+    <div class="hud hidden" id="gachiHud"><span id="streakHud"></span><span id="heartHud"></span></div>
     <div class="qemoji" id="qemoji"></div>
     <div class="qtext" id="qtext"></div>
     <div class="choices" id="choices"></div>
@@ -58,30 +69,72 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
+const GAME = "quiz";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  ren5:   { label: "れんしゅう", n: 5 },
+  renAll: { label: "れんしゅう", n: 0 },
+  g1: { label: "かんたん",   goal: 5,  missLimit: 3, lv: 1 },
+  g2: { label: "ふつう",     goal: 8,  missLimit: 3, lv: 2 },
+  g3: { label: "むずかしい", goal: 10, missLimit: 3, lv: 3 },
+};
 let queue = [], idx = 0, score = 0, busy = false;
+let mode = null, streak = 0, miss = 0;
 
-document.querySelectorAll("#startScreen .btn").forEach((b) => {
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "もん" });
+}
+refreshLocks();
+
+document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
   b.onclick = () => {
+    mode = MODES[b.dataset.mode];
+    if (mode.lv && mode.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
     Sound.tap();
-    const n = +b.dataset.n;
-    queue = Util.shuffle(window.QUIZ);
-    if (n > 0) queue = queue.slice(0, n);
-    idx = 0; score = 0;
-    $("startScreen").classList.add("hidden");
-    $("endScreen").classList.add("hidden");
-    $("quizScreen").classList.remove("hidden");
-    show();
+    startRun();
   };
 });
 $("retryBtn").onclick = () => {
   $("endScreen").classList.add("hidden");
   $("startScreen").classList.remove("hidden");
+  refreshLocks();
 };
+
+function startRun() {
+  queue = Util.shuffle(window.QUIZ);
+  if (mode.n > 0) queue = queue.slice(0, mode.n);
+  idx = 0; score = 0; streak = 0; miss = 0;
+  $("startScreen").classList.add("hidden");
+  $("endScreen").classList.add("hidden");
+  $("quizScreen").classList.remove("hidden");
+  $("gachiHud").classList.toggle("hidden", !mode.goal);
+  updateGachiHud();
+  show();
+}
+
+function updateGachiHud() {
+  if (!mode.goal) return;
+  $("streakHud").textContent = `れんぞく: ${streak} / ${mode.goal}`;
+  $("heartHud").textContent = "❤".repeat(Math.max(0, mode.missLimit - miss));
+}
 
 function show() {
   const q = queue[idx];
   busy = false;
-  $("qnum").textContent = `だい ${idx + 1} もん / ${queue.length} もん`;
+  $("qnum").textContent = mode.goal
+    ? `だい ${idx + 1} もん`
+    : `だい ${idx + 1} もん / ${queue.length} もん`;
   $("qemoji").textContent = q.emoji || "❓";
   $("qtext").textContent = q.q;
   const box = $("choices");
@@ -106,20 +159,33 @@ function answer(ci, btn) {
     else b.classList.add("dim");
   });
   if (ok) {
-    score++;
+    score++; streak++;
     Sound.good();
     Ui.msg("せいかい!⭕", 1100, "#51cf66");
   } else {
+    streak = 0;
     Sound.bad();
     Ui.msg("ざんねん…", 1100, "#4dabf7");
+    if (mode.goal) miss++;
   }
+  if (mode.goal) updateGachiHud();
+
   setTimeout(() => {
-    idx++;
-    if (idx < queue.length) show();
-    else finish();
+    if (mode.goal) {
+      if (streak >= mode.goal) return clearGachi();
+      if (miss >= mode.missLimit) return failGachi();
+      idx = (idx + 1) % queue.length;   // つぎつぎ 出しつづける
+      if (idx === 0) queue = Util.shuffle(queue);
+      show();
+    } else {
+      idx++;
+      if (idx < queue.length) show();
+      else finish();
+    }
   }, 1500);
 }
 
+/* れんしゅう:1周おわり */
 function finish() {
   $("quizScreen").classList.add("hidden");
   $("endScreen").classList.remove("hidden");
@@ -128,6 +194,29 @@ function finish() {
   $("scoreText").textContent = `${queue.length}もん中 ${score}もん せいかい!`;
   Sound.fanfare();
   if (rate >= 0.6) Ui.confetti();
+}
+
+/* ガチンコ:ノルマたっせい */
+function clearGachi() {
+  $("quizScreen").classList.add("hidden");
+  $("endScreen").classList.remove("hidden");
+  $("stars").textContent = "⭐⭐⭐";
+  $("scoreText").textContent = `クリア!🏆 ${score}もん せいかい!`;
+  Tiers.setUnlock(GAME, Math.min(3, mode.lv + 1));
+  Tiers.addRank(GAME, mode.lv, "?", score);
+  Sound.fanfare();
+  Ui.confetti();
+  Ui.msg("クリア!🏆", 2200);
+}
+
+/* ガチンコ:ミスしすぎ */
+function failGachi() {
+  $("quizScreen").classList.add("hidden");
+  $("endScreen").classList.remove("hidden");
+  $("stars").textContent = "⭐";
+  $("scoreText").textContent = `ざんねん!${score}もん せいかい`;
+  Tiers.addRank(GAME, mode.lv, "?", score);
+  Sound.bad();
 }
 </script>
 </body>
