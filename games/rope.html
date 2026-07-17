@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>なわとび</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .mode-sec { margin: 14px 0 4px; font-size: 19px; font-weight: bold; }
+  .mode-sec .tag { font-size: 13px; color: #8a7a68; font-weight: normal; margin-left: 8px; }
+  .btn.locked { opacity: .4; }
+  .rank { font-size: 15px; color: #6a5c4c; margin: 2px 0 0; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🪢 なわとび</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <div id="selectScreen">
+    <div class="panel">
+      <h2>だれが とぶ?</h2>
+      <div class="gallery" id="gallery"></div>
+
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">みてるだけでOK・おわりなし(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="yuru">みんなで ぴょんぴょん</button></div>
+
+      <div class="mode-sec">🎵 れんしゅう<span class="tag">タップでジャンプ・しっぱいしても へいき</span></div>
+      <div class="row"><button class="btn big green" data-mode="ren">とんだかずを ためる</button></div>
+
+      <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくノルマ&ランキング・クリアで つぎが とけるよ</span></div>
+      <div class="row" id="gachiRow">
+        <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">10かい れんぞく</span></button>
+        <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">20かい れんぞく</span></button>
+        <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30かい・かそく!</span></button>
+      </div>
+      <div class="rank" id="rankView"></div>
+    </div>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <div class="hud">
+      <span id="hudA">とんだ: 0</span>
+      <span id="hudB">れんぞく: 0</span>
+      <span id="hudC" class="hidden"></span>
+    </div>
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+    <div class="row">
+      <span class="note" id="hint">がめんタップ か スペースで ジャンプ!</span>
+    </div>
+    <div class="row hidden" id="endRow">
+      <button class="btn big green" id="retryBtn">もういちど</button>
+      <button class="btn gray" id="backBtn">えらびなおす</button>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const GROUND = 610;
+
+/* モード定義:period=なわ1回転の秒数 */
+const MODES = {
+  yuru: { label: "ゆるふわ",   period: 1.7, goal: 0,  missLimit: 0, auto: true },
+  ren:  { label: "れんしゅう", period: 1.7, goal: 0,  missLimit: 0 },
+  g1:   { label: "かんたん",   period: 1.9, goal: 10, missLimit: 3, lv: 1 },
+  g2:   { label: "ふつう",     period: 1.4, goal: 20, missLimit: 3, lv: 2 },
+  g3:   { label: "むずかしい", period: 1.15, goal: 30, missLimit: 3, lv: 3, accel: true },
+};
+const unlockLv = () => +(localStorage.getItem("ropeUnlock") || 1);
+const rankKey = (lv) => "ropeRank" + lv;
+const getRank = (lv) => JSON.parse(localStorage.getItem(rankKey(lv)) || "[]");
+
+let selChar = null, allChars = [], G = null;
+
+/* ---------- えらぶ画面 ---------- */
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  allChars = recs.filter((r) => r.cat === "char");
+  selChar = allChars[0];
+  Ui.renderGallery($("gallery"), allChars, (r, el) => {
+    selChar = r;
+    document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
+    el.classList.add("selected");
+  }, selChar && selChar.id);
+  refreshLocks();
+}
+function refreshLocks() {
+  const lv = unlockLv();
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  const parts = [];
+  for (const l of [1, 2, 3]) {
+    const r = getRank(l);
+    if (r.length) parts.push(`【${["かんたん", "ふつう", "むずかしい"][l - 1]}】` +
+      r.slice(0, 3).map((e, i) => `${i + 1}い ${e.name} ${e.score}かい`).join(" / "));
+  }
+  $("rankView").innerHTML = parts.length ? "🏆 ランキング<br>" + parts.join("<br>") : "";
+}
+initSelect();
+
+document.querySelectorAll("[data-mode]").forEach((b) => {
+  b.onclick = () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > unlockLv()) {
+      Sound.bad();
+      Ui.msg(`まえのだんかいを クリアしてね`, 1600, "#4dabf7");
+      return;
+    }
+    Sound.tap();
+    start(b.dataset.mode);
+  };
+});
+$("retryBtn").onclick = () => start(G.modeKey);
+$("backBtn").onclick = () => {
+  if (G) G.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+  refreshLocks();
+};
+
+/* ---------- 入力 ---------- */
+let wantJump = false;
+cv.addEventListener("pointerdown", (e) => {
+  if (!G) return;
+  if (G.mode.auto) {
+    // ゆるふわ:タッチしたキャラが おおジャンプ
+    const p = Util.canvasPos(cv, e);
+    for (const j of G.jumpers) {
+      const b = j.puppet.bbox(j.air);
+      if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+        if (j.air <= 0) { j.vy = -1150; Sound.jump(); }
+        return;
+      }
+    }
+    return;
+  }
+  wantJump = true;
+});
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !e.repeat) { wantJump = true; e.preventDefault(); }
+});
+
+/* ---------- ゲーム本体 ---------- */
+async function start(modeKey) {
+  if (G) G.stop = true;
+  const mode = MODES[modeKey];
+  const chars = mode.auto ? allChars.slice(0, 4) : [selChar];
+  const jumpers = [];
+  for (let i = 0; i < chars.length; i++) {
+    const parts = await Rig.load(chars[i]);
+    const n = chars.length;
+    jumpers.push({
+      puppet: new Puppet(parts, {
+        x: 640 + (i - (n - 1) / 2) * Math.min(170, 520 / Math.max(1, n - 1) || 0),
+        y: GROUND, h: mode.auto ? 150 : 185, facing: i % 2 ? -1 : 1,
+      }),
+      air: 0, vy: 0, tumble: 0,
+    });
+  }
+
+  G = {
+    stop: false, modeKey, mode, jumpers,
+    phase: Math.PI,             // なわは うしろ上からスタート
+    period: mode.period,
+    jumps: 0, combo: 0, best: 0, miss: 0,
+    over: false, t: 0,
+  };
+  wantJump = false;
+
+  $("selectScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+  $("endRow").classList.add("hidden");
+  $("hint").textContent = mode.auto
+    ? "みんな じょうずに とんでるね!タッチすると おおジャンプ!"
+    : "なわが 下にくる タイミングで タップ(スペースでもOK)!";
+  $("hudC").classList.toggle("hidden", !mode.goal);
+  updateHud();
+
+  Ui.msg(mode.label + "!", 1200, "#ff922b");
+  let last = performance.now();
+  (function loop(now) {
+    if (G.stop) return;
+    const dt = Math.min(0.04, (now - last) / 1000); last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  })(last);
+}
+
+function updateHud() {
+  const g = G;
+  if (g.mode.goal) {
+    $("hudA").textContent = `れんぞく: ${g.combo} / ${g.mode.goal}`;
+    $("hudB").textContent = `さいこう: ${g.best}`;
+    $("hudC").textContent = "❤".repeat(Math.max(0, g.mode.missLimit - g.miss));
+  } else {
+    $("hudA").textContent = `とんだ: ${g.jumps}`;
+    $("hudB").textContent = `れんぞく: ${g.combo}`;
+  }
+}
+
+function update(dt) {
+  const g = G;
+  g.t += dt;
+
+  /* なわの回転(下を通過するのは phase = π/2) */
+  if (!g.over) {
+    const prev = g.phase;
+    g.phase += (Math.PI * 2 / g.period) * dt;
+    // 上を通過:よいしょ の 予備音
+    if (prev % (Math.PI * 2) < Math.PI * 1.5 && g.phase % (Math.PI * 2) >= Math.PI * 1.5) Sound.tick();
+    // 下を通過:判定!
+    if (prev % (Math.PI * 2) < Math.PI / 2 && g.phase % (Math.PI * 2) >= Math.PI / 2) judge();
+  }
+
+  /* ジャンプ入力(プレイヤー) */
+  if (wantJump && !g.over) {
+    wantJump = false;
+    const j = g.jumpers[0];
+    if (!g.mode.auto && j.air <= 0 && j.tumble <= 0) { j.vy = -880; Sound.jump(); }
+  }
+
+  /* ゆるふわ:下にくる 0.19秒まえに 自動ジャンプ */
+  if (g.mode.auto && !g.over) {
+    const untilBottom = ((Math.PI / 2 - (g.phase % (Math.PI * 2))) / (Math.PI * 2) + 1) % 1 * g.period;
+    if (untilBottom < 0.19 && untilBottom > 0.19 - dt * 1.5) {
+      for (const j of g.jumpers) if (j.air <= 0) { j.vy = -880; }
+      Sound.jump();
+    }
+  }
+
+  /* 物理 */
+  for (const j of g.jumpers) {
+    if (j.tumble > 0) j.tumble -= dt;
+    if (j.air > 0 || j.vy < 0) {
+      j.air -= j.vy * dt;
+      j.vy += 2600 * dt;
+      if (j.air <= 0) { j.air = 0; j.vy = 0; }
+    }
+    j.puppet.walking = false;
+    j.puppet.update(dt);
+  }
+}
+
+/* なわが 下を通過した瞬間の判定 */
+function judge() {
+  const g = G;
+  if (g.mode.auto) { g.jumps++; g.combo++; updateHud(); Sound.pop(); return; }
+
+  const j = g.jumpers[0];
+  const ok = j.air > 26 && j.tumble <= 0;
+  if (ok) {
+    g.jumps++; g.combo++;
+    g.best = Math.max(g.best, g.combo);
+    Sound.pop();
+    if (g.combo > 0 && g.combo % 5 === 0) Ui.msg(`${g.combo}かい!`, 800, "#51cf66");
+    if (g.mode.accel) g.period = Math.max(0.85, g.period - 0.012);
+    if (g.mode.goal && g.combo >= g.mode.goal) return clearGame();
+  } else {
+    g.combo = 0;
+    j.tumble = 0.9;
+    Sound.bad();
+    if (g.mode.missLimit) {
+      g.miss++;
+      if (g.miss >= g.mode.missLimit) return failGame();
+      Ui.msg("ひっかかった〜", 1000, "#4dabf7");
+    } else {
+      Ui.msg("どんまい!", 900, "#4dabf7");
+    }
+  }
+  updateHud();
+}
+
+function clearGame() {
+  const g = G;
+  g.over = true;
+  updateHud();
+  Sound.fanfare();
+  Ui.confetti();
+  Ui.msg("クリア!🏆", 2600);
+  const lv = g.mode.lv;
+  localStorage.setItem("ropeUnlock", Math.max(unlockLv(), Math.min(3, lv + 1)));
+  saveRank(lv, g.best);
+  $("endRow").classList.remove("hidden");
+}
+function failGame() {
+  const g = G;
+  g.over = true;
+  updateHud();
+  Sound.bad();
+  Ui.msg(`ざんねん!さいこう ${g.best}かい`, 2400, "#9775fa");
+  saveRank(g.mode.lv, g.best);
+  $("endRow").classList.remove("hidden");
+}
+function saveRank(lv, score) {
+  if (!lv || score <= 0) return;
+  const list = getRank(lv);
+  list.push({ name: (selChar && selChar.name) || "?", score });
+  list.sort((a, b) => b.score - a.score);
+  localStorage.setItem(rankKey(lv), JSON.stringify(list.slice(0, 5)));
+}
+
+/* ---------- 描画 ---------- */
+function draw() {
+  const g = G;
+  ctx.clearRect(0, 0, 1280, 720);
+  const sky = ctx.createLinearGradient(0, 0, 0, 720);
+  sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#fff9db");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
+  ctx.fillStyle = "#96d06c"; ctx.fillRect(0, GROUND + 8, 1280, 720 - GROUND);
+
+  const LX = 250, RX = 1030, AY = 400;      // なわの持ち手の位置
+  const s = Math.sin(g.phase);              // 1 = 下, -1 = 上
+  const front = s > 0;                      // 下半分 = てまえ
+
+  const drawRope = () => {
+    ctx.strokeStyle = front ? "#e8590c" : "#f4a261";
+    ctx.lineWidth = 9;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(LX, AY);
+    ctx.quadraticCurveTo(640, AY + s * 470, RX, AY);
+    ctx.stroke();
+  };
+
+  // なわのかげ(下を通るときだけ)
+  if (front) {
+    ctx.fillStyle = `rgba(0,0,0,${0.12 * s})`;
+    ctx.beginPath();
+    ctx.ellipse(640, GROUND + 14, 330 * s + 60, 12, 0, 0, 7);
+    ctx.fill();
+  }
+
+  if (!front) drawRope();                   // うしろがわ:キャラのまえに なわを描かない
+
+  // もちて(ぼう)
+  for (const x of [LX, RX]) {
+    ctx.strokeStyle = "#8a6a4a";
+    ctx.lineWidth = 14;
+    ctx.beginPath(); ctx.moveTo(x, AY); ctx.lineTo(x, GROUND + 6); ctx.stroke();
+    ctx.fillStyle = "#ffd43b";
+    ctx.beginPath(); ctx.arc(x, AY, 16, 0, 7); ctx.fill();
+  }
+
+  // キャラたち
+  for (const j of g.jumpers) {
+    if (j.tumble > 0) {
+      ctx.save();
+      ctx.translate(j.puppet.x, j.puppet.y);
+      ctx.rotate(Math.sin(j.tumble * 12) * 0.16);
+      ctx.translate(-j.puppet.x, -j.puppet.y);
+      j.puppet.draw(ctx, 0);
+      ctx.restore();
+      ctx.font = "44px serif";
+      ctx.fillText("💫", j.puppet.x - 22, j.puppet.y - j.puppet.h - 14);
+    } else {
+      j.puppet.draw(ctx, j.air);
+    }
+  }
+
+  if (front) drawRope();                    // てまえがわ:キャラのうえに なわ
+
+  // タイミングガイド:なわが下にくる直前に「ぴょん!」マーク
+  const untilBottom = ((Math.PI / 2 - (g.phase % (Math.PI * 2))) / (Math.PI * 2) + 1) % 1 * g.period;
+  if (!g.mode.auto && untilBottom < 0.42 && !g.over) {
+    const a = 1 - untilBottom / 0.42;
+    ctx.font = `bold ${40 + a * 26}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(255,107,157,${0.35 + a * 0.65})`;
+    ctx.fillText("ぴょん!", 640, 150);
+    ctx.textAlign = "left";
+  }
+}
+</script>
+</body>
+</html>
