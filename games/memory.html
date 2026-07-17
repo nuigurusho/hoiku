@@ -17,11 +17,24 @@
 <main>
   <div id="startScreen" class="panel">
     <h2>おなじ えを 2まい みつけてね!</h2>
+
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">じどうで そろっていくのを みるだけ(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" data-mode="demo">🌈 じどうで そろえる</button></div>
+
+    <div class="mode-sec">🎵 れんしゅう<span class="tag">じぶんの ペースで・かいすうせいげんなし</span></div>
     <div class="row">
-      <button class="btn big pink" data-n="4">やさしい(4くみ)</button>
-      <button class="btn big blue" data-n="6">ふつう(6くみ)</button>
-      <button class="btn big purple" data-n="8">むずかしい(8くみ)</button>
+      <button class="btn big blue"   data-mode="ren4">やさしい(4くみ)</button>
+      <button class="btn big green"  data-mode="ren6">ふつう(6くみ)</button>
+      <button class="btn big orange" data-mode="ren8">むずかしい(8くみ)</button>
     </div>
+
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">めくれるかいすうせいげん・すくない手数ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="row" id="gachiRow">
+      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">4くみ・7かいまで</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">6くみ・10かいまで</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">8くみ・13かいまで</span></button>
+    </div>
+    <div class="rank" id="rankView"></div>
   </div>
 
   <div id="playScreen" class="hidden">
@@ -36,48 +49,120 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const EXTRA = ["🍎", "🚌", "🐸", "🌻", "🍙", "🐠", "🎈", "🚀", "🍰", "🐞"];
+const GAME = "memory";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  demo: { label: "ゆるふわ", pairs: 6, demo: true },
+  ren4: { label: "れんしゅう", pairs: 4 },
+  ren6: { label: "れんしゅう", pairs: 6 },
+  ren8: { label: "れんしゅう", pairs: 8 },
+  g1: { label: "かんたん",   pairs: 4, limit: 7,  lv: 1 },
+  g2: { label: "ふつう",     pairs: 6, limit: 10, lv: 2 },
+  g3: { label: "むずかしい", pairs: 8, limit: 13, lv: 3 },
+};
 let G = null;
 
-document.querySelectorAll("#startScreen .btn").forEach((b) => {
-  b.onclick = () => start(+b.dataset.n);
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "かい" });
+}
+refreshLocks();
+
+document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
+  b.onclick = () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
+    start(m);
+  };
 });
 $("againBtn").onclick = () => {
+  if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
   $("startScreen").classList.remove("hidden");
+  refreshLocks();
 };
 
-async function start(pairs) {
+async function start(mode) {
   Sound.tap();
+  if (G) G.stop = true;
+  const pairs = mode.pairs;
   const recs = await Store.ensureSamples();
   let faces = Util.shuffle(recs).slice(0, pairs).map((r) => r.dataURL);
   let ei = 0;
   while (faces.length < pairs) faces.push(Util.emojiCanvas(EXTRA[ei++ % EXTRA.length], 200).toDataURL());
 
-  const deck = Util.shuffle([...faces, ...faces].map((src, i) => ({ src, key: src })));
-  G = { open: [], busy: false, matched: 0, pairs, tries: 0 };
+  const deck = Util.shuffle([...faces, ...faces].map((src) => ({ src, key: src })));
+  G = { mode, open: [], busy: false, matched: 0, pairs, tries: 0, stop: false, cards: [] };
 
   const grid = $("grid");
   grid.innerHTML = "";
-  grid.style.gridTemplateColumns = `repeat(${pairs <= 4 ? 4 : 4}, 1fr)`;
+  grid.style.gridTemplateColumns = "repeat(4, 1fr)";
   deck.forEach((cardDef) => {
     const el = document.createElement("div");
     el.className = "card";
     el.innerHTML = `
       <div class="face front">❓</div>
       <div class="face backface"><img src="${cardDef.src}"></div>`;
-    el.onclick = () => flip(el, cardDef);
+    if (!mode.demo) el.onclick = () => flip(el, cardDef);
     grid.appendChild(el);
+    G.cards.push({ el, card: cardDef });
   });
 
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
   updateHud();
+  if (mode.demo) runDemo();
 }
 
 function updateHud() {
   $("pairHud").textContent = `みつけた: ${G.matched} / ${G.pairs}`;
-  $("tryHud").textContent = `めくった: ${G.tries}かい`;
+  if (G.mode.demo) $("tryHud").textContent = "みてるだけで OK";
+  else if (G.mode.limit) $("tryHud").textContent = `めくれる: ${G.tries} / ${G.mode.limit}かい`;
+  else $("tryHud").textContent = `めくった: ${G.tries}かい`;
+}
+
+/* 🌈 ゆるふわ:じどうで そろっていくデモ */
+function runDemo() {
+  const groups = {};
+  for (const c of G.cards) (groups[c.card.key] = groups[c.card.key] || []).push(c);
+  const order = Util.shuffle(Object.keys(groups));
+  let i = 0;
+  const step = () => {
+    if (!G || G.stop) return;
+    if (i >= order.length) {
+      Sound.fanfare();
+      Ui.confetti();
+      Ui.msg("そろったね!🎉", 2000);
+      setTimeout(() => { if (G && !G.stop && G.mode.demo) start(G.mode); }, 2600);  // くりかえし
+      return;
+    }
+    const [a, b] = groups[order[i]];
+    a.el.classList.add("flipped");
+    b.el.classList.add("flipped");
+    Sound.tap();
+    setTimeout(() => {
+      if (!G || G.stop) return;
+      a.el.classList.add("matched");
+      b.el.classList.add("matched");
+      Sound.good();
+      G.matched++;
+      updateHud();
+      i++;
+      setTimeout(step, 650);
+    }, 750);
+  };
+  setTimeout(step, 700);
 }
 
 function flip(el, card) {
@@ -99,12 +184,8 @@ function flip(el, card) {
       G.open = [];
       G.busy = false;
       updateHud();
-      if (G.matched === G.pairs) {
-        Sound.fanfare();
-        Ui.confetti();
-        Ui.msg("ぜんぶ みつけた!🎉", 2500);
-        $("endRow").classList.remove("hidden");
-      }
+      if (G.matched === G.pairs) return clearGame();
+      checkLimit();
     }, 450);
   } else {
     setTimeout(() => {
@@ -113,9 +194,34 @@ function flip(el, card) {
       G.open = [];
       G.busy = false;
       updateHud();
+      checkLimit();
     }, 950);
   }
   updateHud();
+}
+
+/* ガチンコ:めくれる回数を つかいきったら おしまい */
+function checkLimit() {
+  if (!G.mode.limit || G.matched === G.pairs) return;
+  if (G.tries >= G.mode.limit) {
+    G.busy = true;
+    Sound.bad();
+    Ui.msg(`ざんねん!みつけた ${G.matched}くみ`, 2400, "#9775fa");
+    $("endRow").classList.remove("hidden");
+  }
+}
+
+function clearGame() {
+  Sound.fanfare();
+  Ui.confetti();
+  if (G.mode.limit) {
+    Tiers.setUnlock(GAME, Math.min(3, G.mode.lv + 1));
+    Tiers.addRank(GAME, G.mode.lv, "?", G.tries, { lowerIsBetter: true });
+    Ui.msg(`クリア!🏆 ${G.tries}かいで せいかい!`, 2500);
+  } else {
+    Ui.msg("ぜんぶ みつけた!🎉", 2500);
+  }
+  $("endRow").classList.remove("hidden");
 }
 </script>
 </body>

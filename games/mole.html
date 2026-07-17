@@ -17,14 +17,29 @@
 <main>
   <div id="startScreen" class="panel">
     <h2>でてきた みんなの えを タッチ!</h2>
-    <p style="font-size:20px">30びょうで なんかい タッチできるかな?</p>
-    <div class="row"><button class="btn big orange" id="startBtn">スタート!</button></div>
+
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">かおが ぴょこぴょこ・タッチで よろこぶ(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" data-mode="yuru">🌈 ぴょこぴょこ みる</button></div>
+
+    <div class="mode-sec">🎵 れんしゅう<span class="tag">30びょうで なんかい タッチできるかな?</span></div>
+    <div class="row"><button class="btn big blue" data-mode="ren">🎵 30びょう チャレンジ</button></div>
+
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">タッチノルマ&ランキング・だんだん はやい・クリアで つぎが とけるよ</span></div>
+    <div class="row" id="gachiRow">
+      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">10タッチ</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">15タッチ・はやい</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">20タッチ・もっとはやい</span></button>
+    </div>
+    <div class="rank" id="rankView"></div>
   </div>
 
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="scoreHud">タッチ: 0</span><span id="timeHud">⏰ 30</span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1000" height="700" style="max-width:900px"></canvas></div>
-    <div class="row hidden" id="endRow"><button class="btn big green" id="againBtn">もういちど</button></div>
+    <div class="row hidden" id="endRow">
+      <button class="btn big green" id="againBtn">もういちど</button>
+      <button class="btn gray" id="backBtn">えらびなおす</button>
+    </div>
   </div>
 </main>
 
@@ -34,8 +49,17 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
-const COLS = 3, ROWS = 3, TIME = 30;
+const COLS = 3, ROWS = 3;
 const CELLW = 1000 / COLS, CELLH = 620 / ROWS;
+const GAME = "mole";
+const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const MODES = {
+  yuru: { label: "ゆるふわ", yuru: true, speed: 0.75 },
+  ren:  { label: "れんしゅう", time: 30, speed: 1 },
+  g1: { label: "かんたん",   time: 30, speed: 1.2,  goal: 10, lv: 1 },
+  g2: { label: "ふつう",     time: 30, speed: 1.55, goal: 15, lv: 2 },
+  g3: { label: "むずかしい", time: 30, speed: 2.0,  goal: 20, lv: 3 },
+};
 
 let faces = [], G = null;
 
@@ -49,40 +73,76 @@ async function loadFaces() {
   if (!faces.length) faces.push(Util.emojiCanvas("🐹", 200));
 }
 
-$("startBtn").onclick = () => start();
-$("againBtn").onclick = () => start();
+function refreshLocks() {
+  const lv = Tiers.unlock(GAME);
+  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
+    const need = MODES[b.dataset.mode].lv;
+    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
+    b.classList.toggle("locked", need > lv);
+    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
+  });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "かい" });
+}
+refreshLocks();
 
-async function start() {
+document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
+  b.onclick = () => {
+    const m = MODES[b.dataset.mode];
+    if (m.lv && m.lv > Tiers.unlock(GAME)) {
+      Sound.bad();
+      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
+      return;
+    }
+    start(m);
+  };
+});
+$("againBtn").onclick = () => start(G.mode);
+$("backBtn").onclick = () => {
+  if (G) G.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+  refreshLocks();
+};
+
+async function start(mode) {
   Sound.tap();
   await loadFaces();
   if (G) G.stop = true;
   G = {
-    stop: false, t: TIME, score: 0, over: false, next: 0.5,
+    stop: false, mode, t: mode.time || 0, score: 0, over: false, next: 0.5,
+    cleared: false, elapsed: 0,
     holes: Array.from({ length: COLS * ROWS }, () => ({ state: "empty", y: 0, face: null, life: 0, burst: 0 })),
   };
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
-  $("scoreHud").textContent = "タッチ: 0";
+  $("timeHud").classList.toggle("hidden", !!mode.yuru);
+  updateScoreHud();
+  $("timeHud").textContent = `⏰ ${mode.time || 0}`;
 
   let last = performance.now();
   const g = G;
   (function loop(now) {
     if (g.stop) return;
     const dt = Math.min(0.04, (now - last) / 1000); last = now;
+    g.elapsed += dt;
 
     if (!g.over) {
-      g.t -= dt;
-      if (g.t <= 0) { g.t = 0; finish(); }
+      if (g.mode.time) {
+        g.t -= dt;
+        if (g.t <= 0) { g.t = 0; finish(); }
+      }
       g.next -= dt;
       if (g.next <= 0) {
-        g.next = Util.rand(0.55, Math.max(0.3, 1.1 - (TIME - g.t) * 0.02));  // だんだんはやく
+        // だんだんはやく(速さは mode.speed 倍)
+        const base = Util.rand(0.55, Math.max(0.3, 1.1 - g.elapsed * 0.02));
+        g.next = Math.max(0.22, base / g.mode.speed);
         const empt = g.holes.map((h, i) => [h, i]).filter(([h]) => h.state === "empty");
         if (empt.length) {
           const [h] = Util.choice(empt);
           h.state = "up";
           h.y = 0;
-          h.life = Util.rand(0.9, 1.5);
+          h.life = Util.rand(0.9, 1.5) / Math.max(1, g.mode.speed * 0.7);
           h.face = Util.choice(faces);
         }
       }
@@ -99,7 +159,7 @@ async function start() {
         if (h.burst <= 0) { h.state = "empty"; h.y = 0; }
       }
     }
-    $("timeHud").textContent = `⏰ ${Math.ceil(g.t)}`;
+    if (g.mode.time) $("timeHud").textContent = `⏰ ${Math.ceil(g.t)}`;
     draw(now);
     requestAnimationFrame(loop);
   })(last);
@@ -107,10 +167,27 @@ async function start() {
   function finish() {
     g.over = true;
     Sound.fanfare();
-    if (g.score >= 10) Ui.confetti();
-    Ui.msg(`${g.score}かい タッチ!`, 3000);
+    if (g.mode.goal) {
+      Tiers.addRank(GAME, g.mode.lv, "?", g.score);
+      if (g.cleared) {
+        Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
+        Ui.confetti();
+        Ui.msg(`クリア!🏆 ${g.score}かい タッチ!`, 3000);
+      } else {
+        Ui.msg(`ざんねん!${g.score}/${g.mode.goal}タッチ`, 3000, "#9775fa");
+      }
+    } else {
+      if (g.score >= 10) Ui.confetti();
+      Ui.msg(`${g.score}かい タッチ!`, 3000);
+    }
     $("endRow").classList.remove("hidden");
   }
+}
+
+function updateScoreHud() {
+  if (G.mode.yuru) $("scoreHud").textContent = "タッチしてね!";
+  else if (G.mode.goal) $("scoreHud").textContent = `タッチ: ${G.score} / ${G.mode.goal}`;
+  else $("scoreHud").textContent = `タッチ: ${G.score}`;
 }
 
 cv.addEventListener("pointerdown", (e) => {
@@ -122,9 +199,15 @@ cv.addEventListener("pointerdown", (e) => {
   if (h.state === "up" && h.y > 0.35) {
     h.state = "hit";
     h.burst = 0.35;
-    G.score++;
     Sound.pop();
-    $("scoreHud").textContent = `タッチ: ${G.score}`;
+    if (!G.mode.yuru) {
+      G.score++;
+      updateScoreHud();
+      if (G.mode.goal && !G.cleared && G.score >= G.mode.goal) {
+        G.cleared = true;
+        Ui.msg("ノルマ クリア!⭐", 1200, "#51cf66");
+      }
+    }
   } else {
     Sound.tap();
   }
