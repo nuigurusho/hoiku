@@ -171,7 +171,8 @@ window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
    レコード: { id, name, cat('char'|'bg'|'pic'), dataURL,
-               rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}], created } */
+               rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
+               fukuParts:[{kind,x,y,w,h}], created } */
 const Store = {
   db: null,
   _mem: null, // IndexedDBが使えない環境用
@@ -535,9 +536,68 @@ const Samples = {
              ] };
   },
 
+  /* しゃしん・え 3: ふくわらいサンプル顔(白い紙のクレヨン画ふう・パーツ設定ずみ) */
+  fukuFace() {
+    const W = 480, H = 560;
+    const c = Util.makeCanvas(W, H);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);           // 白い紙
+    ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round";
+
+    // かおの輪かく(ぬらずに 線だけ = 紙の切りぬきで中は とうめいになる)
+    ctx.strokeStyle = "#c8871e";
+    this._circle(ctx, 240, 300, 192);
+    // かみのけ
+    ctx.strokeStyle = "#7f5539";
+    for (let i = -3; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(240 + i * 30, 300 - 186);
+      ctx.quadraticCurveTo(240 + i * 34, 300 - 250, 240 + i * 46, 300 - 238);
+      ctx.stroke();
+    }
+
+    // め(中心 165/315, y=255)
+    for (const cx of [165, 315]) {
+      ctx.strokeStyle = "#4a3f35"; ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.ellipse(cx, 255, 34, 26, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#4a3f35";
+      ctx.beginPath(); ctx.arc(cx, 255, 12, 0, 7); ctx.fill();
+    }
+    // まゆげ(y=200)
+    ctx.strokeStyle = "#7f5539";
+    for (const cx of [165, 315]) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 44, 205); ctx.quadraticCurveTo(cx, 182, cx + 44, 205);
+      ctx.stroke();
+    }
+    // はな(中心 240/300)
+    ctx.strokeStyle = "#e8590c"; ctx.fillStyle = "#ffc9a3";
+    ctx.beginPath(); ctx.ellipse(240, 300, 22, 34, 0, 0, 7); ctx.fill(); ctx.stroke();
+    // くち(中心 240/390)
+    ctx.strokeStyle = "#c92a2a"; ctx.fillStyle = "#ff8787";
+    ctx.beginPath();
+    ctx.moveTo(165, 372); ctx.quadraticCurveTo(240, 440, 315, 372);
+    ctx.quadraticCurveTo(240, 400, 165, 372);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // ほっぺ
+    ctx.fillStyle = "#ffc9c9";
+    ctx.beginPath(); ctx.arc(120, 330, 20, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(360, 330, 20, 0, 7); ctx.fill();
+
+    return { name: "サンプルの おかお", cat: "pic", dataURL: c.toDataURL("image/png"),
+             fukuParts: [
+               { kind: "め",     x: 0.250, y: 0.393, w: 0.188, h: 0.125 },
+               { kind: "め",     x: 0.562, y: 0.393, w: 0.188, h: 0.125 },
+               { kind: "まゆげ", x: 0.240, y: 0.330, w: 0.208, h: 0.071 },
+               { kind: "まゆげ", x: 0.552, y: 0.330, w: 0.208, h: 0.071 },
+               { kind: "はな",   x: 0.437, y: 0.455, w: 0.126, h: 0.161 },
+               { kind: "くち",   x: 0.333, y: 0.625, w: 0.334, h: 0.161 },
+             ] };
+  },
+
   makeAll() {
     return [this.charA(), this.charB(), this.charC(), this.charSkirt(), this.charFloat(),
-            this.bgA(), this.picA(), this.picB()];
+            this.bgA(), this.picA(), this.picB(), this.fukuFace()];
   },
 };
 
@@ -886,6 +946,7 @@ const Backup = {
       const meta = { file, mime, id: r.id, name: r.name, cat: r.cat, created: r.created };
       if (r.rig) meta.rig = r.rig;
       if (r.diffSpots) meta.diffSpots = r.diffSpots;
+      if (r.fukuParts) meta.fukuParts = r.fukuParts;
       manifestImages.push(meta);
     });
     const ls = {};
@@ -936,6 +997,7 @@ const Backup = {
       };
       if (m.rig) rec.rig = m.rig;
       if (m.diffSpots) rec.diffSpots = m.diffSpots;
+      if (m.fukuParts) rec.fukuParts = m.fukuParts;
       await Store.put(rec);
       n++;
     }

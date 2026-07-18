@@ -34,6 +34,7 @@
     <p class="note">
       キャラクターの絵は「白い紙に、こく・はっきり」描いたものを、明るい場所でまっすぐ撮ると
       きれいに切りぬけます。とりこんだら「うごきせってい」で くび・こし・まんなか の線をあわせてください。
+      ふくわらいで つかう絵は、白い紙に 顔を大きく描いて とりこみ、「ふくわらいパーツ」で め・はな・くちを かこむと きれいです。
     </p>
     <div class="row" style="justify-content:flex-start">
       <button class="btn green" id="pickBtn">📁 ファイルをえらぶ(PDFもOK)</button>
@@ -134,6 +135,29 @@
   </div>
 </div>
 
+<!-- ふくわらいパーツ編集モーダル -->
+<div class="modal hidden" id="fukuModal">
+  <div class="panel">
+    <h2>ふくわらいパーツ せってい</h2>
+    <p class="note">
+      したの ボタンで しゅるいを えらんで、絵の上を ドラッグして め・はな・くちを かこもう(さいだい8こ)。
+      かこんだ わくを タップすると しゅるいが かわり、そのほかの つぎで けせます。
+    </p>
+    <div class="rig-types" id="fukuKinds">
+      <button class="btn blue"   data-kind="め">め</button>
+      <button class="btn green"  data-kind="まゆげ">まゆげ</button>
+      <button class="btn orange" data-kind="はな">はな</button>
+      <button class="btn pink"   data-kind="くち">くち</button>
+      <button class="btn purple" data-kind="そのほか">そのほか</button>
+    </div>
+    <canvas id="fukuCanvas" class="edit-canvas" width="640" height="440"></canvas>
+    <div class="row">
+      <button class="btn green" id="fukuSave">✔ ほぞんする</button>
+      <button class="btn gray" id="fukuCancel">やめる</button>
+    </div>
+  </div>
+</div>
+
 <!-- きりだし(トリミング)モーダル -->
 <div class="modal hidden" id="cropModal">
   <div class="panel">
@@ -194,6 +218,7 @@ function row(r) {
   });
   if (r.cat === "char") mk("うごきせってい", "purple", () => openRig(r));
   if (r.cat === "pic") mk("まちがいスポット", "orange", () => openSpot(r));
+  if (r.cat === "char" || r.cat === "pic") mk("ふくわらいパーツ", "green", () => openFuku(r));
   mk("✂トリミング", "pink", async () => {
     const img = await Util.loadImage(r.dataURL);
     const c = Util.makeCanvas(img.width, img.height);
@@ -614,6 +639,123 @@ $("spotSave").onclick = async () => {
   refresh();
 };
 $("spotCancel").onclick = () => $("spotModal").classList.add("hidden");
+
+/* ---------- ふくわらいパーツ編集 ----------
+   絵の上を ドラッグして め・まゆげ・はな・くち・そのほか を矩形でかこむ。
+   わくをタップで しゅるいを じゅんに切りかえ、そのほかの つぎで さくじょ。 */
+const FUKU_KINDS = ["め", "まゆげ", "はな", "くち", "そのほか"];
+const FUKU_COLORS = { "め": "#4dabf7", "まゆげ": "#51cf66", "はな": "#f59f00", "くち": "#ff6b9d", "そのほか": "#9775fa" };
+const fukuEd = { rec: null, img: null, parts: [], kind: "め", drag: null, sc: 1 };
+
+async function openFuku(rec) {
+  fukuEd.rec = rec;
+  fukuEd.parts = (rec.fukuParts || []).map((p) => ({ ...p }));
+  fukuEd.kind = "め";
+  fukuEd.drag = null;
+  fukuEd.img = await Util.loadImage(rec.dataURL);
+  const cv = $("fukuCanvas");
+  const maxW = Math.min(640, innerWidth - 70);
+  fukuEd.sc = Math.min(maxW / fukuEd.img.width, 460 / fukuEd.img.height);
+  cv.width = Math.round(fukuEd.img.width * fukuEd.sc);
+  cv.height = Math.round(fukuEd.img.height * fukuEd.sc);
+  $("fukuModal").classList.remove("hidden");
+  syncFukuKinds();
+  drawFuku();
+}
+
+function syncFukuKinds() {
+  $("fukuKinds").querySelectorAll("button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.kind === fukuEd.kind));
+}
+$("fukuKinds").querySelectorAll("button").forEach((b) => {
+  b.onclick = () => { Sound.tap(); fukuEd.kind = b.dataset.kind; syncFukuKinds(); };
+});
+
+function drawFuku() {
+  const cv = $("fukuCanvas"), ctx = cv.getContext("2d");
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(fukuEd.img, 0, 0, cv.width, cv.height);
+  fukuEd.parts.forEach((p) => {
+    const x = p.x * cv.width, y = p.y * cv.height, w = p.w * cv.width, h = p.h * cv.height;
+    const col = FUKU_COLORS[p.kind] || "#9775fa";
+    ctx.strokeStyle = col; ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = col;
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillText(p.kind, x + 4, y + 18);
+  });
+  if (fukuEd.drag && fukuEd.drag.rect) {
+    const r = fukuEd.drag.rect;
+    ctx.strokeStyle = FUKU_COLORS[fukuEd.kind]; ctx.lineWidth = 3;
+    ctx.setLineDash([9, 6]);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.setLineDash([]);
+  }
+}
+
+(() => {
+  const cv = $("fukuCanvas");
+  const hitPart = (px, py) => {
+    for (let i = fukuEd.parts.length - 1; i >= 0; i--) {
+      const p = fukuEd.parts[i];
+      const x = p.x * cv.width, y = p.y * cv.height, w = p.w * cv.width, h = p.h * cv.height;
+      if (px >= x && px <= x + w && py >= y && py <= y + h) return i;
+    }
+    return -1;
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    const p = Util.canvasPos(cv, e);
+    fukuEd.drag = { x0: p.x, y0: p.y, moved: false, hit: hitPart(p.x, p.y), rect: null };
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener("pointermove", (e) => {
+    if (!fukuEd.drag) return;
+    const p = Util.canvasPos(cv, e);
+    const dx = p.x - fukuEd.drag.x0, dy = p.y - fukuEd.drag.y0;
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) fukuEd.drag.moved = true;
+    if (fukuEd.drag.moved) {
+      fukuEd.drag.rect = {
+        x: Math.max(0, Math.min(fukuEd.drag.x0, p.x)),
+        y: Math.max(0, Math.min(fukuEd.drag.y0, p.y)),
+        w: Math.abs(dx), h: Math.abs(dy),
+      };
+      drawFuku();
+    }
+  });
+  cv.addEventListener("pointerup", () => {
+    const d = fukuEd.drag; fukuEd.drag = null;
+    if (!d) return;
+    if (d.moved && d.rect) {
+      if (d.rect.w < 12 || d.rect.h < 12) { drawFuku(); return; }
+      if (fukuEd.parts.length >= 8) {
+        Ui.msg("パーツは 8こまでだよ", 1300, "#4dabf7");
+        drawFuku(); return;
+      }
+      fukuEd.parts.push({
+        kind: fukuEd.kind,
+        x: d.rect.x / cv.width, y: d.rect.y / cv.height,
+        w: d.rect.w / cv.width, h: d.rect.h / cv.height,
+      });
+      Sound.pop();
+    } else if (d.hit >= 0) {
+      const p = fukuEd.parts[d.hit];
+      const idx = FUKU_KINDS.indexOf(p.kind);
+      if (idx < 0 || idx >= FUKU_KINDS.length - 1) fukuEd.parts.splice(d.hit, 1);
+      else p.kind = FUKU_KINDS[idx + 1];
+      Sound.tap();
+    }
+    drawFuku();
+  });
+})();
+
+$("fukuSave").onclick = async () => {
+  fukuEd.rec.fukuParts = fukuEd.parts;
+  await Store.put(fukuEd.rec);
+  $("fukuModal").classList.add("hidden");
+  Sound.good();
+  refresh();
+};
+$("fukuCancel").onclick = () => $("fukuModal").classList.add("hidden");
 
 /* ---------- クイズを つくる ---------- */
 const QUIZ_TEMPLATES = [
