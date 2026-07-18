@@ -233,8 +233,10 @@ $("drawBtn").onclick = async () => {
 async function dShow() {
   const rec = dpool[didx % dpool.length];
   const img = await Util.loadImage(rec.dataURL);
-  dcur = { canvas: Util.trimCanvas(Util.keyImage(img)), rec };
-  silhouette(dcur.canvas, $("dcv"));
+  const keyed = Util.trimCanvas(Util.keyImage(img));
+  // 線画のままだと かげにしても絵が見えてしまうので、輪郭の内側をベタぬりにする
+  dcur = { canvas: keyed, shadow: Util.solidShadow(keyed), rec };
+  silhouette(dcur.shadow, $("dcv"));
   $("dname").innerHTML = "&nbsp;";
   $("revealBtn").classList.remove("hidden");
   $("nextBtn").classList.add("hidden");

@@ -77,6 +77,89 @@ const Util = {
     return c;
   },
 
+  /* 線画をベタぬりのかげにする:
+     外側から届かない透明部分(輪郭の内側)を不透明にした
+     アルファだけのキャンバスを返す。線を仮想的にふくらませて
+     外側判定をするので、輪郭が多少とぎれていても袋になる。
+     ふくらませる量は、内側がちゃんと埋まるまで自動で広げる */
+  solidShadow(cv) {
+    const w = cv.width, h = cv.height, n = w * h;
+    const d = cv.getContext("2d").getImageData(0, 0, w, h).data;
+    const drawn = new Uint8Array(n);
+    let drawnCount = 0;
+    for (let i = 0; i < n; i++) {
+      if (d[i * 4 + 3] > 20) { drawn[i] = 1; drawnCount++; }
+    }
+    if (!drawnCount) return Util.makeCanvas(w, h);
+
+    const q = new Int32Array(n);
+
+    // 各ピクセルの「線からの距離」(4近傍BFS)
+    const dist = new Int32Array(n).fill(-1);
+    let qh = 0, qt = 0;
+    for (let i = 0; i < n; i++) if (drawn[i]) { dist[i] = 0; q[qt++] = i; }
+    while (qh < qt) {
+      const i = q[qh++], x = i % w, nd = dist[i] + 1;
+      if (x > 0 && dist[i - 1] < 0) { dist[i - 1] = nd; q[qt++] = i - 1; }
+      if (x < w - 1 && dist[i + 1] < 0) { dist[i + 1] = nd; q[qt++] = i + 1; }
+      if (i >= w && dist[i - w] < 0) { dist[i - w] = nd; q[qt++] = i - w; }
+      if (i + w < n && dist[i + w] < 0) { dist[i + w] = nd; q[qt++] = i + w; }
+    }
+
+    // 「線からrpx以内」を壁とみなして、ふちから外側を流しこむ
+    const flood = (r) => {
+      const outside = new Uint8Array(n);
+      qh = 0; qt = 0;
+      const seed = (i) => { if (!outside[i] && dist[i] > r) { outside[i] = 1; q[qt++] = i; } };
+      for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+      while (qh < qt) {
+        const i = q[qh++], x = i % w;
+        if (x > 0) seed(i - 1);
+        if (x < w - 1) seed(i + 1);
+        if (i >= w) seed(i - w);
+        if (i + w < n) seed(i + w);
+      }
+      return outside;
+    };
+
+    // すきま許容量rを、内側がちゃんと埋まるまで広げていく
+    let r = Math.max(2, Math.round(Math.max(w, h) / 150));
+    const maxR = Math.max(r, Math.round(Math.max(w, h) / 10));
+    let outside = flood(r);
+    for (;;) {
+      let interior = 0;
+      for (let i = 0; i < n; i++) if (!outside[i] && dist[i] > r) interior++;
+      if (interior > drawnCount || r >= maxR) break;
+      r = Math.min(maxR, r * 2);
+      outside = flood(r);
+    }
+
+    // ふくらませた分だけ外側を押しもどす(元の線は削らない)
+    const depth = new Int32Array(n).fill(-1);
+    qh = 0; qt = 0;
+    for (let i = 0; i < n; i++) if (outside[i]) { depth[i] = 0; q[qt++] = i; }
+    while (qh < qt) {
+      const i = q[qh++];
+      if (depth[i] >= r) continue;
+      const x = i % w, nd = depth[i] + 1;
+      const push = (j) => { if (depth[j] < 0 && !drawn[j]) { depth[j] = nd; outside[j] = 1; q[qt++] = j; } };
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (i >= w) push(i - w);
+      if (i + w < n) push(i + w);
+    }
+
+    const out = Util.makeCanvas(w, h);
+    const octx = out.getContext("2d");
+    const oid = octx.createImageData(w, h);
+    for (let i = 0; i < n; i++) {
+      if (!outside[i] || drawn[i]) oid.data[i * 4 + 3] = 255;
+    }
+    octx.putImageData(oid, 0, 0);
+    return out;
+  },
+
   /* 透明部分を切りつめて中身だけにする */
   trimCanvas(cv, pad = 6) {
     const ctx = cv.getContext("2d");
