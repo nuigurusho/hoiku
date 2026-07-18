@@ -139,6 +139,41 @@ main { padding: 14px; }
 .tile.admin { background: #f2ede4; font-size: 16px; }
 .tile .badges { font-size: 17px; letter-spacing: 3px; margin-top: 2px; line-height: 1; }
 
+/* ---------- ゲーム一覧(1行5こ・3だん) ---------- */
+.tiles.games {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 980px;
+}
+@media (max-width: 860px) {
+  .tiles.games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .tiles.games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- 右上の設定ボタン(おとなのひと用・アイコンのみ) ---------- */
+.settings-fab {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 40;
+  width: 66px;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 4px solid var(--cream-d);
+  border-radius: 50%;
+  box-shadow: 0 5px 0 var(--cream-d), 0 6px 14px rgba(120,80,40,.16);
+  transition: transform .08s, box-shadow .08s;
+}
+.settings-fab img { width: 46px; height: 46px; object-fit: contain; }
+.settings-fab:active { transform: translateY(5px); box-shadow: none; }
+@media (hover: hover) {
+  .settings-fab:hover:not(:active) { transform: translateY(2px); box-shadow: 0 3px 0 var(--cream-d), 0 4px 10px rgba(120,80,40,.16); }
+}
+
 /* ---------- 4択などの選択ボタン ---------- */
 .choices {
   display: grid;
