@@ -72,6 +72,21 @@
   </div>
 
   <div class="panel" style="text-align:left">
+    <h2>💾 せってい・データの バックアップ</h2>
+    <p class="note">
+      とりこんだ絵・写真、うごきせってい、まちがいスポット、オリジナルクイズ、ランキングを
+      まとめて 1つの <b>zip ファイル</b>に書き出せます。べつのPCで「インポート」すれば まるごと お引っ越しできます。
+      画像はこの端末の中(IndexedDB)だけに保存されるので、<b>当日つかうPCへ移すとき</b>に便利です。
+    </p>
+    <div class="row" style="justify-content:flex-start">
+      <button class="btn green" id="exportBtn">⬇️ ぜんぶ エクスポート(zip)</button>
+      <button class="btn blue" id="importBtn">⬆️ zip から インポート</button>
+      <input type="file" id="importInput" accept=".zip,application/zip" hidden>
+    </div>
+    <p class="note">インポートすると、いまの絵・せっていは <b>ぜんぶ 置きかえられます</b>(実行まえに確認します)。</p>
+  </div>
+
+  <div class="panel" style="text-align:left">
     <h2>そのほか</h2>
     <div class="row" style="justify-content:flex-start">
       <button class="btn yellow" id="resampleBtn">サンプルをもういちど入れる</button>
@@ -687,6 +702,46 @@ $("qfAdd").onclick = () => {
 
 initQuizTemplates();
 refreshQuizList();
+
+/* ---------- バックアップ(zipエクスポート/インポート) ---------- */
+$("exportBtn").onclick = async () => {
+  try {
+    Ui.msg("zip を つくっています…", 1200, "#4dabf7");
+    const blob = await Backup.exportZip();
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+    Backup.download(blob, `hoiku-settings-${stamp}.zip`);
+    Sound.good();
+    Ui.msg("エクスポートしたよ!", 1500, "#51cf66");
+  } catch (e) {
+    alert("エクスポートに失敗しました:\n" + ((e && e.message) || e));
+  }
+};
+
+$("importBtn").onclick = () => $("importInput").click();
+$("importInput").onchange = async (e) => {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  const ok = confirm(
+    `「${file.name}」から せっていを よみこみます。\n\n` +
+    `いまの絵・写真・うごきせってい・クイズ・ランキングは\n` +
+    `すべて 置きかえられます(この端末だけ)。\n\n` +
+    `よろしいですか?`
+  );
+  if (!ok) return;
+  try {
+    Ui.msg("よみこんでいます…", 1200, "#4dabf7");
+    const res = await Backup.importZip(file, { replace: true });
+    Sound.good();
+    Ui.msg(`インポートしたよ!(絵 ${res.images}まい)`, 1800, "#51cf66");
+    await refresh();
+    refreshQuizList();
+  } catch (err) {
+    alert("インポートに失敗しました:\n" + ((err && err.message) || err));
+  }
+};
 
 /* ---------- そのほか ---------- */
 $("resampleBtn").onclick = async () => {
