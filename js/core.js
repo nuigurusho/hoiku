@@ -692,3 +692,38 @@ const Tiers = {
     return parts.length ? "🏆 ランキング<br>" + parts.join("<br>") : "";
   },
 };
+
+/* ---------------- GameChrome(ゲーム中はヘッダーを消してフローティングもどるだけに) ----------------
+   ・#playScreen / #quizScreen / #animalScreen / #drawScreen が表示されたら「ゲーム中」
+   ・<body data-chrome="game"> のページ(ずっとゲーム画面のもの)は最初からゲーム中 */
+const GameChrome = {
+  init() {
+    const bar = document.querySelector("header.bar");
+    if (!bar) return;
+    const back = bar.querySelector(".back");
+    const f = document.createElement("a");
+    f.className = "back-float";
+    f.href = (back && back.getAttribute("href")) || "../index.html";
+    f.textContent = "← もどる";
+    document.body.appendChild(f);
+
+    const always = document.body.dataset.chrome === "game";
+    const screens = ["playScreen", "quizScreen", "animalScreen", "drawScreen"]
+      .map((id) => document.getElementById(id)).filter(Boolean);
+    const update = () => {
+      const ingame = always || screens.some((s) => !s.classList.contains("hidden"));
+      document.body.classList.toggle("ingame", ingame);
+    };
+    if (!always && !screens.length) return;   // 画面切りかえのないページはそのまま
+    if (screens.length) {
+      const mo = new MutationObserver(update);
+      screens.forEach((s) => mo.observe(s, { attributes: true, attributeFilter: ["class"] }));
+    }
+    update();
+  },
+};
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => GameChrome.init());
+} else {
+  GameChrome.init();
+}
