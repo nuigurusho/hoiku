@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>おえかき</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .draw-wrap { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  .paper {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(120,80,40,.2);
+    padding: 8px;
+  }
+  #drawCanvas {
+    display: block;
+    border-radius: 10px;
+    background: #fff;
+    touch-action: none;
+    max-width: 100%;
+    height: auto;
+    cursor: crosshair;
+  }
+  .tools { width: 300px; max-width: 100%; }
+  .tools .panel { margin: 0; padding: 18px; text-align: left; }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 6px 0 4px; }
+  .swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,.2);
+    cursor: pointer;
+  }
+  .swatch.active { outline: 4px solid #212529; transform: scale(1.08); }
+  .sizes { display: flex; gap: 10px; align-items: center; justify-content: flex-start; margin: 6px 0; }
+  .size-btn {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    border: 3px solid #e8cbae;
+    background: #fff;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .size-btn.active { border-color: #212529; background: #fff0f6; }
+  .size-btn .dot { background: #4a3f35; border-radius: 50%; }
+  .tools h3 { margin: 14px 0 4px; font-size: 17px; }
+  .tool-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tool-row .btn { font-size: 16px; padding: 10px 16px; box-shadow: 0 4px 0 rgba(0,0,0,.15); }
+  .cat-row label.radio { display: block; margin: 6px 0; font-size: 16px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="index.html">← もどる</a>
+  <h1>🎨 おえかき</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <p class="note" style="text-align:center;max-width:760px;margin:2px auto 12px">
+    えを かいて「ほぞん」すると、そのまま ゲームで つかえます。
+    キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。
+  </p>
+
+  <div class="draw-wrap">
+    <div class="paper">
+      <canvas id="drawCanvas" width="820" height="1040"></canvas>
+    </div>
+
+    <div class="tools">
+      <div class="panel">
+        <h3 style="margin-top:0">いろ</h3>
+        <div class="swatches" id="swatches"></div>
+
+        <h3>ふとさ</h3>
+        <div class="sizes" id="sizes"></div>
+
+        <h3>どうぐ</h3>
+        <div class="tool-row">
+          <button class="btn gray" id="eraserBtn">🧽 けしゴム</button>
+          <button class="btn blue" id="undoBtn">↩ もどす</button>
+          <button class="btn yellow" id="clearBtn">🗑 ぜんぶけす</button>
+        </div>
+
+        <h3>なんの え?</h3>
+        <div class="cat-row">
+          <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
+          <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
+          <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵</label>
+        </div>
+
+        <div class="tool-row" style="margin-top:14px">
+          <button class="btn green big" id="saveBtn" style="flex:1">✔ ほぞんする</button>
+        </div>
+        <p class="note" style="margin:10px 0 0">
+          ほぞんした あとの こまかい せってい(うごき・まちがいスポットなど)は
+          <a href="admin.html">とりこみ・せってい</a> でできます。
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/core.js"></script>
+<script src="js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+const COLORS = [
+  "#333333", "#e03131", "#f76707", "#ffd43b", "#2f9e44", "#1971c2",
+  "#4dabf7", "#ae3ec9", "#f06595", "#a5682a", "#ffc9a0", "#ffffff",
+];
+const SIZES = [6, 14, 26, 44];
+
+const state = {
+  color: "#333333",
+  size: 14,
+  eraser: false,
+  drawing: false,
+  last: null,
+  history: [],   // もどす用スナップショット(dataURL)
+};
+
+const cv = $("drawCanvas");
+const ctx = cv.getContext("2d");
+
+/* 白い紙で スタート */
+function fillWhite() {
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, cv.width, cv.height);
+}
+fillWhite();
+
+/* ---------- パレット ---------- */
+COLORS.forEach((col, i) => {
+  const s = document.createElement("div");
+  s.className = "swatch" + (col === state.color ? " active" : "");
+  s.style.background = col;
+  if (col === "#ffffff") s.style.borderColor = "#dee2e6";
+  s.title = col === "#ffffff" ? "しろ" : "";
+  s.onclick = () => {
+    Sound.tap();
+    state.color = col;
+    state.eraser = false;
+    syncTools();
+  };
+  s.dataset.color = col;
+  $("swatches").appendChild(s);
+});
+
+/* ---------- ふとさ ---------- */
+SIZES.forEach((sz) => {
+  const b = document.createElement("button");
+  b.className = "size-btn" + (sz === state.size ? " active" : "");
+  b.dataset.size = sz;
+  const dot = document.createElement("span");
+  dot.className = "dot";
+  const d = Math.min(38, sz);
+  dot.style.width = d + "px";
+  dot.style.height = d + "px";
+  b.appendChild(dot);
+  b.onclick = () => { Sound.tap(); state.size = sz; syncTools(); };
+  $("sizes").appendChild(b);
+});
+
+function syncTools() {
+  $("swatches").querySelectorAll(".swatch").forEach((s) =>
+    s.classList.toggle("active", !state.eraser && s.dataset.color === state.color));
+  $("sizes").querySelectorAll(".size-btn").forEach((b) =>
+    b.classList.toggle("active", +b.dataset.size === state.size));
+  $("eraserBtn").classList.toggle("green", state.eraser);
+  $("eraserBtn").classList.toggle("gray", !state.eraser);
+}
+
+/* ---------- もどす(履歴) ---------- */
+function pushHistory() {
+  try {
+    state.history.push(cv.toDataURL("image/png"));
+    if (state.history.length > 15) state.history.shift();
+  } catch (e) { /* とじる */ }
+}
+async function undo() {
+  if (!state.history.length) return;
+  Sound.tap();
+  const url = state.history.pop();
+  const img = await Util.loadImage(url);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  fillWhite();
+  ctx.drawImage(img, 0, 0);
+}
+
+/* ---------- えがく ---------- */
+function strokeStyle() {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = state.size;
+  ctx.strokeStyle = state.eraser ? "#ffffff" : state.color;
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  Sound.ensure();
+  pushHistory();
+  state.drawing = true;
+  state.last = Util.canvasPos(cv, e);
+  strokeStyle();
+  // 点をうつ(タップだけでも かける)
+  ctx.beginPath();
+  ctx.arc(state.last.x, state.last.y, state.size / 2, 0, 7);
+  ctx.fillStyle = state.eraser ? "#ffffff" : state.color;
+  ctx.fill();
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!state.drawing) return;
+  const p = Util.canvasPos(cv, e);
+  strokeStyle();
+  ctx.beginPath();
+  ctx.moveTo(state.last.x, state.last.y);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  state.last = p;
+});
+const endStroke = () => { state.drawing = false; };
+cv.addEventListener("pointerup", endStroke);
+cv.addEventListener("pointercancel", endStroke);
+cv.addEventListener("pointerleave", endStroke);
+
+/* ---------- どうぐ ---------- */
+$("eraserBtn").onclick = () => { Sound.tap(); state.eraser = !state.eraser; syncTools(); };
+$("undoBtn").onclick = undo;
+$("clearBtn").onclick = () => {
+  if (!confirm("かいた えを ぜんぶ けしますか?")) return;
+  pushHistory();
+  fillWhite();
+  Sound.tap();
+};
+
+/* ---------- ほぞん ---------- */
+function isBlank() {
+  // 白いところだけかどうか ざっくり判定
+  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  for (let i = 0; i < d.length; i += 4 * 97) { // 間引きサンプリング
+    if (d[i] < 245 || d[i + 1] < 245 || d[i + 2] < 245) return false;
+  }
+  return true;
+}
+
+$("saveBtn").onclick = async () => {
+  if (isBlank()) {
+    Ui.msg("なにか かいてね!", 1400, "#4dabf7");
+    return;
+  }
+  const cat = document.querySelector('input[name="cat"]:checked').value;
+  const base = { char: "キャラ", bg: "はいけい", pic: "え" }[cat];
+  const existing = await Store.all(cat);
+  const nm = prompt("なまえを いれてください", `${base}${existing.length + 1}`);
+  if (nm === null) return;
+
+  // とりこみと おなじ おおきさに ちぢめる
+  const max = cat === "char" ? 900 : 1100;
+  const sc = Math.min(1, max / Math.max(cv.width, cv.height));
+  const out = Util.makeCanvas(Math.round(cv.width * sc), Math.round(cv.height * sc));
+  const octx = out.getContext("2d");
+  octx.fillStyle = "#fff";
+  octx.fillRect(0, 0, out.width, out.height);
+  octx.drawImage(cv, 0, 0, out.width, out.height);
+
+  const rec = {
+    name: nm.trim() || base,
+    cat,
+    // キャラは 白ぬきの きれいさ優先で PNG、しゃしん/はいけいは JPEG
+    dataURL: cat === "char" ? out.toDataURL("image/png") : out.toDataURL("image/jpeg", 0.9),
+  };
+  if (cat === "char") rec.rig = { ...Rig.DEFAULT };
+  await Store.put(rec);
+
+  Sound.good();
+  Ui.confetti(1800, 90);
+  Ui.msg("ほぞんしたよ!", 1500, "#51cf66");
+};
+
+syncTools();
+</script>
+</body>
+</html>
