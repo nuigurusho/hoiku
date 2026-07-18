@@ -29,6 +29,7 @@
 <main>
   <div id="startScreen" class="panel">
     <h2>クイズたいかい!</h2>
+    <p class="note hidden" id="customNote"></p>
     <p style="font-size:22px">4つのなかから こたえを えらんでね</p>
 
     <div class="mode-sec">🎵 れんしゅう<span class="tag">スコアを ためるだけ・まちがえても へいき</span></div>
@@ -93,6 +94,16 @@ function refreshLocks() {
 }
 refreshLocks();
 
+/* この端末のオリジナル問題があれば知らせる */
+(() => {
+  const n = CustomQuiz.all().length;
+  if (n > 0) {
+    const el = $("customNote");
+    el.textContent = `このたんまつの オリジナルもんだい ${n}もん も でてくるよ!`;
+    el.classList.remove("hidden");
+  }
+})();
+
 document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
   b.onclick = () => {
     mode = MODES[b.dataset.mode];
@@ -112,7 +123,8 @@ $("retryBtn").onclick = () => {
 };
 
 function startRun() {
-  queue = Util.shuffle(window.QUIZ);
+  // 内蔵の問題 + この端末で作ったオリジナル問題
+  queue = Util.shuffle(window.QUIZ.concat(CustomQuiz.all()));
   if (mode.n > 0) queue = queue.slice(0, mode.n);
   idx = 0; score = 0; streak = 0; miss = 0;
   $("startScreen").classList.add("hidden");

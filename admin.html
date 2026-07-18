@@ -19,7 +19,7 @@
 <body>
 <header class="bar">
   <a class="back" href="index.html">← もどる</a>
-  <h1>📷 とりこみ・せってい</h1>
+  <h1><img class="bar-icon" src="assets/buttons/admin.png" alt=""> とりこみ・せってい</h1>
   <div class="spacer"></div>
 </header>
 
@@ -46,6 +46,30 @@
   <div class="admin-sec"><h3>🧍 キャラクターの絵</h3><div id="listChar"></div></div>
   <div class="admin-sec"><h3>🏞️ はいけいの絵</h3><div id="listBg"></div></div>
   <div class="admin-sec"><h3>🖼️ 写真・絵</h3><div id="listPic"></div></div>
+
+  <div class="panel" style="text-align:left">
+    <h2>❓ クイズを つくる</h2>
+    <p class="note">
+      ここで作った問題は<b>この端末の中にだけ</b>保存されます(公開サイトには載りません)。
+      園の名前や先生の名前など、固有名詞を入れてOKです。
+    </p>
+    <h3 style="margin-bottom:4px">かんたん作成 — こたえを入れるだけ</h3>
+    <div id="quizTemplates"></div>
+    <h3 style="margin-bottom:4px">じぶんで作る</h3>
+    <div class="row" style="justify-content:flex-start; gap:8px">
+      <input type="text" id="qfQ" placeholder="もんだいぶん" style="flex:2 1 260px">
+      <input type="text" id="qfE" placeholder="絵文字(🏫など)" style="width:130px">
+    </div>
+    <div class="row" style="justify-content:flex-start; gap:8px">
+      <input type="text" id="qfA0" placeholder="せいかい" style="flex:1 1 150px; border-color:#51cf66">
+      <input type="text" id="qfA1" placeholder="はずれ1" style="flex:1 1 150px">
+      <input type="text" id="qfA2" placeholder="はずれ2" style="flex:1 1 150px">
+      <input type="text" id="qfA3" placeholder="はずれ3" style="flex:1 1 150px">
+      <button class="btn green" id="qfAdd">➕ クイズに いれる</button>
+    </div>
+    <h3 style="margin-bottom:4px">この端末の オリジナル問題</h3>
+    <div id="quizList"></div>
+  </div>
 
   <div class="panel" style="text-align:left">
     <h2>そのほか</h2>
@@ -575,6 +599,94 @@ $("spotSave").onclick = async () => {
   refresh();
 };
 $("spotCancel").onclick = () => $("spotModal").classList.add("hidden");
+
+/* ---------- クイズを つくる ---------- */
+const QUIZ_TEMPLATES = [
+  { label: "えんの なまえ", ph: "○○ほいくえん",
+    make: (v) => ({ q: "わたしたちの えんの なまえは?", emoji: "🏫",
+      choices: [v, "うちゅうほいくえん", "おかしのくに ほいくえん", "きょうりゅうほいくえん"], answer: 0 }) },
+  { label: "えんが ある まち", ph: "○○く・○○し など",
+    make: (v) => ({ q: "えんが あるのは どこの まち?", emoji: "🗾",
+      choices: [v, "ほっかいどう", "おきなわ", "うちゅう"], answer: 0 }) },
+  { label: "えんちょうせんせいの なまえ", ph: "○○せんせい",
+    make: (v) => ({ q: "えんちょうせんせいは だれ?", emoji: "👓",
+      choices: [v, "サンタさん", "ももたろう", "かぐやひめ"], answer: 0 }) },
+  { label: "みんなの くみの なまえ", ph: "○○ぐみ",
+    make: (v) => ({ q: "みんなの くみの なまえは?", emoji: "🎒",
+      choices: [v, "おばけぐみ", "ロボットぐみ", "きょうりゅうぐみ"], answer: 0 }) },
+  { label: "きゅうしょくの にんきメニュー", ph: "カレーライス など",
+    make: (v) => ({ q: "きゅうしょくで にんきの メニューは どれ?", emoji: "🍚",
+      choices: [v, "いしころの スープ", "くつしたの にもの", "えんぴつの サラダ"], answer: 0 }) },
+  { label: "みんなの すきな うた・あそび", ph: "うたや あそびの なまえ",
+    make: (v) => ({ q: "みんなが だいすきなのは どれ?", emoji: "🎶",
+      choices: [v, "そうじきの おと", "ずっと しずかに すわる", "おかたづけだけ"], answer: 0 }) },
+];
+
+function initQuizTemplates() {
+  const box = $("quizTemplates");
+  QUIZ_TEMPLATES.forEach((t) => {
+    const d = document.createElement("div");
+    d.className = "admin-row";
+    const label = document.createElement("span");
+    label.className = "nm";
+    label.style.flex = "0 0 230px";
+    label.textContent = t.label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = t.ph;
+    input.style.flex = "1 1 180px";
+    const btn = document.createElement("button");
+    btn.className = "btn green";
+    btn.textContent = "➕ いれる";
+    btn.onclick = () => {
+      const v = input.value.trim();
+      if (!v) { Ui.msg("こたえを 入れてね", 1300, "#4dabf7"); return; }
+      CustomQuiz.add(t.make(v));
+      input.value = "";
+      Sound.good();
+      Ui.msg("クイズに いれたよ!", 1300, "#51cf66");
+      refreshQuizList();
+    };
+    d.append(label, input, btn);
+    box.appendChild(d);
+  });
+}
+
+function refreshQuizList() {
+  const box = $("quizList");
+  const list = CustomQuiz.all();
+  box.innerHTML = list.length ? "" : '<p class="note">まだありません(上で作るとクイズに追加されます)</p>';
+  list.forEach((q, i) => {
+    const d = document.createElement("div");
+    d.className = "admin-row";
+    const t = document.createElement("span");
+    t.className = "nm";
+    t.textContent = `${q.emoji || "❓"} ${q.q}(せいかい: ${q.choices[q.answer]})`;
+    const del = document.createElement("button");
+    del.className = "btn gray";
+    del.textContent = "削除";
+    del.onclick = () => { CustomQuiz.remove(i); refreshQuizList(); Sound.tap(); };
+    d.append(t, del);
+    box.appendChild(d);
+  });
+}
+
+$("qfAdd").onclick = () => {
+  const q = $("qfQ").value.trim();
+  const answers = ["qfA0", "qfA1", "qfA2", "qfA3"].map((id) => $(id).value.trim());
+  if (!q || answers.some((a) => !a)) {
+    Ui.msg("ぜんぶの わくを うめてね", 1500, "#4dabf7");
+    return;
+  }
+  CustomQuiz.add({ q, emoji: $("qfE").value.trim() || "❓", choices: answers, answer: 0 });
+  ["qfQ", "qfE", "qfA0", "qfA1", "qfA2", "qfA3"].forEach((id) => { $(id).value = ""; });
+  Sound.good();
+  Ui.msg("クイズに いれたよ!", 1300, "#51cf66");
+  refreshQuizList();
+};
+
+initQuizTemplates();
+refreshQuizList();
 
 /* ---------- そのほか ---------- */
 $("resampleBtn").onclick = async () => {

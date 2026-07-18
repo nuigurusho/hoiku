@@ -693,6 +693,22 @@ const Tiers = {
   },
 };
 
+/* ---------------- CustomQuiz(この端末だけのオリジナルクイズ) ----------------
+   管理画面で作った問題を localStorage に保存し、クイズに合流させる。
+   端末の外に出ないので、園の名前などの固有名詞を入れても公開されない。 */
+const CustomQuiz = {
+  KEY: "customQuiz",
+  all() {
+    try {
+      const a = JSON.parse(localStorage.getItem(this.KEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  },
+  save(list) { localStorage.setItem(this.KEY, JSON.stringify(list)); },
+  add(q) { const l = this.all(); l.push(q); this.save(l); return l; },
+  remove(i) { const l = this.all(); l.splice(i, 1); this.save(l); return l; },
+};
+
 /* ---------------- GameChrome(ゲーム中はヘッダーを消してフローティングもどるだけに) ----------------
    ・#playScreen / #quizScreen / #animalScreen / #drawScreen が表示されたら「ゲーム中」
    ・<body data-chrome="game"> のページ(ずっとゲーム画面のもの)は最初からゲーム中 */
