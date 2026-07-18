@@ -21,6 +21,12 @@
       <h2>どの えで あそぶ?</h2>
       <div class="gallery" id="gallery"></div>
 
+      <div class="mode-sec">🧩 ピースの かたち<span class="tag">えらんでね</span></div>
+      <div class="row" id="shapeRow">
+        <button class="btn big green"  data-shape="wavy">🌊 なみなみ</button>
+        <button class="btn big orange" data-shape="classic">🧩 パズル</button>
+      </div>
+
       <div class="mode-sec">🌈 ゆるふわ<span class="tag">じどうで くみあがるのを みるだけ(1〜2さいから)</span></div>
       <div class="row"><button class="btn big pink" data-mode="demo">🌈 じどうで くみたてる</button></div>
 
@@ -73,6 +79,7 @@ const MODES = {
 
 let selected = null;
 let game = null;
+let shapeStyle = "wavy";   // "wavy" = なみなみ / "classic" = 一般的なパズル形状
 
 async function initSelect() {
   const recs = await Store.ensureSamples();
@@ -96,6 +103,16 @@ function refreshLocks() {
   });
   $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "びょう" });
 }
+
+// ピースの かたち えらび
+(function initShapePicker() {
+  const btns = document.querySelectorAll("#shapeRow [data-shape]");
+  const paint = () => btns.forEach((b) => b.classList.toggle("sel", b.dataset.shape === shapeStyle));
+  btns.forEach((b) => {
+    b.onclick = () => { shapeStyle = b.dataset.shape; Sound.tap(); paint(); };
+  });
+  paint();
+})();
 
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
   b.onclick = async () => {
@@ -133,8 +150,7 @@ async function startGame(rec, mode) {
   board.getContext("2d").drawImage(img, 0, 0, bw, bh);
 
   const pw = bw / cols, ph = bh / rows;
-  const amp = Math.min(pw, ph) * 0.18;   // ランダム形状のゆれ幅
-  const margin = Math.ceil(amp + 8);
+  const amp = Math.min(pw, ph) * 0.18;   // なみなみ形状のゆれ幅
 
   // ふちのランダム曲線(となりあうピースで共有するので ぴったり かみあう)
   const wavyEdge = (x1, y1, x2, y2) => {
@@ -151,21 +167,51 @@ async function startGame(rec, mode) {
     }
     return pts;
   };
+
+  // 一般的なパズル形状:出っぱり(タブ)と くぼみが かみあう クラシックなジグソー
+  // ふち沿いの座標(a=位置 0..1 / p=法線オフセット)を つくって 実座標へ変換する
+  const classicEdge = (x1, y1, x2, y2) => {
+    const dx = x2 - x1, dy = y2 - y1;
+    const L = Math.hypot(dx, dy) || 1;
+    const tx = dx / L, ty = dy / L;                        // 接線(単位)
+    const nx = -ty, ny = tx;                               // 法線(単位)
+    const dir = Math.random() < 0.5 ? 1 : -1;              // タブの向き(出/入)をランダムに
+    const cx = 0.5 + Util.rand(-0.03, 0.03);               // こぶの中心(位置)
+    const cy = 0.12 + Util.rand(-0.02, 0.02);              // こぶの中心(高さ)
+    const r  = 0.11 + Util.rand(-0.01, 0.01);              // こぶの半径
+    const neck = 0.44;                                     // かたの長さ
+    const tpl = [[0, 0], [neck, 0]];                       // かた → くび
+    const th0 = 210 * Math.PI / 180, th1 = -30 * Math.PI / 180, STEPS = 14;
+    for (let i = 0; i <= STEPS; i++) {                     // まるい こぶ
+      const th = th0 + (th1 - th0) * (i / STEPS);
+      tpl.push([cx + r * Math.cos(th), cy + r * Math.sin(th)]);
+    }
+    tpl.push([1 - neck, 0], [1, 0]);                       // くび → かた
+    return tpl.map(([a, p]) => [
+      x1 + tx * (a * L) + nx * (p * dir * L),
+      y1 + ty * (a * L) + ny * (p * dir * L),
+    ]);
+  };
+
+  const interiorEdge = shapeStyle === "classic" ? classicEdge : wavyEdge;
   const straightEdge = (x1, y1, x2, y2) => [[x1, y1], [x2, y2]];
+  // タブの はみ出しぶんを見こんだ よゆう(クラシックは 大きめに とる)
+  const protrude = shapeStyle === "classic" ? Math.max(pw, ph) * 0.26 : amp;
+  const margin = Math.ceil(protrude + 8);
 
   // hE[r][c]: 上下方向の境界線(r=0..rows) / vE[c][r]: 左右方向の境界線(c=0..cols)
   const hE = [], vE = [];
   for (let r = 0; r <= rows; r++) {
     hE[r] = [];
     for (let c = 0; c < cols; c++) {
-      const f = (r === 0 || r === rows) ? straightEdge : wavyEdge;
+      const f = (r === 0 || r === rows) ? straightEdge : interiorEdge;
       hE[r][c] = f(c * pw, r * ph, (c + 1) * pw, r * ph);
     }
   }
   for (let c = 0; c <= cols; c++) {
     vE[c] = [];
     for (let r = 0; r < rows; r++) {
-      const f = (c === 0 || c === cols) ? straightEdge : wavyEdge;
+      const f = (c === 0 || c === cols) ? straightEdge : interiorEdge;
       vE[c][r] = f(c * pw, r * ph, c * pw, (r + 1) * ph);
     }
   }
@@ -211,8 +257,11 @@ async function startGame(rec, mode) {
     }
   }
 
+  // 吸着はんい:ピースの大きさに応じて ゆるめに(小さい子でも はまりやすく)
+  const snapDist = Math.max(50, Math.min(pw, ph) * 0.55);
+
   game = { cv, ctx, board, bx, by, bw, bh, pieces, drag: null, done: false,
-           mode, stop: false, elapsed: 0 };
+           mode, stop: false, elapsed: 0, snapDist };
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("timeHud").classList.toggle("hidden", !mode.limit);
@@ -354,7 +403,7 @@ function bindPointer() {
     if (!g.drag) return;
     const pc = g.drag.pc;
     g.drag = null;
-    if (Math.hypot(pc.x - pc.tx, pc.y - pc.ty) < 34) {   // スナップ!
+    if (Math.hypot(pc.x - pc.tx, pc.y - pc.ty) < g.snapDist) {   // スナップ!
       pc.x = pc.tx; pc.y = pc.ty; pc.locked = true;
       Sound.pop();
       if (g.pieces.every((q) => q.locked)) {

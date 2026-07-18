@@ -218,6 +218,7 @@ canvas.stage {
 .mode-sec { margin: 16px 0 4px; font-size: 19px; font-weight: bold; }
 .mode-sec .tag { font-size: 13px; color: #8a7a68; font-weight: normal; margin-left: 8px; }
 .btn.locked { opacity: .4; }
+.btn.sel { outline: 4px solid #fff; box-shadow: 0 0 0 4px var(--pink), 0 5px 0 rgba(0,0,0,.18); }
 .rank { font-size: 15px; color: #6a5c4c; margin: 10px 0 0; line-height: 1.5; }
 
 /* ---------- モーダル ---------- */
