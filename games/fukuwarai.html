@@ -7,7 +7,7 @@
 <link rel="icon" href="../assets/favicon.png">
 <link rel="stylesheet" href="../css/style.css">
 </head>
-<body data-chrome="game">
+<body>
 <header class="bar">
   <a class="back" href="../index.html">← もどる</a>
   <h1><img class="bar-icon" src="../assets/buttons/fukuwarai.png" alt=""> ふくわらい</h1>
@@ -15,14 +15,29 @@
 </header>
 
 <main>
-  <p style="text-align:center;font-weight:bold;margin:6px">
-    め・まゆげ・はな・くちを ドラッグして かおを つくろう!
-  </p>
-  <div class="stage-wrap"><canvas id="cv" class="stage" width="900" height="640" style="max-width:860px"></canvas></div>
-  <div class="row">
-    <button class="btn big green" id="doneBtn">かんせい!</button>
-    <button class="btn yellow" id="shuffleBtn">🔀 シャッフル</button>
-    <button class="btn purple" id="blindBtn">🙈 めかくしモード</button>
+  <div id="startScreen" class="panel">
+    <h2>どの かおで あそぶ?</h2>
+
+    <div class="mode-sec">😊 きほんのかお<span class="tag">よういされた かおで すぐ あそべる</span></div>
+    <div class="row"><button class="btn big green" id="basicBtn">😊 きほんのかお で あそぶ</button></div>
+
+    <div class="mode-sec">🖼️ とりこんだ 絵で あそぶ<span class="tag">おえかきした かおの パーツで あそぶ</span></div>
+    <div class="gallery" id="gallery"></div>
+
+    <p class="note">「とりこみ・せってい」で 顔の絵を とりこんで「ふくわらいパーツ」を せっていすると、みんなの おえかきで あそべます</p>
+  </div>
+
+  <div id="playScreen" class="hidden">
+    <p style="text-align:center;font-weight:bold;margin:6px">
+      め・まゆげ・はな・くちを ドラッグして かおを つくろう!
+    </p>
+    <div class="stage-wrap"><canvas id="cv" class="stage" width="900" height="640" style="max-width:860px"></canvas></div>
+    <div class="row">
+      <button class="btn big green" id="doneBtn">かんせい!</button>
+      <button class="btn yellow" id="shuffleBtn">🔀 シャッフル</button>
+      <button class="btn purple" id="blindBtn">🙈 めかくしモード</button>
+      <button class="btn gray" id="againBtn">べつの かおに する</button>
+    </div>
   </div>
 </main>
 
@@ -33,11 +48,16 @@ const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 const FACE = { x: 450, y: 330, r: 210 };
 
+let mode = "basic";   // 'basic' = コード描画のかお / 'pic' = とりこんだ絵
+let parts = [];
+let faceBase = null;  // pic時:パーツが抜けたかおベース
+let sampleImg = null; // pic時:おてほん(元の絵)
 let blind = false;
-let wiggle = 0;      // かんせい演出タイマー
+let completed = false;
+let wiggle = 0;       // かんせい演出タイマー
 let drag = null;
 
-/* ---- パーツをクレヨン風に描く ---- */
+/* ---- きほんのかお用パーツをクレヨン風に描く ---- */
 function makePart(w, h, draw) {
   const c = Util.makeCanvas(w, h);
   const pctx = c.getContext("2d");
@@ -75,21 +95,75 @@ const mouth = () => makePart(180, 110, (c, w, h) => {
   c.closePath(); c.fill(); c.stroke();
 });
 
-const parts = [
-  { cv: eye(false), name: "め" },
-  { cv: eye(true), name: "め" },
-  { cv: brow(false), name: "まゆげ" },
-  { cv: brow(true), name: "まゆげ" },
-  { cv: nose(), name: "はな" },
-  { cv: mouth(), name: "くち" },
-];
-scatter();
+function buildBasicParts() {
+  return [
+    { cv: eye(false), name: "め" },
+    { cv: eye(true), name: "め" },
+    { cv: brow(false), name: "まゆげ" },
+    { cv: brow(true), name: "まゆげ" },
+    { cv: nose(), name: "はな" },
+    { cv: mouth(), name: "くち" },
+  ];
+}
+
+/* ---- キャンバスを倍率つきで作りなおす ---- */
+function scaleCanvas(src, s) {
+  const w = Math.max(1, Math.round(src.width * s));
+  const h = Math.max(1, Math.round(src.height * s));
+  const c = Util.makeCanvas(w, h);
+  const cx = c.getContext("2d");
+  cx.imageSmoothingEnabled = true;
+  cx.drawImage(src, 0, 0, w, h);
+  return c;
+}
+
+/* ---- とりこんだ絵から「かおベース」と「パーツ」をつくる ---- */
+async function buildPicParts(rec) {
+  const img = await Util.loadImage(rec.dataURL);
+  const iw = img.width, ih = img.height;
+  const spots = rec.fukuParts || [];
+
+  // かおベース:白を透明化 → パーツ矩形を「かみ色」に(=クリアでぬく)
+  const base = Util.keyImage(img);
+  const bctx = base.getContext("2d");
+  for (const p of spots) {
+    bctx.clearRect(p.x * iw, p.y * ih, p.w * iw, p.h * ih);
+  }
+
+  // FACE領域にフィットする倍率(かおベースもパーツも同じ倍率)
+  const scale = Math.min(FACE.r * 2.0 / iw, FACE.r * 2.1 / ih);
+  faceBase = scaleCanvas(base, scale);
+
+  // 各パーツ矩形を切り出し → keyImage + trimCanvas → 同じ倍率
+  const out = [];
+  for (const p of spots) {
+    const sw = Math.max(1, Math.round(p.w * iw)), sh = Math.max(1, Math.round(p.h * ih));
+    const crop = Util.makeCanvas(sw, sh);
+    crop.getContext("2d").drawImage(img, p.x * iw, p.y * ih, p.w * iw, p.h * ih, 0, 0, sw, sh);
+    const pc = scaleCanvas(Util.trimCanvas(Util.keyImage(crop)), scale);
+    out.push({ cv: pc, name: p.kind });
+  }
+  return out;
+}
+
+/* ---- 個数に応じて 左右のふちに 散らばりスロットをつくる ---- */
+function makeSlots(n) {
+  const cols = [95, 805];
+  const out = [];
+  const leftCount = Math.ceil(n / 2), rightCount = n - leftCount;
+  const fill = (cx, cnt) => {
+    for (let i = 0; i < cnt; i++) {
+      const y = cnt <= 1 ? 320 : 100 + i * (440 / (cnt - 1));
+      out.push([cx, y]);
+    }
+  };
+  fill(cols[0], leftCount);
+  fill(cols[1], rightCount);
+  return out;
+}
 
 function scatter() {
-  const slots = Util.shuffle([
-    [90, 110], [90, 330], [90, 550],
-    [810, 110], [810, 330], [810, 550],
-  ]);
+  const slots = Util.shuffle(makeSlots(parts.length));
   parts.forEach((p, i) => {
     p.x = slots[i][0];
     p.y = slots[i][1];
@@ -97,6 +171,55 @@ function scatter() {
     p.seed = Math.random() * 7;
   });
 }
+
+/* ---- あそびを はじめる ---- */
+function beginPlay() {
+  blind = false;
+  wiggle = 0;
+  completed = false;
+  drag = null;
+  $("blindBtn").textContent = "🙈 めかくしモード";
+  scatter();
+  $("startScreen").classList.add("hidden");
+  $("playScreen").classList.remove("hidden");
+}
+
+function startBasic() {
+  Sound.tap();
+  mode = "basic";
+  faceBase = null; sampleImg = null;
+  parts = buildBasicParts();
+  beginPlay();
+}
+
+async function startPic(rec) {
+  Sound.tap();
+  mode = "pic";
+  sampleImg = await Util.loadImage(rec.dataURL);
+  parts = await buildPicParts(rec);
+  if (!parts.length) { Ui.msg("パーツが せっていされていないよ", 1600, "#4dabf7"); return; }
+  beginPlay();
+}
+
+/* ---- せんたく画面 ---- */
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  const faces = recs.filter((r) => (r.cat === "pic" || r.cat === "char") && r.fukuParts && r.fukuParts.length);
+  const gal = $("gallery");
+  if (!faces.length) {
+    gal.innerHTML = '<p class="note">「とりこみ・せってい」で 顔の絵を とりこんで、「ふくわらいパーツ」を せっていしてね</p>';
+  } else {
+    Ui.renderGallery(gal, faces, (r) => startPic(r));
+  }
+}
+initSelect();
+
+$("basicBtn").onclick = startBasic;
+$("againBtn").onclick = () => {
+  Sound.tap();
+  $("playScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+};
 
 /* ---- そうさ ---- */
 cv.addEventListener("pointerdown", (e) => {
@@ -123,6 +246,7 @@ cv.addEventListener("pointerup", () => { drag = null; });
 
 $("doneBtn").onclick = () => {
   wiggle = 1.6;
+  completed = true;
   Sound.laugh();
   Ui.confetti(2000, 90);
   Ui.msg("できたー!😆", 1800);
@@ -139,40 +263,51 @@ $("blindBtn").onclick = () => {
 let last = performance.now();
 (function loop(now) {
   const dt = Math.min(0.04, (now - last) / 1000); last = now;
+  if ($("playScreen").classList.contains("hidden")) { requestAnimationFrame(loop); return; }
   if (wiggle > 0) wiggle -= dt;
 
   ctx.clearRect(0, 0, 900, 640);
   ctx.fillStyle = "#fff9db";
   ctx.fillRect(0, 0, 900, 640);
 
-  /* かおのベース */
   ctx.lineWidth = 8;
   ctx.lineCap = "round";
-  ctx.strokeStyle = "#c8871e";
-  ctx.fillStyle = "#ffe0b3";
-  // みみ(めかくし中もみみだけは見える)
-  for (const s of [-1, 1]) {
-    ctx.beginPath();
-    ctx.arc(FACE.x + s * FACE.r * 0.98, FACE.y - 20, 44, 0, 7);
-    ctx.fill(); ctx.stroke();
-  }
-  if (!blind) {
-    ctx.beginPath();
-    ctx.ellipse(FACE.x, FACE.y, FACE.r, FACE.r * 1.06, 0, 0, 7);
-    ctx.fill(); ctx.stroke();
-    // かみのけ
-    ctx.strokeStyle = "#7f5539";
-    for (let i = -3; i <= 3; i++) {
+
+  // きほんのかおは みみを いつも見せる(めかくし中もめじるしに)
+  if (mode === "basic") {
+    ctx.strokeStyle = "#c8871e";
+    ctx.fillStyle = "#ffe0b3";
+    for (const s of [-1, 1]) {
       ctx.beginPath();
-      ctx.moveTo(FACE.x + i * 30, FACE.y - FACE.r * 1.02);
-      ctx.quadraticCurveTo(FACE.x + i * 34, FACE.y - FACE.r * 1.3, FACE.x + i * 42, FACE.y - FACE.r * 1.22);
-      ctx.stroke();
+      ctx.arc(FACE.x + s * FACE.r * 0.98, FACE.y - 20, 44, 0, 7);
+      ctx.fill(); ctx.stroke();
     }
-    // ほっぺ(かんせいのとき)
-    if (wiggle > 0) {
-      ctx.fillStyle = "rgba(255,135,135,.55)";
-      ctx.beginPath(); ctx.arc(FACE.x - 120, FACE.y + 70, 34, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.arc(FACE.x + 120, FACE.y + 70, 34, 0, 7); ctx.fill();
+  }
+
+  if (!blind) {
+    if (mode === "basic") {
+      ctx.strokeStyle = "#c8871e";
+      ctx.fillStyle = "#ffe0b3";
+      ctx.beginPath();
+      ctx.ellipse(FACE.x, FACE.y, FACE.r, FACE.r * 1.06, 0, 0, 7);
+      ctx.fill(); ctx.stroke();
+      // かみのけ
+      ctx.strokeStyle = "#7f5539";
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(FACE.x + i * 30, FACE.y - FACE.r * 1.02);
+        ctx.quadraticCurveTo(FACE.x + i * 34, FACE.y - FACE.r * 1.3, FACE.x + i * 42, FACE.y - FACE.r * 1.22);
+        ctx.stroke();
+      }
+      // ほっぺ(かんせいのとき)
+      if (wiggle > 0) {
+        ctx.fillStyle = "rgba(255,135,135,.55)";
+        ctx.beginPath(); ctx.arc(FACE.x - 120, FACE.y + 70, 34, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(FACE.x + 120, FACE.y + 70, 34, 0, 7); ctx.fill();
+      }
+    } else if (faceBase) {
+      // とりこんだ絵の「パーツが抜けたかお」
+      ctx.drawImage(faceBase, FACE.x - faceBase.width / 2, FACE.y - faceBase.height / 2);
     }
   } else {
     ctx.setLineDash([14, 12]);
@@ -195,6 +330,24 @@ let last = performance.now();
     ctx.translate(p.x, p.y);
     ctx.rotate(p.rot * 0.3 + w);
     ctx.drawImage(p.cv, -p.cv.width / 2, -p.cv.height / 2);
+    ctx.restore();
+  }
+
+  /* かんせいしたら おてほん(元の絵)を すみに小さく */
+  if (mode === "pic" && completed && sampleImg) {
+    const tw = 150, th = Math.round(tw * sampleImg.height / sampleImg.width);
+    const ox = 900 - tw - 20, oy = 20;
+    ctx.save();
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "#c8871e"; ctx.lineWidth = 4;
+    ctx.fillRect(ox - 8, oy - 8, tw + 16, th + 34);
+    ctx.strokeRect(ox - 8, oy - 8, tw + 16, th + 34);
+    ctx.drawImage(sampleImg, ox, oy, tw, th);
+    ctx.fillStyle = "#8a7a68";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("おてほん", ox + tw / 2, oy + th + 20);
+    ctx.textAlign = "left";
     ctx.restore();
   }
   requestAnimationFrame(loop);
