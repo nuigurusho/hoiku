@@ -225,8 +225,8 @@ function drawHoleBack(cx, cy) {
   ctx.fill();
 }
 
-// あなの「手前」がわ:前ふち(下がわの半月)だけ キャラの上にかぶせる
-function drawHoleFront(cx, cy) {
+// あなの前ふち(下がわの半月)。奥がわのオブジェクトとして キャラより先に描く
+function drawHoleRim(cx, cy) {
   ctx.fillStyle = "#8a6a4a";
   ctx.beginPath();
   ctx.ellipse(cx, cy, 105, 34, 0, 0, Math.PI, false);     // 外ふちの下半分
@@ -242,10 +242,11 @@ function draw(now) {
     const c = i % COLS, r = Math.floor(i / COLS);
     const cx = c * CELLW + CELLW / 2, cy = 60 + r * CELLH + CELLH - 40;
 
-    // ① 奥:あなのふちと 中のくらいところ
+    // ① 奥:あなのふちと 中のくらいところ、前ふちも まとめて奥あつかい
     drawHoleBack(cx, cy);
+    drawHoleRim(cx, cy);
 
-    // ② 中間:でてくるかお(あなの中からせり上がる)
+    // ② 手前:でてくるかお(あなの中からせり上がる。前ふちより手前に描く)
     if ((h.state === "up" || h.state === "down") && h.face) {
       const fh = 150, fw = h.face.width * (fh / h.face.height);
       ctx.save();
@@ -263,9 +264,6 @@ function draw(now) {
       ctx.fillText("💫", cx, cy - 80);
       ctx.textAlign = "left";
     }
-
-    // ③ 手前:前ふちで かおの下を かくす
-    drawHoleFront(cx, cy);
   });
 }
 </script>
