@@ -244,6 +244,16 @@ const Store = {
     });
   },
 
+  async clear() {
+    await this.init();
+    if (this._mem) { this._mem = []; return; }
+    return new Promise((res) => {
+      const rq = this._tx("readwrite").clear();
+      rq.onsuccess = () => res();
+      rq.onerror = () => res();
+    });
+  },
+
   /* 1枚もなければサンプルを入れる */
   async ensureSamples() {
     const list = await this.all();
@@ -707,6 +717,242 @@ const CustomQuiz = {
   save(list) { localStorage.setItem(this.KEY, JSON.stringify(list)); },
   add(q) { const l = this.all(); l.push(q); this.save(l); return l; },
   remove(i) { const l = this.all(); l.splice(i, 1); this.save(l); return l; },
+};
+
+/* ---------------- Backup(設定まるごと zip でエクスポート/インポート) ----------------
+   IndexedDBの画像ぜんぶ(名前・カテゴリ・うごきせってい・まちがいスポット)と
+   localStorage(オリジナルクイズ・解放レベル・ランキング等)を、1つのzipにまとめる。
+   外部ライブラリなし・オフラインで動くように、zipの作成/解析を自前で実装している。
+   画像バイナリはそのまま格納(STORE方式)。JPEG/PNGはすでに圧縮ずみなので再圧縮しない。 */
+const Backup = {
+  MAGIC: "hoiku-game-pack",
+
+  /* --- CRC32(zip必須) --- */
+  _crcTable: null,
+  _crc32(bytes) {
+    if (!this._crcTable) {
+      const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      this._crcTable = t;
+    }
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = (crc >>> 8) ^ this._crcTable[(crc ^ bytes[i]) & 0xFF];
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  },
+
+  /* --- zip作成(STORE方式・無圧縮)。files=[{name, data:Uint8Array}] → Blob --- */
+  _makeZip(files) {
+    const enc = new TextEncoder();
+    const now = new Date();
+    const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+    const dosDate = ((((now.getFullYear() - 1980) & 0x7F) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+    const local = [];
+    const central = [];
+    let offset = 0;
+    for (const f of files) {
+      const nameBytes = enc.encode(f.name);
+      const data = f.data;
+      const crc = this._crc32(data);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true);
+      lh.setUint16(4, 20, true);       // version needed
+      lh.setUint16(6, 0x0800, true);   // flags: UTF-8 filename
+      lh.setUint16(8, 0, true);        // method: store
+      lh.setUint16(10, dosTime, true);
+      lh.setUint16(12, dosDate, true);
+      lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true);
+      lh.setUint32(22, data.length, true);
+      lh.setUint16(26, nameBytes.length, true);
+      lh.setUint16(28, 0, true);       // extra length
+      local.push(new Uint8Array(lh.buffer), nameBytes, data);
+
+      const cd = new DataView(new ArrayBuffer(46));
+      cd.setUint32(0, 0x02014b50, true);
+      cd.setUint16(4, 20, true);        // version made by
+      cd.setUint16(6, 20, true);        // version needed
+      cd.setUint16(8, 0x0800, true);
+      cd.setUint16(10, 0, true);
+      cd.setUint16(12, dosTime, true);
+      cd.setUint16(14, dosDate, true);
+      cd.setUint32(16, crc, true);
+      cd.setUint32(20, data.length, true);
+      cd.setUint32(24, data.length, true);
+      cd.setUint16(28, nameBytes.length, true);
+      cd.setUint16(30, 0, true);        // extra
+      cd.setUint16(32, 0, true);        // comment
+      cd.setUint16(34, 0, true);        // disk number
+      cd.setUint16(36, 0, true);        // internal attrs
+      cd.setUint32(38, 0, true);        // external attrs
+      cd.setUint32(42, offset, true);   // local header offset
+      central.push(new Uint8Array(cd.buffer), nameBytes);
+      offset += 30 + nameBytes.length + data.length;
+    }
+    const cdStart = offset;
+    let cdSize = 0;
+    for (const c of central) cdSize += c.length;
+    const eo = new DataView(new ArrayBuffer(22));
+    eo.setUint32(0, 0x06054b50, true);
+    eo.setUint16(4, 0, true);
+    eo.setUint16(6, 0, true);
+    eo.setUint16(8, files.length, true);
+    eo.setUint16(10, files.length, true);
+    eo.setUint32(12, cdSize, true);
+    eo.setUint32(16, cdStart, true);
+    eo.setUint16(20, 0, true);
+    return new Blob([...local, ...central, new Uint8Array(eo.buffer)], { type: "application/zip" });
+  },
+
+  async _inflateRaw(bytes) {
+    if (typeof DecompressionStream === "undefined") {
+      throw new Error("この圧縮形式の zip は開けません(圧縮なしで作り直してください)");
+    }
+    const ds = new DecompressionStream("deflate-raw");
+    const stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  },
+
+  /* --- zip読み込み。中央ディレクトリを見て STORE/deflate に対応 → [{name, data}] --- */
+  async _readZip(buf) {
+    const dv = new DataView(buf);
+    const bytes = new Uint8Array(buf);
+    if (buf.byteLength < 22) throw new Error("zip ファイルではありません");
+    let eocd = -1;
+    for (let i = buf.byteLength - 22; i >= 0; i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error("zip ファイルではありません");
+    const count = dv.getUint16(eocd + 10, true);
+    let ptr = dv.getUint32(eocd + 16, true);
+    const dec = new TextDecoder();
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      if (ptr + 46 > buf.byteLength || dv.getUint32(ptr, true) !== 0x02014b50) break;
+      const method = dv.getUint16(ptr + 10, true);
+      const compSize = dv.getUint32(ptr + 20, true);
+      const nameLen = dv.getUint16(ptr + 28, true);
+      const extraLen = dv.getUint16(ptr + 30, true);
+      const commentLen = dv.getUint16(ptr + 32, true);
+      const localOff = dv.getUint32(ptr + 42, true);
+      const name = dec.decode(bytes.subarray(ptr + 46, ptr + 46 + nameLen));
+      const lNameLen = dv.getUint16(localOff + 26, true);
+      const lExtraLen = dv.getUint16(localOff + 28, true);
+      const dataStart = localOff + 30 + lNameLen + lExtraLen;
+      const comp = bytes.subarray(dataStart, dataStart + compSize);
+      let data;
+      if (method === 0) data = comp;
+      else if (method === 8) data = await this._inflateRaw(comp);
+      else throw new Error("対応していない圧縮形式です(method=" + method + ")");
+      out.push({ name, data });
+      ptr += 46 + nameLen + extraLen + commentLen;
+    }
+    return out;
+  },
+
+  /* --- dataURL ⇄ バイナリ --- */
+  _dataURLtoBytes(url) {
+    const comma = url.indexOf(",");
+    const mime = (url.slice(5, comma).split(";")[0]) || "application/octet-stream";
+    const bin = atob(url.slice(comma + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { mime, bytes };
+  },
+  _bytesToDataURL(mime, bytes) {
+    let bin = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return "data:" + (mime || "image/jpeg") + ";base64," + btoa(bin);
+  },
+
+  /* すべての設定を集めて Blob(zip) を返す */
+  async exportZip() {
+    const images = await Store.all();
+    const files = [];
+    const manifestImages = [];
+    images.forEach((r, i) => {
+      const { mime, bytes } = this._dataURLtoBytes(r.dataURL);
+      const ext = mime.indexOf("png") >= 0 ? "png" : (mime.indexOf("jpeg") >= 0 || mime.indexOf("jpg") >= 0) ? "jpg" : "bin";
+      const file = "images/" + String(i).padStart(4, "0") + "." + ext;
+      files.push({ name: file, data: bytes });
+      const meta = { file, mime, id: r.id, name: r.name, cat: r.cat, created: r.created };
+      if (r.rig) meta.rig = r.rig;
+      if (r.diffSpots) meta.diffSpots = r.diffSpots;
+      manifestImages.push(meta);
+    });
+    const ls = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      ls[k] = localStorage.getItem(k);
+    }
+    const manifest = {
+      app: this.MAGIC,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      images: manifestImages,
+      localStorage: ls,
+    };
+    files.unshift({ name: "manifest.json", data: new TextEncoder().encode(JSON.stringify(manifest, null, 2)) });
+    return this._makeZip(files);
+  },
+
+  /* zip を読み込んで復元。opts.replace=true で現状を消してから入れる(既定=置きかえ) */
+  async importZip(fileOrBuf, opts) {
+    opts = opts || {};
+    const replace = opts.replace !== false;
+    const buf = fileOrBuf instanceof ArrayBuffer ? fileOrBuf : await fileOrBuf.arrayBuffer();
+    const entries = await this._readZip(buf);
+    const map = {};
+    for (const e of entries) map[e.name] = e.data;
+    const mfBytes = map["manifest.json"];
+    if (!mfBytes) throw new Error("この zip には設定データがありません(manifest.json が見つかりません)");
+    let manifest;
+    try { manifest = JSON.parse(new TextDecoder().decode(mfBytes)); }
+    catch (e) { throw new Error("設定データが壊れています"); }
+    if (manifest.app !== this.MAGIC) throw new Error("このアプリの設定 zip ではありません");
+
+    if (replace) {
+      await Store.clear();
+      localStorage.clear();
+    }
+    const ls = manifest.localStorage || {};
+    for (const k of Object.keys(ls)) localStorage.setItem(k, ls[k]);
+
+    let n = 0;
+    for (const m of (manifest.images || [])) {
+      const bytes = map[m.file];
+      if (!bytes) continue;
+      const rec = {
+        id: m.id, name: m.name, cat: m.cat, created: m.created,
+        dataURL: this._bytesToDataURL(m.mime, bytes),
+      };
+      if (m.rig) rec.rig = m.rig;
+      if (m.diffSpots) rec.diffSpots = m.diffSpots;
+      await Store.put(rec);
+      n++;
+    }
+    return { images: n, keys: Object.keys(ls).length };
+  },
+
+  /* Blob をダウンロードさせる */
+  download(blob, filename) {
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  },
 };
 
 /* ---------------- GameChrome(ゲーム中はヘッダーを消してフローティングもどるだけに) ----------------
