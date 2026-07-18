@@ -29,14 +29,16 @@
     .tiles.games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
-  /* ---------- 右上の設定ボタン(おとなのひと用) ----------
-     ゲームボタン風(白地・クリーム枠・立体影)の丸ボタン。
-     overflow:hidden でアイコンの白背景を円の内側にクリップ。 */
+  /* ---------- 設定ボタン(おとなのひと用) ----------
+     フローティングにせず、通常配置。ゲーム一覧と同じ幅(980px・中央寄せ)の
+     バーの中で右端に置き、じゃんけん(1行目の右端)の右端とそろえる。 */
+  .settings-bar {
+    max-width: 980px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: flex-end;
+  }
   .settings-fab {
-    position: fixed;
-    top: 20px;
-    right: 30px;
-    z-index: 40;
     width: 54px;
     height: 54px;
     display: flex;
@@ -63,10 +65,12 @@
 </style>
 </head>
 <body>
-<a class="settings-fab" href="admin.html" title="とりこみ・せってい(おとなのひとよう)" aria-label="とりこみ・せってい おとなのひとよう">
-  <img src="assets/buttons/admin.png" alt="せってい">
-</a>
 <main>
+  <div class="settings-bar">
+    <a class="settings-fab" href="admin.html" title="とりこみ・せってい(おとなのひとよう)" aria-label="とりこみ・せってい おとなのひとよう">
+      <img src="assets/buttons/admin.png" alt="せってい">
+    </a>
+  </div>
   <h1 style="margin:0"><img class="logo" src="assets/logo.png" alt="みんなの ゲームパック"></h1>
   <p class="subtitle">あそびたい ゲームを えらんでね!</p>
 
