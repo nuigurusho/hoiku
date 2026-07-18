@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>ほいくえん ゲームパック</title>
-<link rel="icon" href="favicon.svg">
+<title>みんなの ゲームパック</title>
+<link rel="icon" href="assets/favicon.png">
 <link rel="stylesheet" href="css/style.css">
 <style>
-  .title {
-    text-align: center;
-    font-size: clamp(26px, 5vw, 44px);
-    margin: 18px 0 4px;
-    color: var(--pink);
-    text-shadow: 0 3px 0 rgba(255,255,255,.9), 0 5px 10px rgba(214,51,108,.25);
+  .logo {
+    display: block;
+    margin: 10px auto 0;
+    width: min(500px, 82vw);
+    height: auto;
+    mix-blend-mode: multiply;   /* 白地をパステル背景になじませる */
   }
   .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
 </style>
 </head>
 <body>
 <main>
-  <h1 class="title">🎪 ほいくえん ゲームパック 🎪</h1>
+  <h1 style="margin:0"><img class="logo" src="assets/logo.png" alt="みんなの ゲームパック"></h1>
   <p class="subtitle">あそびたい ゲームを えらんでね!</p>
 
   <div class="tiles">
