@@ -116,6 +116,7 @@ main { padding: 14px; }
 }
 .tile:active { transform: scale(.95); }
 .tile .icon { font-size: 56px; line-height: 1; }
+.tile img.icon { width: 92px; height: 92px; object-fit: contain; }
 .tile.admin { background: #f2ede4; font-size: 16px; }
 .tile .badges { font-size: 17px; letter-spacing: 3px; margin-top: 2px; line-height: 1; }
 
