@@ -12,12 +12,13 @@
     font-size: 64px;
     width: 110px; height: 110px;
     border-radius: 26px;
-    border: none;
+    border: 3px solid var(--cream-d);
     background: #fff;
-    box-shadow: 0 6px 0 rgba(150,110,70,.25);
+    box-shadow: 0 6px 0 var(--cream-d);
     cursor: pointer;
+    transition: transform .08s, box-shadow .08s;
   }
-  .hbtn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(150,110,70,.25); }
+  .hbtn:active { transform: translateY(6px); box-shadow: none; }
   .streak { text-align: center; font-size: 24px; font-weight: bold; min-height: 32px; }
 </style>
 </head>
