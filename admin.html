@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>とりこみ・せってい</title>
+<title>取り込み・設定</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="stylesheet" href="css/style.css">
 <style>
@@ -19,105 +19,105 @@
 <body>
 <header class="bar">
   <a class="back" href="index.html">← もどる</a>
-  <h1><img class="bar-icon" src="assets/buttons/admin.png" alt=""> とりこみ・せってい</h1>
+  <h1><img class="bar-icon" src="assets/buttons/admin.png" alt=""> 取り込み・設定</h1>
   <div class="spacer"></div>
 </header>
 
 <main class="admin-list">
   <div class="panel" style="text-align:left">
-    <h2>あたらしい絵・写真をとりこむ</h2>
+    <h2>新しい絵・写真を取り込む</h2>
     <p>
       <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
-      <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
-      <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵(パズル/まちがいさがし用)</label>
+      <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ 背景の絵</label>
+      <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵(パズル・まちがいさがし用)</label>
     </p>
     <p class="note">
-      キャラクターの絵は「白い紙に、こく・はっきり」描いたものを、明るい場所でまっすぐ撮ると
-      きれいに切りぬけます。とりこんだら「うごきせってい」で くび・こし・まんなか の線をあわせてください。
-      ふくわらいで つかう絵は、白い紙に 顔を大きく描いて とりこみ、「ふくわらいパーツ」で め・はな・くちを かこむと きれいです。
+      キャラクターの絵は「白い紙に、濃く・はっきり」描いたものを、明るい場所でまっすぐ撮ると
+      きれいに切り抜けます。取り込んだら「動き設定」で、首・腰・中央の線を合わせてください。
+      ふくわらいで使う絵は、白い紙に顔を大きく描いて取り込み、「ふくわらいパーツ」で目・鼻・口を囲むときれいに仕上がります。
     </p>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn green" id="pickBtn">📁 ファイルをえらぶ(PDFもOK)</button>
-      <button class="btn blue" id="cameraBtn">📷 カメラでとる</button>
+      <button class="btn green" id="pickBtn">📁 ファイルを選ぶ(PDFも可)</button>
+      <button class="btn blue" id="cameraBtn">📷 カメラで撮る</button>
       <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf" multiple hidden>
       <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
     </div>
   </div>
 
   <div class="admin-sec"><h3>🧍 キャラクターの絵</h3><div id="listChar"></div></div>
-  <div class="admin-sec"><h3>🏞️ はいけいの絵</h3><div id="listBg"></div></div>
+  <div class="admin-sec"><h3>🏞️ 背景の絵</h3><div id="listBg"></div></div>
   <div class="admin-sec"><h3>🖼️ 写真・絵</h3><div id="listPic"></div></div>
 
   <div class="panel" style="text-align:left">
-    <h2>❓ クイズを つくる</h2>
+    <h2>❓ クイズを作る</h2>
     <p class="note">
       ここで作った問題は<b>この端末の中にだけ</b>保存されます(公開サイトには載りません)。
-      園の名前や先生の名前など、固有名詞を入れてOKです。
+      園の名前や先生の名前など、固有名詞を入れても構いません。
     </p>
-    <h3 style="margin-bottom:4px">かんたん作成 — こたえを入れるだけ</h3>
+    <h3 style="margin-bottom:4px">かんたん作成 — 答えを入れるだけ</h3>
     <div id="quizTemplates"></div>
-    <h3 style="margin-bottom:4px">じぶんで作る</h3>
+    <h3 style="margin-bottom:4px">自分で作る</h3>
     <div class="row" style="justify-content:flex-start; gap:8px">
-      <input type="text" id="qfQ" placeholder="もんだいぶん" style="flex:2 1 260px">
+      <input type="text" id="qfQ" placeholder="問題文" style="flex:2 1 260px">
       <input type="text" id="qfE" placeholder="絵文字(🏫など)" style="width:130px">
     </div>
     <div class="row" style="justify-content:flex-start; gap:8px">
-      <input type="text" id="qfA0" placeholder="せいかい" style="flex:1 1 150px; border-color:#51cf66">
-      <input type="text" id="qfA1" placeholder="はずれ1" style="flex:1 1 150px">
-      <input type="text" id="qfA2" placeholder="はずれ2" style="flex:1 1 150px">
-      <input type="text" id="qfA3" placeholder="はずれ3" style="flex:1 1 150px">
-      <button class="btn green" id="qfAdd">➕ クイズに いれる</button>
+      <input type="text" id="qfA0" placeholder="正解" style="flex:1 1 150px; border-color:#51cf66">
+      <input type="text" id="qfA1" placeholder="不正解1" style="flex:1 1 150px">
+      <input type="text" id="qfA2" placeholder="不正解2" style="flex:1 1 150px">
+      <input type="text" id="qfA3" placeholder="不正解3" style="flex:1 1 150px">
+      <button class="btn green" id="qfAdd">➕ クイズに追加</button>
     </div>
-    <h3 style="margin-bottom:4px">この端末の オリジナル問題</h3>
+    <h3 style="margin-bottom:4px">この端末のオリジナル問題</h3>
     <div id="quizList"></div>
   </div>
 
   <div class="panel" style="text-align:left">
-    <h2>💾 せってい・データの バックアップ</h2>
+    <h2>💾 設定・データのバックアップ</h2>
     <p class="note">
-      とりこんだ絵・写真、うごきせってい、まちがいスポット、オリジナルクイズ、ランキングを
-      まとめて 1つの <b>zip ファイル</b>に書き出せます。べつのPCで「インポート」すれば まるごと お引っ越しできます。
-      画像はこの端末の中(IndexedDB)だけに保存されるので、<b>当日つかうPCへ移すとき</b>に便利です。
+      取り込んだ絵・写真、動き設定、まちがいスポット、オリジナルクイズ、ランキングを
+      まとめて1つの <b>zipファイル</b>に書き出せます。別のPCで「インポート」すれば、まるごと移行できます。
+      画像はこの端末の中(IndexedDB)だけに保存されるので、<b>当日使うPCへ移すとき</b>に便利です。
     </p>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn green" id="exportBtn">⬇️ ぜんぶ エクスポート(zip)</button>
-      <button class="btn blue" id="importBtn">⬆️ zip から インポート</button>
+      <button class="btn green" id="exportBtn">⬇️ すべてエクスポート(zip)</button>
+      <button class="btn blue" id="importBtn">⬆️ zipからインポート</button>
       <input type="file" id="importInput" accept=".zip,application/zip" hidden>
     </div>
-    <p class="note">インポートすると、いまの絵・せっていは <b>ぜんぶ 置きかえられます</b>(実行まえに確認します)。</p>
+    <p class="note">インポートすると、現在の絵・設定は <b>すべて置き換えられます</b>(実行前に確認します)。</p>
   </div>
 
   <div class="panel" style="text-align:left">
-    <h2>そのほか</h2>
+    <h2>その他</h2>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn yellow" id="resampleBtn">サンプルをもういちど入れる</button>
-      <button class="btn gray" id="wipeBtn">ぜんぶ削除する</button>
+      <button class="btn yellow" id="resampleBtn">サンプルをもう一度入れる</button>
+      <button class="btn gray" id="wipeBtn">すべて削除する</button>
     </div>
-    <p class="note">クイズは上の「クイズを つくる」で追加できます。全端末共通の内蔵問題を変えたい場合のみ <code>js/quiz-data.js</code> を編集してください。</p>
+    <p class="note">クイズは上の「クイズを作る」で追加できます。全端末共通の内蔵問題を変更したい場合のみ、<code>js/quiz-data.js</code> を編集してください。</p>
   </div>
 </main>
 
 <!-- うごきせってい(リグ編集)モーダル -->
 <div class="modal hidden" id="rigModal">
   <div class="panel">
-    <h2>うごきせってい</h2>
-    <p class="note">まず「うごきのタイプ」をえらんで、せんをドラッグしてあわせてね。</p>
+    <h2>動き設定</h2>
+    <p class="note">まず「動きのタイプ」を選んで、線をドラッグして合わせてください。</p>
     <div class="rig-types" id="rigTypes">
-      <button class="btn purple" data-type="biped">🧍にほんあし</button>
+      <button class="btn purple" data-type="biped">🧍二本足</button>
       <button class="btn pink" data-type="skirt">👗スカート</button>
-      <button class="btn orange" data-type="quad">🐕よつあし</button>
+      <button class="btn orange" data-type="quad">🐕四つ足</button>
       <button class="btn blue" data-type="float">👻ふわふわ</button>
     </div>
     <div class="rig-flex">
       <canvas id="rigCanvas" class="edit-canvas" width="340" height="440"></canvas>
       <div>
-        <p style="margin:0 0 6px"><b>あるきプレビュー</b></p>
+        <p style="margin:0 0 6px"><b>歩きプレビュー</b></p>
         <canvas id="rigPreview" width="220" height="280" style="background:#e7f5ff;border-radius:12px"></canvas>
       </div>
     </div>
     <div class="row">
-      <button class="btn green" id="rigSave">✔ ほぞんする</button>
-      <button class="btn gray" id="rigCancel">やめる</button>
+      <button class="btn green" id="rigSave">✔ 保存する</button>
+      <button class="btn gray" id="rigCancel">キャンセル</button>
     </div>
   </div>
 </div>
@@ -125,12 +125,12 @@
 <!-- まちがいスポット編集モーダル -->
 <div class="modal hidden" id="spotModal">
   <div class="panel">
-    <h2>まちがいスポットせってい</h2>
-    <p class="note">タップで「まちがい」を作る場所を追加(最大8こ)。もういちどタップで削除。</p>
+    <h2>まちがいスポット設定</h2>
+    <p class="note">タップで「まちがい」を作る場所を追加(最大8個)。もう一度タップで削除。</p>
     <canvas id="spotCanvas" class="edit-canvas" width="640" height="440"></canvas>
     <div class="row">
-      <button class="btn green" id="spotSave">✔ ほぞんする</button>
-      <button class="btn gray" id="spotCancel">やめる</button>
+      <button class="btn green" id="spotSave">✔ 保存する</button>
+      <button class="btn gray" id="spotCancel">キャンセル</button>
     </div>
   </div>
 </div>
@@ -138,10 +138,10 @@
 <!-- ふくわらいパーツ編集モーダル -->
 <div class="modal hidden" id="fukuModal">
   <div class="panel">
-    <h2>ふくわらいパーツ せってい</h2>
+    <h2>ふくわらいパーツ 設定</h2>
     <p class="note">
-      したの ボタンで しゅるいを えらんで、絵の上を ドラッグして め・はな・くちを かこもう(さいだい8こ)。
-      かこんだ わくを タップすると しゅるいが かわり、そのほかの つぎで けせます。
+      下のボタンで種類を選んで、絵の上をドラッグして目・鼻・口を囲みます(最大8個)。
+      囲んだ枠をタップすると種類が変わり、「そのほか」の次で消せます。
     </p>
     <div class="rig-types" id="fukuKinds">
       <button class="btn blue"   data-kind="め">め</button>
@@ -152,8 +152,8 @@
     </div>
     <canvas id="fukuCanvas" class="edit-canvas" width="640" height="440"></canvas>
     <div class="row">
-      <button class="btn green" id="fukuSave">✔ ほぞんする</button>
-      <button class="btn gray" id="fukuCancel">やめる</button>
+      <button class="btn green" id="fukuSave">✔ 保存する</button>
+      <button class="btn gray" id="fukuCancel">キャンセル</button>
     </div>
   </div>
 </div>
@@ -161,20 +161,20 @@
 <!-- きりだし(トリミング)モーダル -->
 <div class="modal hidden" id="cropModal">
   <div class="panel">
-    <h2 id="cropTitle">✂ きりだして とりこむ</h2>
-    <p class="note">ドラッグで かこんで「きりだして ほぞん」。1まいから なんかいでも きりだせます。</p>
+    <h2 id="cropTitle">✂ 切り出して取り込む</h2>
+    <p class="note">ドラッグで囲んで「切り出して保存」。1枚から何回でも切り出せます。</p>
     <p style="margin:4px 0">
       <label class="radio"><input type="radio" name="cropCat" value="char" checked> 🧍 キャラ</label>
-      <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ はいけい</label>
+      <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ 背景</label>
       <label class="radio"><input type="radio" name="cropCat" value="pic"> 🖼️ 写真・絵</label>
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
     <div class="row">
-      <button class="btn green" id="cropSave">✂ きりだして ほぞん</button>
-      <button class="btn yellow" id="cropRotate">↻ かいてん</button>
-      <button class="btn blue" id="cropWhole">□ ページぜんぶ ほぞん</button>
-      <button class="btn purple hidden" id="cropNext">つぎのページ ▶</button>
-      <button class="btn gray" id="cropClose">とじる</button>
+      <button class="btn green" id="cropSave">✂ 切り出して保存</button>
+      <button class="btn yellow" id="cropRotate">↻ 回転</button>
+      <button class="btn blue" id="cropWhole">□ ページ全体を保存</button>
+      <button class="btn purple hidden" id="cropNext">次のページ ▶</button>
+      <button class="btn gray" id="cropClose">閉じる</button>
     </div>
   </div>
 </div>
@@ -204,7 +204,7 @@ async function refresh() {
 function row(r) {
   const d = document.createElement("div");
   d.className = "admin-row";
-  d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(なまえなし)"}</span>`;
+  d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(名前なし)"}</span>`;
   const mk = (label, cls, fn) => {
     const b = document.createElement("button");
     b.className = "btn " + cls;
@@ -212,18 +212,18 @@ function row(r) {
     b.onclick = fn;
     d.appendChild(b);
   };
-  mk("なまえ", "blue", async () => {
-    const nm = prompt("なまえをいれてください", r.name || "");
+  mk("名前", "blue", async () => {
+    const nm = prompt("名前を入力してください", r.name || "");
     if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
   });
-  if (r.cat === "char") mk("うごきせってい", "purple", () => openRig(r));
+  if (r.cat === "char") mk("動き設定", "purple", () => openRig(r));
   if (r.cat === "pic") mk("まちがいスポット", "orange", () => openSpot(r));
   if (r.cat === "char" || r.cat === "pic") mk("ふくわらいパーツ", "green", () => openFuku(r));
   mk("✂トリミング", "pink", async () => {
     const img = await Util.loadImage(r.dataURL);
     const c = Util.makeCanvas(img.width, img.height);
     c.getContext("2d").drawImage(img, 0, 0);
-    openCrop([c], r.name || "きりだし");
+    openCrop([c], r.name || "切り出し");
   });
   mk("カテゴリ", "yellow", async () => {
     const order = ["char", "bg", "pic"];
@@ -247,7 +247,7 @@ async function importFiles(files) {
       const pages = await pdfToCanvases(f);
       openCrop(pages, (f.name || "スキャン").replace(/\.pdf$/i, ""));
     } catch (e) {
-      alert("PDFのよみこみに失敗しました: " + (f.name || "") + "\n" + ((e && e.message) || ""));
+      alert("PDFの読み込みに失敗しました: " + (f.name || "") + "\n" + ((e && e.message) || ""));
     }
   }
   if (!files.length) return;
@@ -259,32 +259,32 @@ async function importFiles(files) {
   for (const f of files) {
     try {
       const dataURL = await Util.fileToDataURL(f, cat === "char" ? 900 : 1100);
-      const base = { char: "キャラ", bg: "はいけい", pic: "え・しゃしん" }[cat];
+      const base = { char: "キャラ", bg: "背景", pic: "絵・写真" }[cat];
       const rec = { name: `${base}${++n}`, cat, dataURL };
       if (cat === "char") rec.rig = { ...Rig.DEFAULT };
       await Store.put(rec);
       ok++;
     } catch (e) {
-      fails.push(`${f.name || "?"}(${(e && (e.message || e.name)) || "よみこみエラー"})`);
+      fails.push(`${f.name || "?"}(${(e && (e.message || e.name)) || "読み込みエラー"})`);
     }
   }
   await refresh();
   if (ok > 0) {
     Sound.good();
-    Ui.msg(`${ok}まい とりこんだよ!`, 1600, "#51cf66");
+    Ui.msg(`${ok}枚 取り込みました`, 1600, "#51cf66");
   }
   if (fails.length) {
-    alert("とりこみに失敗しました:\n" + fails.join("\n") +
+    alert("取り込みに失敗しました:\n" + fails.join("\n") +
       "\n\n画像ファイル(JPG/PNGなど)か確認してください。iPhoneのHEICは「設定→カメラ→フォーマット→互換性優先」にすると確実です。");
   }
 }
 // 予期しないエラーも見えるようにしておく(「何も起きない」の調査用)
 window.addEventListener("unhandledrejection", (e) => {
-  alert("エラーがおきました: " + (e.reason && (e.reason.message || e.reason) || "不明"));
+  alert("エラーが発生しました: " + (e.reason && (e.reason.message || e.reason) || "不明"));
 });
 /* ---------- PDF → ページ画像 ---------- */
 async function pdfToCanvases(file) {
-  if (!window.pdfjsLib) throw new Error("PDF機能が読みこめませんでした(通信環境を確認してください)");
+  if (!window.pdfjsLib) throw new Error("PDF機能を読み込めませんでした(通信環境を確認してください)");
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   const pages = [];
@@ -311,7 +311,7 @@ const cropEd = { pages: [], idx: 0, baseName: "", rect: null, drag: null, sc: 1,
 function openCrop(pages, baseName) {
   cropEd.pages = pages;
   cropEd.idx = 0;
-  cropEd.baseName = baseName || "きりだし";
+  cropEd.baseName = baseName || "切り出し";
   cropEd.saved = 0;
   $("cropModal").classList.remove("hidden");
   showCropPage();
@@ -326,8 +326,8 @@ function showCropPage() {
   cv.height = Math.round(src.height * cropEd.sc);
   cropEd.rect = null;
   $("cropTitle").textContent = cropEd.pages.length > 1
-    ? `✂ きりだして とりこむ(${cropEd.idx + 1} / ${cropEd.pages.length}ページ)`
-    : "✂ きりだして とりこむ";
+    ? `✂ 切り出して取り込む(${cropEd.idx + 1} / ${cropEd.pages.length}ページ)`
+    : "✂ 切り出して取り込む";
   $("cropNext").classList.toggle("hidden", cropEd.idx >= cropEd.pages.length - 1);
   drawCrop();
 }
@@ -395,13 +395,13 @@ async function saveCropRegion(rect) {
   if (cat === "char") rec.rig = { ...Rig.DEFAULT };
   await Store.put(rec);
   Sound.pop();
-  Ui.msg("ほぞんしたよ!", 1100, "#51cf66");
+  Ui.msg("保存しました", 1100, "#51cf66");
   refresh();
 }
 
 $("cropSave").onclick = () => {
   if (!cropEd.rect || cropEd.rect.w < 12 || cropEd.rect.h < 12) {
-    Ui.msg("ドラッグで かこんでね", 1300, "#4dabf7");
+    Ui.msg("ドラッグで囲んでください", 1300, "#4dabf7");
     return;
   }
   saveCropRegion(cropEd.rect);
@@ -444,10 +444,10 @@ $("cameraInput").onchange = async (e) => {
       c.getContext("2d").drawImage(img, 0, 0);
       pages.push(c);
     } catch (err) {
-      alert("しゃしんのよみこみに失敗しました: " + (f.name || ""));
+      alert("写真の読み込みに失敗しました: " + (f.name || ""));
     }
   }
-  if (pages.length) openCrop(pages, "しゃしん");
+  if (pages.length) openCrop(pages, "写真");
 };
 
 /* ---------- リグ編集 ---------- */
@@ -515,18 +515,18 @@ function drawRig() {
     ctx.fillText(label, x + 6, Hc - 8);
   };
   if (t === "biped") {
-    hLine("#4dabf7", r.neckY, "くび");
-    hLine("#51cf66", r.hipY, "こし");
-    vLine("#ff6b9d", r.centerX, r.hipY, "まんなか");
+    hLine("#4dabf7", r.neckY, "首");
+    hLine("#51cf66", r.hipY, "腰");
+    vLine("#ff6b9d", r.centerX, r.hipY, "中央");
   } else if (t === "skirt") {
-    hLine("#4dabf7", r.neckY, "くび");
-    hLine("#51cf66", r.hipY, "こし");
+    hLine("#4dabf7", r.neckY, "首");
+    hLine("#51cf66", r.hipY, "腰");
   } else if (t === "quad") {
     hLine("#f59f00", r.bellyY, "おなか");
-    vLine("#ff6b9d", r.centerX, r.bellyY, "まんなか");
+    vLine("#ff6b9d", r.centerX, r.bellyY, "中央");
   } else { // float
     ctx.fillStyle = "#868e96"; ctx.font = "bold 15px sans-serif";
-    ctx.fillText("せんなし(そのままうごきます)", 10, 24);
+    ctx.fillText("線なし(そのまま動きます)", 10, 24);
   }
 }
 
@@ -728,7 +728,7 @@ function drawFuku() {
     if (d.moved && d.rect) {
       if (d.rect.w < 12 || d.rect.h < 12) { drawFuku(); return; }
       if (fukuEd.parts.length >= 8) {
-        Ui.msg("パーツは 8こまでだよ", 1300, "#4dabf7");
+        Ui.msg("パーツは8個までです", 1300, "#4dabf7");
         drawFuku(); return;
       }
       fukuEd.parts.push({
@@ -759,22 +759,22 @@ $("fukuCancel").onclick = () => $("fukuModal").classList.add("hidden");
 
 /* ---------- クイズを つくる ---------- */
 const QUIZ_TEMPLATES = [
-  { label: "えんの なまえ", ph: "○○ほいくえん",
+  { label: "園の名前", ph: "○○ほいくえん",
     make: (v) => ({ q: "わたしたちの えんの なまえは?", emoji: "🏫",
       choices: [v, "うちゅうほいくえん", "おかしのくに ほいくえん", "きょうりゅうほいくえん"], answer: 0 }) },
-  { label: "えんが ある まち", ph: "○○く・○○し など",
+  { label: "園がある町", ph: "○○区・○○市 など",
     make: (v) => ({ q: "えんが あるのは どこの まち?", emoji: "🗾",
       choices: [v, "ほっかいどう", "おきなわ", "うちゅう"], answer: 0 }) },
-  { label: "えんちょうせんせいの なまえ", ph: "○○せんせい",
+  { label: "園長先生の名前", ph: "○○先生",
     make: (v) => ({ q: "えんちょうせんせいは だれ?", emoji: "👓",
       choices: [v, "サンタさん", "ももたろう", "かぐやひめ"], answer: 0 }) },
-  { label: "みんなの くみの なまえ", ph: "○○ぐみ",
+  { label: "クラス(組)の名前", ph: "○○ぐみ",
     make: (v) => ({ q: "みんなの くみの なまえは?", emoji: "🎒",
       choices: [v, "おばけぐみ", "ロボットぐみ", "きょうりゅうぐみ"], answer: 0 }) },
-  { label: "きゅうしょくの にんきメニュー", ph: "カレーライス など",
+  { label: "給食の人気メニュー", ph: "カレーライス など",
     make: (v) => ({ q: "きゅうしょくで にんきの メニューは どれ?", emoji: "🍚",
       choices: [v, "いしころの スープ", "くつしたの にもの", "えんぴつの サラダ"], answer: 0 }) },
-  { label: "みんなの すきな うた・あそび", ph: "うたや あそびの なまえ",
+  { label: "好きな歌・遊び", ph: "歌や遊びの名前",
     make: (v) => ({ q: "みんなが だいすきなのは どれ?", emoji: "🎶",
       choices: [v, "そうじきの おと", "ずっと しずかに すわる", "おかたづけだけ"], answer: 0 }) },
 ];
@@ -797,11 +797,11 @@ function initQuizTemplates() {
     btn.textContent = "➕ いれる";
     btn.onclick = () => {
       const v = input.value.trim();
-      if (!v) { Ui.msg("こたえを 入れてね", 1300, "#4dabf7"); return; }
+      if (!v) { Ui.msg("答えを入力してください", 1300, "#4dabf7"); return; }
       CustomQuiz.add(t.make(v));
       input.value = "";
       Sound.good();
-      Ui.msg("クイズに いれたよ!", 1300, "#51cf66");
+      Ui.msg("クイズに追加しました", 1300, "#51cf66");
       refreshQuizList();
     };
     d.append(label, input, btn);
@@ -818,7 +818,7 @@ function refreshQuizList() {
     d.className = "admin-row";
     const t = document.createElement("span");
     t.className = "nm";
-    t.textContent = `${q.emoji || "❓"} ${q.q}(せいかい: ${q.choices[q.answer]})`;
+    t.textContent = `${q.emoji || "❓"} ${q.q}(正解: ${q.choices[q.answer]})`;
     const del = document.createElement("button");
     del.className = "btn gray";
     del.textContent = "削除";
@@ -832,13 +832,13 @@ $("qfAdd").onclick = () => {
   const q = $("qfQ").value.trim();
   const answers = ["qfA0", "qfA1", "qfA2", "qfA3"].map((id) => $(id).value.trim());
   if (!q || answers.some((a) => !a)) {
-    Ui.msg("ぜんぶの わくを うめてね", 1500, "#4dabf7");
+    Ui.msg("すべての枠を埋めてください", 1500, "#4dabf7");
     return;
   }
   CustomQuiz.add({ q, emoji: $("qfE").value.trim() || "❓", choices: answers, answer: 0 });
   ["qfQ", "qfE", "qfA0", "qfA1", "qfA2", "qfA3"].forEach((id) => { $(id).value = ""; });
   Sound.good();
-  Ui.msg("クイズに いれたよ!", 1300, "#51cf66");
+  Ui.msg("クイズに追加しました", 1300, "#51cf66");
   refreshQuizList();
 };
 
@@ -848,14 +848,14 @@ refreshQuizList();
 /* ---------- バックアップ(zipエクスポート/インポート) ---------- */
 $("exportBtn").onclick = async () => {
   try {
-    Ui.msg("zip を つくっています…", 1200, "#4dabf7");
+    Ui.msg("zipを作成しています…", 1200, "#4dabf7");
     const blob = await Backup.exportZip();
     const d = new Date();
     const p = (n) => String(n).padStart(2, "0");
     const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
     Backup.download(blob, `hoiku-settings-${stamp}.zip`);
     Sound.good();
-    Ui.msg("エクスポートしたよ!", 1500, "#51cf66");
+    Ui.msg("エクスポートしました", 1500, "#51cf66");
   } catch (e) {
     alert("エクスポートに失敗しました:\n" + ((e && e.message) || e));
   }
@@ -867,17 +867,17 @@ $("importInput").onchange = async (e) => {
   e.target.value = "";
   if (!file) return;
   const ok = confirm(
-    `「${file.name}」から せっていを よみこみます。\n\n` +
-    `いまの絵・写真・うごきせってい・クイズ・ランキングは\n` +
-    `すべて 置きかえられます(この端末だけ)。\n\n` +
+    `「${file.name}」から設定を読み込みます。\n\n` +
+    `現在の絵・写真・動き設定・クイズ・ランキングは\n` +
+    `すべて置き換えられます(この端末だけ)。\n\n` +
     `よろしいですか?`
   );
   if (!ok) return;
   try {
-    Ui.msg("よみこんでいます…", 1200, "#4dabf7");
+    Ui.msg("読み込んでいます…", 1200, "#4dabf7");
     const res = await Backup.importZip(file, { replace: true });
     Sound.good();
-    Ui.msg(`インポートしたよ!(絵 ${res.images}まい)`, 1800, "#51cf66");
+    Ui.msg(`インポートしました(絵 ${res.images}枚)`, 1800, "#51cf66");
     await refresh();
     refreshQuizList();
   } catch (err) {
@@ -892,7 +892,7 @@ $("resampleBtn").onclick = async () => {
   refresh();
 };
 $("wipeBtn").onclick = async () => {
-  if (!confirm("とりこんだ画像をぜんぶ削除します。よろしいですか?")) return;
+  if (!confirm("取り込んだ画像をすべて削除します。よろしいですか?")) return;
   for (const r of await Store.all()) await Store.remove(r.id);
   refresh();
 };
