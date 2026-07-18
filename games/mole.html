@@ -213,6 +213,28 @@ cv.addEventListener("pointerdown", (e) => {
   }
 });
 
+// あなの「奥」がわ:ふちと 中のくらいところ(キャラより うしろ)
+function drawHoleBack(cx, cy) {
+  ctx.fillStyle = "#8a6a4a";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 105, 34, 0, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = "#5e452e";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 5, 92, 26, 0, 0, 7);
+  ctx.fill();
+}
+
+// あなの「手前」がわ:前ふち(下がわの半月)だけ キャラの上にかぶせる
+function drawHoleFront(cx, cy) {
+  ctx.fillStyle = "#8a6a4a";
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 105, 34, 0, 0, Math.PI, false);     // 外ふちの下半分
+  ctx.ellipse(cx, cy - 5, 92, 26, 0, Math.PI, 0, true);   // 内ふちの下半分(逆むき)
+  ctx.closePath();
+  ctx.fill();
+}
+
 function draw(now) {
   ctx.clearRect(0, 0, 1000, 700);
   ctx.fillStyle = "#d3f9d8"; ctx.fillRect(0, 0, 1000, 700);
@@ -220,12 +242,16 @@ function draw(now) {
     const c = i % COLS, r = Math.floor(i / COLS);
     const cx = c * CELLW + CELLW / 2, cy = 60 + r * CELLH + CELLH - 40;
 
-    // でてくるかお(あなの奥からクリップして描く)
+    // ① 奥:あなのふちと 中のくらいところ
+    drawHoleBack(cx, cy);
+
+    // ② 中間:でてくるかお(あなの中からせり上がる)
     if ((h.state === "up" || h.state === "down") && h.face) {
       const fh = 150, fw = h.face.width * (fh / h.face.height);
       ctx.save();
       ctx.beginPath();
-      ctx.rect(cx - CELLW / 2, cy - 190, CELLW, 190);
+      // あなの前ふち(cy+20 あたり)より上だけ みえるように クリップ
+      ctx.rect(cx - CELLW / 2, cy - 200, CELLW, 220);
       ctx.clip();
       const py = cy - 10 - h.y * fh;
       ctx.drawImage(h.face, cx - fw / 2, py, fw, fh);
@@ -237,15 +263,9 @@ function draw(now) {
       ctx.fillText("💫", cx, cy - 80);
       ctx.textAlign = "left";
     }
-    // あな
-    ctx.fillStyle = "#8a6a4a";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, 105, 34, 0, 0, 7);
-    ctx.fill();
-    ctx.fillStyle = "#5e452e";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - 5, 92, 26, 0, 0, 7);
-    ctx.fill();
+
+    // ③ 手前:前ふちで かおの下を かくす
+    drawHoleFront(cx, cy);
   });
 }
 </script>
