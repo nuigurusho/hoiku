@@ -7,14 +7,11 @@
 <link rel="icon" href="../assets/favicon.png">
 <link rel="stylesheet" href="../css/style.css">
 <style>
+  /* お題のことば。ボタンに見えないよう枠(border/box-shadow/背景)はつけない */
   .word-box {
-    margin: 14px auto;
-    padding: 22px 16px;
+    margin: 12px auto 2px;
+    padding: 4px 16px;
     max-width: 620px;
-    background: #fff;
-    border: 4px solid var(--cream-d);
-    border-radius: 22px;
-    box-shadow: 0 6px 0 var(--cream-d);
     font-size: 52px;
     font-weight: bold;
     letter-spacing: 4px;
@@ -22,6 +19,14 @@
   }
   .word-box.hidden-word { color: #cbb9a3; letter-spacing: 10px; }
   .word-box.answer { color: #e8590c; }
+  /* ことばの下の ローマ字 */
+  .word-romaji {
+    margin: 0 auto 12px;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #8a7a68;
+  }
   .step-title { font-size: 22px; font-weight: bold; margin: 4px 0; }
   #recDot { color: #fa5252; }
 </style>
@@ -44,6 +49,7 @@
         マイクは <b>localhost か https</b> で つかえます。ろくおんした こえは <b>ほぞんされません</b>。
       </p>
       <div class="word-box" id="wordBox">ことば</div>
+      <div class="word-romaji" id="wordRomaji"></div>
       <div class="row">
         <button class="btn yellow" id="anotherBtn">🔀 べつの ことば</button>
       </div>
@@ -66,6 +72,7 @@
       <p class="note">さかさの こえを きいて、なんの ことばか あてよう!(なんかいでも きけるよ)</p>
       <div class="word-box hidden-word" id="hiddenWord">❓ ❓ ❓</div>
       <div class="word-box answer hidden" id="answerWord">?</div>
+      <div class="word-romaji hidden" id="answerRomaji"></div>
       <div class="row">
         <button class="btn big blue" id="playBtn">🔊 さかさを きく</button>
       </div>
@@ -102,12 +109,61 @@ const WORDS = [
 const rec = { mr: null, stream: null, chunks: [], key: null, reversed: null, timer: 0, tick: 0, t0: 0 };
 let word = "";
 
+/* --- ひらがな → ローマ字(ヘボン式ふう) --- */
+const ROMA2 = {
+  "きゃ": "kya", "きゅ": "kyu", "きょ": "kyo", "しゃ": "sha", "しゅ": "shu", "しょ": "sho",
+  "ちゃ": "cha", "ちゅ": "chu", "ちょ": "cho", "にゃ": "nya", "にゅ": "nyu", "にょ": "nyo",
+  "ひゃ": "hya", "ひゅ": "hyu", "ひょ": "hyo", "みゃ": "mya", "みゅ": "myu", "みょ": "myo",
+  "りゃ": "rya", "りゅ": "ryu", "りょ": "ryo", "ぎゃ": "gya", "ぎゅ": "gyu", "ぎょ": "gyo",
+  "じゃ": "ja", "じゅ": "ju", "じょ": "jo", "ぢゃ": "ja", "ぢゅ": "ju", "ぢょ": "jo",
+  "びゃ": "bya", "びゅ": "byu", "びょ": "byo", "ぴゃ": "pya", "ぴゅ": "pyu", "ぴょ": "pyo",
+};
+const ROMA1 = {
+  "あ": "a", "い": "i", "う": "u", "え": "e", "お": "o",
+  "か": "ka", "き": "ki", "く": "ku", "け": "ke", "こ": "ko",
+  "さ": "sa", "し": "shi", "す": "su", "せ": "se", "そ": "so",
+  "た": "ta", "ち": "chi", "つ": "tsu", "て": "te", "と": "to",
+  "な": "na", "に": "ni", "ぬ": "nu", "ね": "ne", "の": "no",
+  "は": "ha", "ひ": "hi", "ふ": "fu", "へ": "he", "ほ": "ho",
+  "ま": "ma", "み": "mi", "む": "mu", "め": "me", "も": "mo",
+  "や": "ya", "ゆ": "yu", "よ": "yo",
+  "ら": "ra", "り": "ri", "る": "ru", "れ": "re", "ろ": "ro",
+  "わ": "wa", "を": "o", "ん": "n",
+  "が": "ga", "ぎ": "gi", "ぐ": "gu", "げ": "ge", "ご": "go",
+  "ざ": "za", "じ": "ji", "ず": "zu", "ぜ": "ze", "ぞ": "zo",
+  "だ": "da", "ぢ": "ji", "づ": "zu", "で": "de", "ど": "do",
+  "ば": "ba", "び": "bi", "ぶ": "bu", "べ": "be", "ぼ": "bo",
+  "ぱ": "pa", "ぴ": "pi", "ぷ": "pu", "ぺ": "pe", "ぽ": "po",
+  "ぁ": "a", "ぃ": "i", "ぅ": "u", "ぇ": "e", "ぉ": "o", "ゃ": "ya", "ゅ": "yu", "ょ": "yo",
+};
+function toRomaji(kana) {
+  let out = "";
+  for (let i = 0; i < kana.length; i++) {
+    const two = kana.slice(i, i + 2);
+    if (ROMA2[two]) { out += ROMA2[two]; i++; continue; }
+    const c = kana[i];
+    if (c === "っ") {                                   // そくおん:次の子音をかさねる
+      const nr = ROMA2[kana.slice(i + 1, i + 3)] || ROMA1[kana[i + 1]] || "";
+      if (nr) out += nr[0];
+      continue;
+    }
+    if (c === "ー") {                                   // ちょうおん:直前の母音をのばす
+      const m = out.match(/[aiueo]$/);
+      if (m) out += m[0];
+      continue;
+    }
+    out += ROMA1[c] != null ? ROMA1[c] : c;
+  }
+  return out;
+}
+
 /* --- ことば えらび --- */
 function pickWord() {
   let w;
   do { w = Util.choice(WORDS); } while (w === word && WORDS.length > 1);
   word = w;
   $("wordBox").textContent = word;
+  $("wordRomaji").textContent = toRomaji(word);
 }
 
 function showRecBtn(recording) {
@@ -226,6 +282,8 @@ function goAnswer() {
   $("hiddenWord").classList.remove("hidden");
   $("answerWord").classList.add("hidden");
   $("answerWord").textContent = word;
+  $("answerRomaji").textContent = toRomaji(word);
+  $("answerRomaji").classList.add("hidden");
   $("judgeRow").classList.remove("hidden");
   $("nextRow").classList.add("hidden");
   $("answerHint").textContent = "おとなの ひとが ⭕か❌を おしてね(こたえが でるよ)";
@@ -234,6 +292,7 @@ function goAnswer() {
 
 function reveal() {
   $("answerWord").classList.remove("hidden");
+  $("answerRomaji").classList.remove("hidden");
   $("hiddenWord").classList.add("hidden");
   $("judgeRow").classList.add("hidden");
   $("nextRow").classList.remove("hidden");
