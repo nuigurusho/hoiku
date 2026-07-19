@@ -57,6 +57,16 @@ const Util = {
     });
   },
 
+  /* Blob → dataURL(録音した音声の保存などに使う) */
+  blobToDataURL(blob) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result);
+      fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+  },
+
   /* 白っぽい背景を透明に(紙に描いた絵の切りぬき) */
   keyImage(img, thr = 225) {
     const c = Util.makeCanvas(img.width, img.height);
@@ -249,13 +259,29 @@ const Sound = {
     [1047, 1319, 1568].forEach((f, i) => this.beep(f, 0.5, "sine", 0.15, 1.2 + i * 0.03));
   },
   laugh() { [700, 600, 700, 600, 750].forEach((f, i) => this.beep(f, 0.09, "square", 0.12, i * 0.1)); },
+
+  /* キャラの声(admin.htmlで録音した dataURL)を鳴らす。
+     voices={joy,greet,ouch,fail} のうち keys にあって登録ずみのものから
+     ランダムに1つ再生する。鳴らせたら true、登録がなければ false を返すので、
+     呼び出し側は false のとき従来の効果音にフォールバックできる。 */
+  playVoice(voices, keys) {
+    if (!voices) return false;
+    const avail = keys.filter((k) => voices[k]);
+    if (!avail.length) return false;
+    try {
+      const a = new Audio(voices[Util.choice(avail)]);
+      a.play().catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  },
 };
 window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
    レコード: { id, name, cat('char'|'bg'|'pic'), dataURL,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
-               fukuParts:[{kind,x,y,w,h}], created } */
+               fukuParts:[{kind,x,y,w,h}],
+               voices:{joy,greet,ouch,fail}(dataURL・キャラの声), created } */
 const Store = {
   db: null,
   _mem: null, // IndexedDBが使えない環境用
@@ -1030,6 +1056,23 @@ const Backup = {
       if (r.rig) meta.rig = r.rig;
       if (r.diffSpots) meta.diffSpots = r.diffSpots;
       if (r.fukuParts) meta.fukuParts = r.fukuParts;
+      // キャラの声(joy/greet/ouch/fail)も別ファイルとして同梱する
+      if (r.voices) {
+        const vmeta = {};
+        for (const key of Object.keys(r.voices)) {
+          const url = r.voices[key];
+          if (!url) continue;
+          const v = this._dataURLtoBytes(url);
+          const vext = v.mime.indexOf("mp4") >= 0 ? "mp4"
+            : v.mime.indexOf("ogg") >= 0 ? "ogg"
+            : v.mime.indexOf("wav") >= 0 ? "wav"
+            : v.mime.indexOf("mpeg") >= 0 ? "mp3" : "webm";
+          const vfile = "voices/" + String(i).padStart(4, "0") + "_" + key + "." + vext;
+          files.push({ name: vfile, data: v.bytes });
+          vmeta[key] = { file: vfile, mime: v.mime };
+        }
+        if (Object.keys(vmeta).length) meta.voices = vmeta;
+      }
       manifestImages.push(meta);
     });
     const ls = {};
@@ -1081,6 +1124,14 @@ const Backup = {
       if (m.rig) rec.rig = m.rig;
       if (m.diffSpots) rec.diffSpots = m.diffSpots;
       if (m.fukuParts) rec.fukuParts = m.fukuParts;
+      if (m.voices) {
+        rec.voices = {};
+        for (const key of Object.keys(m.voices)) {
+          const vm = m.voices[key];
+          const vb = map[vm.file];
+          if (vb) rec.voices[key] = this._bytesToDataURL(vm.mime, vb);
+        }
+      }
       await Store.put(rec);
       n++;
     }

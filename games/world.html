@@ -40,17 +40,21 @@ async function init() {
   const chars = recs.filter((r) => r.cat === "char");
   for (const rec of chars) {
     const parts = await Rig.load(rec);
+    // ふわふわ(float)は地面ではなく画面の中段に うかせて配置する
+    const isFloat = parts.type === "float";
     // 同じ絵でも2体まで出すとにぎやか(キャラが少ないとき)
     const copies = chars.length < 3 ? 2 : 1;
     for (let i = 0; i < copies; i++) {
       actors.push({
         puppet: new Puppet(parts, {
           x: Util.rand(100, 1180),
-          y: GROUND,
+          y: isFloat ? Util.rand(280, 430) : GROUND,
           h: Util.rand(120, 190),
           facing: Math.random() < 0.5 ? 1 : -1,
         }),
         name: rec.name || "",
+        voices: rec.voices || null,
+        float: isFloat,
         target: Util.rand(100, 1180),
         pause: Util.rand(0, 2),
         bubbleT: 0,
@@ -70,7 +74,8 @@ cv.addEventListener("pointerdown", (e) => {
     if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
       a.vy = 520;
       a.bubbleT = 1.6;
-      Sound.pop();
+      // 登録ずみの こえ(よろこび・あいさつ・おどろき)からランダム再生。なければ従来の効果音
+      if (!Sound.playVoice(a.voices, ["joy", "greet", "ouch"])) Sound.pop();
       return;
     }
   }

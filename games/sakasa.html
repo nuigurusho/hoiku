@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>さかさクイズ</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .word-box {
+    margin: 14px auto;
+    padding: 22px 16px;
+    max-width: 620px;
+    background: #fff;
+    border: 4px solid var(--cream-d);
+    border-radius: 22px;
+    box-shadow: 0 6px 0 var(--cream-d);
+    font-size: 52px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    color: var(--ink);
+  }
+  .word-box.hidden-word { color: #cbb9a3; letter-spacing: 10px; }
+  .word-box.answer { color: #e8590c; }
+  .step-title { font-size: 22px; font-weight: bold; margin: 4px 0; }
+  #recDot { color: #fa5252; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1><img class="bar-icon" src="../assets/buttons/voice.png" alt=""> さかさクイズ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <!-- ========== つくるひと パート ========== -->
+  <div id="makeScreen">
+    <div class="panel">
+      <div class="step-title">🎙 つくるひと の ばん</div>
+      <p class="note">
+        でた ことばを、はっきり こえに だして ろくおんしてね(さいちょう10びょう)。
+        さかさに して あそぶよ!<br>
+        マイクは <b>localhost か https</b> で つかえます。ろくおんした こえは <b>ほぞんされません</b>。
+      </p>
+      <div class="word-box" id="wordBox">ことば</div>
+      <div class="row">
+        <button class="btn yellow" id="anotherBtn">🔀 べつの ことば</button>
+      </div>
+      <div class="row">
+        <button class="btn big pink" id="recBtn"><span id="recDot">🔴</span> ろくおん</button>
+        <button class="btn big gray hidden" id="stopBtn">⏹ ていし</button>
+      </div>
+      <div class="row" id="afterRecRow" style="visibility:hidden">
+        <button class="btn big blue" id="previewBtn">🔊 さかさを きく</button>
+        <button class="btn big green" id="useBtn">✔ この もんだいに する</button>
+      </div>
+      <p class="note" id="makeHint" style="min-height:22px"></p>
+    </div>
+  </div>
+
+  <!-- ========== こたえるひと パート ========== -->
+  <div id="answerScreen" class="hidden">
+    <div class="panel">
+      <div class="step-title">🙋 こたえるひと の ばん</div>
+      <p class="note">さかさの こえを きいて、なんの ことばか あてよう!(なんかいでも きけるよ)</p>
+      <div class="word-box hidden-word" id="hiddenWord">❓ ❓ ❓</div>
+      <div class="word-box answer hidden" id="answerWord">?</div>
+      <div class="row">
+        <button class="btn big blue" id="playBtn">🔊 さかさを きく</button>
+      </div>
+      <div class="row" id="judgeRow">
+        <button class="btn big green" id="correctBtn">⭕ せいかい</button>
+        <button class="btn big pink" id="wrongBtn">❌ ざんねん</button>
+      </div>
+      <p class="note" id="answerHint" style="min-height:22px">おとなの ひとが ⭕か❌を おしてね(こたえが でるよ)</p>
+      <div class="row hidden" id="nextRow">
+        <button class="btn big yellow" id="nextBtn">➡ つぎの もんだい</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+/* 保育園児が わかることば(約60語) */
+const WORDS = [
+  "りんご", "ばなな", "みかん", "いちご", "ぶどう", "すいか", "めろん", "とまと",
+  "にんじん", "たまねぎ", "きゅうり", "いぬ", "ねこ", "うさぎ", "ぞう", "きりん",
+  "ぱんだ", "らいおん", "くま", "さる", "とり", "さかな", "かえる", "かめ",
+  "ぺんぎん", "ひよこ", "うし", "ぶた", "うま", "ちょうちょ", "でんしゃ", "くるま",
+  "ひこうき", "ふね", "じてんしゃ", "ばす", "ろけっと", "あめ", "ゆき", "にじ",
+  "たいよう", "つき", "ほし", "くも", "はな", "やま", "うみ", "そら",
+  "ぼうし", "くつ", "かさ", "とけい", "でんわ", "ほん", "こっぷ", "おにぎり",
+  "ぱん", "たまご", "けーき", "せんせい", "ともだち",
+];
+
+/* ろくおん & さかさ再生の じょうたい(端末内のみ・保存しない) */
+const rec = { mr: null, stream: null, chunks: [], key: null, reversed: null, timer: 0, tick: 0, t0: 0 };
+let word = "";
+
+/* --- ことば えらび --- */
+function pickWord() {
+  let w;
+  do { w = Util.choice(WORDS); } while (w === word && WORDS.length > 1);
+  word = w;
+  $("wordBox").textContent = word;
+}
+
+function showRecBtn(recording) {
+  $("recBtn").classList.toggle("hidden", recording);
+  $("stopBtn").classList.toggle("hidden", !recording);
+}
+
+function resetMake() {
+  pickWord();
+  rec.reversed = null;
+  $("afterRecRow").style.visibility = "hidden";
+  $("makeHint").textContent = "";
+  showRecBtn(false);
+}
+
+/* --- Web Audio で さかさ再生(decodeAudioData → チャンネル配列を反転 → BufferSource) --- */
+async function makeReversed(blob) {
+  const actx = Sound.ensure();
+  const arr = await blob.arrayBuffer();
+  const buf = await actx.decodeAudioData(arr);
+  const rev = actx.createBuffer(buf.numberOfChannels, buf.length, buf.sampleRate);
+  for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+    const src = buf.getChannelData(ch);
+    const dst = rev.getChannelData(ch);
+    for (let i = 0, j = src.length - 1; i < src.length; i++, j--) dst[i] = src[j];
+  }
+  return rev;
+}
+function playBuffer(bufr) {
+  if (!bufr) return;
+  const actx = Sound.ensure();
+  const s = actx.createBufferSource();
+  s.buffer = bufr;
+  s.connect(actx.destination);
+  s.start();
+}
+
+/* --- ろくおん --- */
+async function startRec() {
+  if (rec.key) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    $("makeHint").textContent = "このブラウザでは マイクが つかえません(Chrome推奨)。";
+    Sound.bad();
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    $("makeHint").textContent = "マイクが つかえません。localhost か https で ひらいて、マイクを「きょか」してね。";
+    Sound.bad();
+    return;
+  }
+  let mr;
+  try { mr = new MediaRecorder(stream); }
+  catch (e) {
+    $("makeHint").textContent = "このブラウザは ろくおんに たいおうしていません(Chrome推奨)。";
+    stream.getTracks().forEach((t) => t.stop());
+    return;
+  }
+  rec.stream = stream;
+  rec.mr = mr;
+  rec.key = "rec";
+  rec.chunks = [];
+  rec.reversed = null;
+  mr.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+  mr.onstop = () => onRecStop();
+  mr.start();
+  showRecBtn(true);
+  $("afterRecRow").style.visibility = "hidden";
+  $("makeHint").textContent = "";
+  Sound.tick();
+  // カウントダウン & 10びょうで じどうていし
+  rec.t0 = performance.now();
+  clearInterval(rec.tick);
+  rec.tick = setInterval(() => {
+    const left = Math.max(0, 10 - Math.floor((performance.now() - rec.t0) / 1000));
+    $("stopBtn").textContent = `⏹ ていし(のこり${left}びょう)`;
+  }, 200);
+  rec.timer = setTimeout(() => stopRec(), 10000);
+}
+
+function stopRec() {
+  if (rec.mr && rec.mr.state !== "inactive") rec.mr.stop();
+}
+
+async function onRecStop() {
+  clearTimeout(rec.timer);
+  clearInterval(rec.tick);
+  const blob = new Blob(rec.chunks, { type: (rec.mr && rec.mr.mimeType) || "audio/webm" });
+  if (rec.stream) { rec.stream.getTracks().forEach((t) => t.stop()); rec.stream = null; }
+  rec.mr = null;
+  rec.key = null;
+  showRecBtn(false);
+  if (!blob.size) {
+    $("makeHint").textContent = "うまく ろくおんできませんでした。もういちど どうぞ。";
+    return;
+  }
+  try {
+    rec.reversed = await makeReversed(blob);
+  } catch (e) {
+    $("makeHint").textContent = "おとの へんかんに しっぱいしました。もういちど どうぞ。";
+    return;
+  }
+  Sound.pop();
+  $("afterRecRow").style.visibility = "visible";
+  $("makeHint").textContent = "「さかさを きく」で かくにん →「この もんだいに する」で こたえるひとへ!";
+}
+
+/* --- こたえる画面へ --- */
+function goAnswer() {
+  if (!rec.reversed) return;
+  Sound.tap();
+  $("makeScreen").classList.add("hidden");
+  $("answerScreen").classList.remove("hidden");
+  $("hiddenWord").classList.remove("hidden");
+  $("answerWord").classList.add("hidden");
+  $("answerWord").textContent = word;
+  $("judgeRow").classList.remove("hidden");
+  $("nextRow").classList.add("hidden");
+  $("answerHint").textContent = "おとなの ひとが ⭕か❌を おしてね(こたえが でるよ)";
+  playBuffer(rec.reversed);   // すぐ1かい きかせる
+}
+
+function reveal() {
+  $("answerWord").classList.remove("hidden");
+  $("hiddenWord").classList.add("hidden");
+  $("judgeRow").classList.add("hidden");
+  $("nextRow").classList.remove("hidden");
+  $("answerHint").textContent = `こたえは 「${word}」 でした!`;
+}
+
+function judge(ok) {
+  reveal();
+  if (ok) {
+    Sound.fanfare();
+    Ui.confetti();
+    Ui.msg("せいかい!🎉", 1800, "#51cf66");
+  } else {
+    Sound.bad();
+    Ui.msg("ざんねん…", 1500, "#9775fa");
+  }
+}
+
+function backToMake() {
+  Sound.tap();
+  rec.reversed = null;
+  $("answerScreen").classList.add("hidden");
+  $("makeScreen").classList.remove("hidden");
+  resetMake();
+}
+
+/* --- ボタン配線 --- */
+$("anotherBtn").onclick = () => { Sound.tap(); resetMake(); };
+$("recBtn").onclick = () => startRec();
+$("stopBtn").onclick = () => stopRec();
+$("previewBtn").onclick = () => { Sound.tap(); playBuffer(rec.reversed); };
+$("useBtn").onclick = () => goAnswer();
+$("playBtn").onclick = () => { Sound.tap(); playBuffer(rec.reversed); };
+$("correctBtn").onclick = () => judge(true);
+$("wrongBtn").onclick = () => judge(false);
+$("nextBtn").onclick = () => backToMake();
+
+resetMake();
+</script>
+</body>
+</html>
