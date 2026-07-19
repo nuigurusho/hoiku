@@ -17,8 +17,6 @@
     letter-spacing: 4px;
     color: var(--ink);
   }
-  .word-box.hidden-word { color: #cbb9a3; letter-spacing: 10px; }
-  .word-box.answer { color: #e8590c; }
   /* ことばの下の ローマ字 */
   .word-romaji {
     margin: 0 auto 4px;
@@ -37,6 +35,16 @@
   .step-title { font-size: 22px; font-weight: bold; margin: 4px 0; }
   #recDot { color: #fa5252; }
   .mode-desc { font-size: 15px; font-weight: normal; }
+  .qnum { text-align: center; font-size: 20px; font-weight: bold; color: #8a7a68; margin-top: 10px; }
+  .stars { text-align: center; font-size: 46px; letter-spacing: 6px; }
+  /* こえを もういちど きく まるボタン(アイコンだけ) */
+  .play-icon {
+    font-size: 34px;
+    width: 72px;
+    height: 72px;
+    padding: 0;
+    border-radius: 50%;
+  }
 </style>
 </head>
 <body>
@@ -58,16 +66,17 @@
           <span class="mode-desc">ふつうに よんだ こえを きかいが さかさまに(むずかしい)</span></button>
       </div>
       <p class="note">
-        どちらも、こたえるひとは こえを きいて もとの キーワードを あてます。
+        つくるひとが もんだいを 5もん ろくおん → こたえるひとが 4たくで こたえるよ。
         マイクは <b>localhost か https</b> で つかえます。ろくおんした こえは <b>ほぞんされません</b>。
       </p>
     </div>
   </div>
 
-  <!-- ========== つくるひと パート ========== -->
+  <!-- ========== つくるひと パート(5もん れんぞく) ========== -->
   <div id="makeScreen" class="hidden">
     <div class="panel">
       <div class="step-title" id="makeTitle">🎙 つくるひと の ばん</div>
+      <div class="qnum" id="makeQnum"></div>
       <p class="note" id="makeNote"></p>
       <div class="word-box" id="wordBox">ことば</div>
       <div class="word-romaji" id="wordRomaji"></div>
@@ -78,34 +87,46 @@
       <div class="row">
         <button class="btn big pink" id="recBtn"><span id="recDot">🔴</span> ろくおん</button>
         <button class="btn big gray hidden" id="stopBtn">⏹ ていし</button>
-      </div>
-      <div class="row" id="afterRecRow" style="visibility:hidden">
-        <button class="btn big blue" id="previewBtn">🔊 きいてみる</button>
-        <button class="btn big green" id="useBtn">✔ この もんだいに する</button>
+        <button class="btn big blue hidden" id="previewBtn">🔊 きいてみる</button>
       </div>
       <p class="note" id="makeHint" style="min-height:22px"></p>
+      <div class="row">
+        <button class="btn big gray" id="prevBtn">← もどる</button>
+        <button class="btn big green" id="nextBtn">つぎへ →</button>
+      </div>
     </div>
   </div>
 
-  <!-- ========== こたえるひと パート ========== -->
-  <div id="answerScreen" class="hidden">
+  <!-- ========== かんせい → ゲームせつめい ========== -->
+  <div id="readyScreen" class="hidden">
     <div class="panel">
-      <div class="step-title">🙋 こたえるひと の ばん</div>
-      <p class="note" id="answerNote"></p>
-      <div class="word-box hidden-word" id="hiddenWord">❓ ❓ ❓</div>
-      <div class="word-box answer hidden" id="answerWord">?</div>
-      <div class="word-romaji hidden" id="answerRomaji"></div>
+      <h2>もんだい かんせい!</h2>
+      <p style="font-size:22px; font-weight:bold" id="readyNote"></p>
+      <p class="note">こえは なんかいでも きけるよ。ぜんもん せいかい めざして がんばろう!</p>
       <div class="row">
-        <button class="btn big blue" id="playBtn">🔊 こえを きく</button>
+        <button class="btn big pink" id="startBtn">▶ ゲームかいし</button>
       </div>
-      <div class="row" id="judgeRow">
-        <button class="btn big green" id="correctBtn">⭕ せいかい</button>
-        <button class="btn big pink" id="wrongBtn">❌ ざんねん</button>
-      </div>
-      <p class="note" id="answerHint" style="min-height:22px">おとなの ひとが ⭕か❌を おしてね(こたえが でるよ)</p>
-      <div class="row hidden" id="nextRow">
-        <button class="btn big yellow" id="nextBtn">➡ つぎの もんだい</button>
-      </div>
+    </div>
+  </div>
+
+  <!-- ========== こたえるひと パート(4たく) ========== -->
+  <div id="quizScreen" class="hidden">
+    <div class="qnum" id="qnum"></div>
+    <p style="text-align:center; font-weight:bold; margin:6px" id="quizNote"></p>
+    <div class="row" style="margin:8px 0">
+      <button class="btn blue play-icon" id="replayBtn" title="もういちど きく">🔊</button>
+    </div>
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <!-- ========== クリアがめん ========== -->
+  <div id="endScreen" class="panel hidden">
+    <h2>おしまい!</h2>
+    <div class="stars" id="stars"></div>
+    <p style="font-size:26px; font-weight:bold" id="scoreText"></p>
+    <div class="row">
+      <button class="btn big green" id="retryBtn">もういちど こたえる</button>
+      <button class="btn big yellow" id="newBtn">あたらしい もんだいを つくる</button>
     </div>
   </div>
 </main>
@@ -114,6 +135,7 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
+const N_Q = 5;
 
 /* 保育園児が わかることば(約60語) */
 const WORDS = [
@@ -134,21 +156,23 @@ let mode = "moji";
 const MODE_TXT = {
   moji: {
     makeNote: "キーワードを さかさに よんでみよう! したの さかさことばを そのまま よんで ろくおんしてね(さいちょう10びょう)。",
-    preview: "🔊 きいてみる",
-    play: "🔊 こえを きく",
-    answerNote: "さかさに よんだ こえを きいて、もとの ことばを あてよう!(なんかいでも きけるよ)",
+    ready: "さかさに よんだ こえが 5もん ながれるよ。もとの ことばを 4つの なかから えらんでね!",
+    quizNote: "さかさに よんだ こえを きいて、もとの ことばを えらぼう!",
   },
   rev: {
     makeNote: "でた ことばを、はっきり こえに だして ろくおんしてね(さいちょう10びょう)。きかいが さかさに して あそぶよ!",
-    preview: "🔊 さかさを きく",
-    play: "🔊 さかさを きく",
-    answerNote: "さかさの こえを きいて、なんの ことばか あてよう!(なんかいでも きけるよ)",
+    ready: "さかさまに なった こえが 5もん ながれるよ。もとの ことばを 4つの なかから えらんでね!",
+    quizNote: "さかさまの こえを きいて、もとの ことばを えらぼう!",
   },
 };
 
-/* ろくおん & 再生の じょうたい(端末内のみ・保存しない) */
-const rec = { mr: null, stream: null, chunks: [], key: null, normal: null, reversed: null, timer: 0, tick: 0, t0: 0 };
-let word = "";
+/* もんだい5もんぶん(端末内のみ・保存しない) */
+let questions = [];   // [{word, normal:AudioBuffer, reversed:AudioBuffer}]
+let cur = 0;          // 作成中のもんだい番号
+let playIdx = 0, score = 0, busy = false;
+
+/* ろくおんの じょうたい */
+const rec = { mr: null, stream: null, chunks: [], key: null, timer: 0, tick: 0, t0: 0 };
 
 /* --- ひらがな → ローマ字(ヘボン式ふう) --- */
 const ROMA2 = {
@@ -211,70 +235,64 @@ function reverseMora(kana) {
 }
 
 /* このモードで こたえるひとに 聞かせる音 */
-function quizBuf() { return mode === "moji" ? rec.normal : rec.reversed; }
+function quizBufOf(q) { return q && (mode === "moji" ? q.normal : q.reversed); }
 
-/* --- ことば えらび(モードに合わせて 表示を切りかえ) --- */
-function pickWord() {
+/* 5もんで かぶらないように ことばを えらぶ */
+function pickUniqueWord() {
+  const used = questions.map((q) => q.word).filter(Boolean);
   let w;
-  do { w = Util.choice(WORDS); } while (w === word && WORDS.length > 1);
-  word = w;
-  if (mode === "moji") {
-    const sakasa = reverseMora(word);
-    $("wordBox").textContent = sakasa;
-    $("wordRomaji").textContent = toRomaji(sakasa);
-    $("wordSub").textContent = `もとの キーワード: ${word}`;
-    $("wordSub").classList.remove("hidden");
-  } else {
-    $("wordBox").textContent = word;
-    $("wordRomaji").textContent = toRomaji(word);
-    $("wordSub").classList.add("hidden");
-  }
+  do { w = Util.choice(WORDS); } while (used.indexOf(w) >= 0);
+  return w;
 }
 
-function showRecBtn(recording) {
-  $("recBtn").classList.toggle("hidden", recording);
-  $("stopBtn").classList.toggle("hidden", !recording);
-}
-
-function resetMake() {
-  pickWord();
-  rec.normal = null;
-  rec.reversed = null;
-  $("makeNote").textContent = MODE_TXT[mode].makeNote;
-  $("previewBtn").textContent = MODE_TXT[mode].preview;
-  $("afterRecRow").style.visibility = "hidden";
-  $("makeHint").textContent = "";
-  showRecBtn(false);
+/* --- 画面の切りかえ --- */
+const SCREENS = ["modeScreen", "makeScreen", "readyScreen", "quizScreen", "endScreen"];
+function showScreen(id) {
+  SCREENS.forEach((s) => $(s).classList.toggle("hidden", s !== id));
 }
 
 function setMode(m) {
   mode = m;
   Sound.tap();
-  $("modeScreen").classList.add("hidden");
-  $("makeScreen").classList.remove("hidden");
-  $("answerScreen").classList.add("hidden");
-  word = "";           // モードが変わったら ことばも えらびなおす
-  resetMake();
+  questions = Array.from({ length: N_Q }, () => ({ word: null, normal: null, reversed: null }));
+  questions[0].word = pickUniqueWord();
+  cur = 0;
+  showScreen("makeScreen");
+  renderMake();
 }
 
-function backToModeSelect() {
-  Sound.tap();
-  stopRec();
-  $("makeScreen").classList.add("hidden");
-  $("answerScreen").classList.add("hidden");
-  $("modeScreen").classList.remove("hidden");
-}
-
-/* 左上の「← もどる」は 1つずつ もどる:
-   ろくおん・こたえる画面 → あそびかたえらび → メニュー */
-document.addEventListener("click", (e) => {
-  const a = e.target.closest("a.back, a.back-float");
-  if (!a) return;
-  if ($("modeScreen").classList.contains("hidden")) {
-    e.preventDefault();
-    backToModeSelect();
+/* --- つくるひと画面の表示更新 --- */
+function renderMake() {
+  const q = questions[cur];
+  $("makeQnum").textContent = `もんだい ${cur + 1} / ${N_Q}`;
+  $("makeNote").textContent = MODE_TXT[mode].makeNote;
+  if (mode === "moji") {
+    const sakasa = reverseMora(q.word);
+    $("wordBox").textContent = sakasa;
+    $("wordRomaji").textContent = toRomaji(sakasa);
+    $("wordSub").textContent = `もとの キーワード: ${q.word}`;
+    $("wordSub").classList.remove("hidden");
+  } else {
+    $("wordBox").textContent = q.word;
+    $("wordRomaji").textContent = toRomaji(q.word);
+    $("wordSub").classList.add("hidden");
   }
-});
+  const recorded = !!q.normal;
+  $("previewBtn").classList.toggle("hidden", !recorded);
+  $("recBtn").innerHTML = recorded ? '<span id="recDot">🔴</span> とりなおす' : '<span id="recDot">🔴</span> ろくおん';
+  $("makeHint").textContent = recorded
+    ? (cur === N_Q - 1 ? "✅ ろくおんずみ!「かんせい」で クイズへ!" : "✅ ろくおんずみ!「つぎへ」で つぎの もんだいへ")
+    : "";
+  showRecBtn(false);
+  $("prevBtn").style.visibility = cur === 0 ? "hidden" : "visible";
+  $("nextBtn").textContent = cur === N_Q - 1 ? "✔ かんせい" : "つぎへ →";
+}
+
+function showRecBtn(recording) {
+  $("recBtn").classList.toggle("hidden", recording);
+  $("stopBtn").classList.toggle("hidden", !recording);
+  if (recording) $("previewBtn").classList.add("hidden");
+}
 
 /* --- Web Audio: デコードと さかさバッファ作成 --- */
 async function decodeBlob(blob) {
@@ -331,13 +349,10 @@ async function startRec() {
   rec.mr = mr;
   rec.key = "rec";
   rec.chunks = [];
-  rec.normal = null;
-  rec.reversed = null;
   mr.ondataavailable = (e) => { if (e.data && e.data.size) rec.chunks.push(e.data); };
   mr.onstop = () => onRecStop();
   mr.start();
   showRecBtn(true);
-  $("afterRecRow").style.visibility = "hidden";
   $("makeHint").textContent = "";
   Sound.tick();
   // カウントダウン & 10びょうで じどうていし
@@ -361,84 +376,149 @@ async function onRecStop() {
   if (rec.stream) { rec.stream.getTracks().forEach((t) => t.stop()); rec.stream = null; }
   rec.mr = null;
   rec.key = null;
-  showRecBtn(false);
   if (!blob.size) {
+    renderMake();
     $("makeHint").textContent = "うまく ろくおんできませんでした。もういちど どうぞ。";
     return;
   }
   try {
-    rec.normal = await decodeBlob(blob);
-    rec.reversed = reverseBuffer(rec.normal);
+    const buf = await decodeBlob(blob);
+    questions[cur].normal = buf;
+    questions[cur].reversed = reverseBuffer(buf);
   } catch (e) {
+    renderMake();
     $("makeHint").textContent = "おとの へんかんに しっぱいしました。もういちど どうぞ。";
     return;
   }
   Sound.pop();
-  $("afterRecRow").style.visibility = "visible";
-  $("makeHint").textContent = `「${MODE_TXT[mode].preview.replace("🔊 ", "")}」で かくにん →「この もんだいに する」で こたえるひとへ!`;
+  renderMake();
 }
 
-/* --- こたえる画面へ --- */
-function goAnswer() {
-  if (!quizBuf()) return;
+/* --- 5もんの ナビゲーション --- */
+function goPrev() {
+  if (cur === 0) return;
   Sound.tap();
-  $("makeScreen").classList.add("hidden");
-  $("answerScreen").classList.remove("hidden");
-  $("answerNote").textContent = MODE_TXT[mode].answerNote;
-  $("playBtn").textContent = MODE_TXT[mode].play;
-  $("hiddenWord").classList.remove("hidden");
-  $("answerWord").classList.add("hidden");
-  $("answerWord").textContent = word;
-  $("answerRomaji").textContent = toRomaji(word);
-  $("answerRomaji").classList.add("hidden");
-  $("judgeRow").classList.remove("hidden");
-  $("nextRow").classList.add("hidden");
-  $("answerHint").textContent = "おとなの ひとが ⭕か❌を おしてね(こたえが でるよ)";
-  playBuffer(quizBuf());   // すぐ1かい きかせる
+  stopRec();
+  cur--;
+  renderMake();
 }
-
-function reveal() {
-  $("answerWord").classList.remove("hidden");
-  $("answerRomaji").classList.remove("hidden");
-  $("hiddenWord").classList.add("hidden");
-  $("judgeRow").classList.add("hidden");
-  $("nextRow").classList.remove("hidden");
-  $("answerHint").textContent = `こたえは 「${word}」 でした!`;
-}
-
-function judge(ok) {
-  reveal();
-  if (ok) {
-    Sound.fanfare();
-    Ui.confetti();
-    Ui.msg("せいかい!🎉", 1800, "#51cf66");
-  } else {
+function goNext() {
+  if (!questions[cur].normal) {
     Sound.bad();
-    Ui.msg("ざんねん…", 1500, "#9775fa");
+    Ui.msg("さきに ろくおんしてね", 1400, "#4dabf7");
+    return;
+  }
+  Sound.tap();
+  stopRec();
+  if (cur < N_Q - 1) {
+    cur++;
+    if (!questions[cur].word) questions[cur].word = pickUniqueWord();
+    renderMake();
+  } else {
+    // かんせい → ゲームせつめいへ
+    $("readyNote").textContent = MODE_TXT[mode].ready;
+    showScreen("readyScreen");
   }
 }
 
-function backToMake() {
+/* --- こたえるひと(4たく) --- */
+function startPlay() {
   Sound.tap();
-  rec.normal = null;
-  rec.reversed = null;
-  $("answerScreen").classList.add("hidden");
-  $("makeScreen").classList.remove("hidden");
-  resetMake();
+  playIdx = 0;
+  score = 0;
+  showScreen("quizScreen");
+  showQ();
 }
+
+function showQ() {
+  const q = questions[playIdx];
+  busy = false;
+  $("qnum").textContent = `だい ${playIdx + 1} もん / ${N_Q} もん`;
+  $("quizNote").textContent = MODE_TXT[mode].quizNote;
+  // 4たく: せいかい + ほかのことば3つ(5もんの ことばは まぜない)
+  const used = questions.map((x) => x.word);
+  const others = Util.shuffle(WORDS.filter((w) => used.indexOf(w) < 0)).slice(0, 3);
+  const choices = Util.shuffle([q.word].concat(others));
+  const box = $("choices");
+  box.innerHTML = "";
+  choices.forEach((w, i) => {
+    const b = document.createElement("button");
+    b.className = `choice c${i}`;
+    b.textContent = w;
+    b.onclick = () => answer(w);
+    box.appendChild(b);
+  });
+  playBuffer(quizBufOf(q));   // ひらいたら 1かいめは じどうで さいせい
+}
+
+function answer(w) {
+  if (busy) return;
+  busy = true;
+  const q = questions[playIdx];
+  const ok = w === q.word;
+  document.querySelectorAll("#choices .choice").forEach((b) => {
+    if (b.textContent === q.word) b.classList.add("correct");
+    else b.classList.add("dim");
+  });
+  if (ok) {
+    score++;
+    Sound.good();
+    Ui.msg("せいかい!⭕", 1100, "#51cf66");
+  } else {
+    Sound.bad();
+    Ui.msg("ざんねん…", 1100, "#4dabf7");
+  }
+  setTimeout(() => {
+    playIdx++;
+    if (playIdx < N_Q) showQ();
+    else finishPlay();
+  }, 1500);
+}
+
+/* --- クリアがめん(4たくクイズと同様) --- */
+function finishPlay() {
+  showScreen("endScreen");
+  const rate = score / N_Q;
+  $("stars").textContent = rate === 1 ? "⭐⭐⭐" : rate >= 0.6 ? "⭐⭐" : "⭐";
+  $("scoreText").textContent = `${N_Q}もん中 ${score}もん せいかい!`;
+  Sound.fanfare();
+  if (rate >= 0.6) Ui.confetti();
+}
+
+/* --- 左上の「← もどる」は 1つずつ もどる --- */
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a.back, a.back-float");
+  if (!a) return;
+  const vis = (id) => !$(id).classList.contains("hidden");
+  if (vis("modeScreen")) return;   // ふつうに メニューへ
+  e.preventDefault();
+  Sound.tap();
+  stopRec();
+  if (vis("makeScreen")) showScreen("modeScreen");
+  else if (vis("readyScreen")) { showScreen("makeScreen"); renderMake(); }   // 完成後も もどって調整できる
+  else if (vis("quizScreen")) { $("readyNote").textContent = MODE_TXT[mode].ready; showScreen("readyScreen"); }
+  else showScreen("modeScreen");   // endScreen から
+});
 
 /* --- ボタン配線 --- */
 $("modeMojiBtn").onclick = () => setMode("moji");
 $("modeRevBtn").onclick = () => setMode("rev");
-$("anotherBtn").onclick = () => { Sound.tap(); resetMake(); };
+$("anotherBtn").onclick = () => {
+  Sound.tap();
+  stopRec();
+  // ことばを かえたら その もんだいの ろくおんは やりなおし
+  questions[cur] = { word: pickUniqueWord(), normal: null, reversed: null };
+  renderMake();
+};
 $("recBtn").onclick = () => startRec();
 $("stopBtn").onclick = () => stopRec();
-$("previewBtn").onclick = () => { Sound.tap(); playBuffer(quizBuf()); };
-$("useBtn").onclick = () => goAnswer();
-$("playBtn").onclick = () => { Sound.tap(); playBuffer(quizBuf()); };
-$("correctBtn").onclick = () => judge(true);
-$("wrongBtn").onclick = () => judge(false);
-$("nextBtn").onclick = () => backToMake();
+$("previewBtn").onclick = () => { Sound.tap(); playBuffer(quizBufOf(questions[cur])); };
+$("prevBtn").onclick = () => goPrev();
+$("nextBtn").onclick = () => goNext();
+$("startBtn").onclick = () => startPlay();
+$("replayBtn").onclick = () => playBuffer(quizBufOf(questions[playIdx]));
+$("retryBtn").onclick = () => startPlay();
+$("newBtn").onclick = () => { Sound.tap(); showScreen("modeScreen"); };
 </script>
 </body>
 </html>
