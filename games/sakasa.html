@@ -136,13 +136,16 @@ async function makeReversed(blob) {
   }
   return rev;
 }
+let curSrc = null;   // 再生中のソース(連打でかぶらないように)
 function playBuffer(bufr) {
   if (!bufr) return;
   const actx = Sound.ensure();
+  if (curSrc) { try { curSrc.stop(); } catch (e) {} }
   const s = actx.createBufferSource();
   s.buffer = bufr;
   s.connect(actx.destination);
   s.start();
+  curSrc = s;
 }
 
 /* --- ろくおん --- */

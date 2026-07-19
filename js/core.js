@@ -264,12 +264,15 @@ const Sound = {
      voices={joy,greet,ouch,fail} のうち keys にあって登録ずみのものから
      ランダムに1つ再生する。鳴らせたら true、登録がなければ false を返すので、
      呼び出し側は false のとき従来の効果音にフォールバックできる。 */
+  _voiceAudio: null,   // 再生中のキャラの声(連打でかぶらないように)
   playVoice(voices, keys) {
     if (!voices) return false;
     const avail = keys.filter((k) => voices[k]);
     if (!avail.length) return false;
     try {
+      if (this._voiceAudio) { try { this._voiceAudio.pause(); } catch (e) {} }
       const a = new Audio(voices[Util.choice(avail)]);
+      this._voiceAudio = a;
       a.play().catch(() => {});
       return true;
     } catch (e) { return false; }
