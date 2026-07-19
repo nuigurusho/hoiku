@@ -57,6 +57,16 @@ const Util = {
     });
   },
 
+  /* Blob → dataURL(録音した音声の保存などに使う) */
+  blobToDataURL(blob) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result);
+      fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+  },
+
   /* 白っぽい背景を透明に(紙に描いた絵の切りぬき) */
   keyImage(img, thr = 225) {
     const c = Util.makeCanvas(img.width, img.height);
@@ -249,83 +259,29 @@ const Sound = {
     [1047, 1319, 1568].forEach((f, i) => this.beep(f, 0.5, "sine", 0.15, 1.2 + i * 0.03));
   },
   laugh() { [700, 600, 700, 600, 750].forEach((f, i) => this.beep(f, 0.09, "square", 0.12, i * 0.1)); },
+
+  /* キャラの声(admin.htmlで録音した dataURL)を鳴らす。
+     voices={joy,greet,ouch,fail} のうち keys にあって登録ずみのものから
+     ランダムに1つ再生する。鳴らせたら true、登録がなければ false を返すので、
+     呼び出し側は false のとき従来の効果音にフォールバックできる。 */
+  playVoice(voices, keys) {
+    if (!voices) return false;
+    const avail = keys.filter((k) => voices[k]);
+    if (!avail.length) return false;
+    try {
+      const a = new Audio(voices[Util.choice(avail)]);
+      a.play().catch(() => {});
+      return true;
+    } catch (e) { return false; }
+  },
 };
 window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
-
-/* ---------------- Voice(キャラのこえ 録音・再生) ----------------
-   設定画面で キャラごとに録音した声を rec.voices = { joy: dataURL, ... } に保存し、
-   ゲーム側から再生する。音声は画像と同じく IndexedDB の中だけに保存される。 */
-const Voice = {
-  KINDS: [
-    { key: "joy",   label: "よろこび",         ex: "やったー!/わーい/いえーい" },
-    { key: "greet", label: "あいさつ",         ex: "こんにちは/やっほー/ハロー" },
-    { key: "ouch",  label: "おどろき・いたみ", ex: "いたっ!/うわっ!" },
-    { key: "fail",  label: "しっぱい",         ex: "そんなぁ…/ざんねん…/つぎはがんばろう" },
-  ],
-  /* みんなのせかい 等で ランダム再生する種類(しっぱいは含めない) */
-  RANDOM_KINDS: ["joy", "greet", "ouch"],
-  MAX_SEC: 10,
-  _cur: null,   // 再生中の Audio(かぶり防止)
-
-  supported() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); },
-
-  _mime() {
-    for (const m of ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]) {
-      if (MediaRecorder.isTypeSupported(m)) return m;
-    }
-    return "";
-  },
-
-  /* 録音開始。かえり値: { stop(), done:Promise<dataURL> }
-     stop() で終了、MAX_SEC 経過でも自動終了し、どちらも done が解決する */
-  async start() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mime = this._mime();
-    const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-    const chunks = [];
-    mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-    const done = new Promise((res, rej) => {
-      mr.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks, { type: mr.mimeType || "audio/webm" });
-        const fr = new FileReader();
-        fr.onload = () => res(fr.result);
-        fr.onerror = rej;
-        fr.readAsDataURL(blob);
-      };
-    });
-    mr.start();
-    const timer = setTimeout(() => { if (mr.state !== "inactive") mr.stop(); }, this.MAX_SEC * 1000);
-    return {
-      stop() { clearTimeout(timer); if (mr.state !== "inactive") mr.stop(); return done; },
-      done,
-    };
-  },
-
-  /* rec の kind のこえを再生。登録されていれば true */
-  play(rec, kind) {
-    const url = rec && rec.voices && rec.voices[kind];
-    if (!url) return false;
-    if (this._cur) { try { this._cur.pause(); } catch (e) {} }
-    const a = new Audio(url);
-    this._cur = a;
-    a.play().catch(() => {});
-    return true;
-  },
-
-  /* 登録ずみのこえの中から ランダムに1つ再生。1つもなければ false */
-  playRandom(rec, kinds) {
-    kinds = kinds || this.RANDOM_KINDS;
-    const avail = kinds.filter((k) => rec && rec.voices && rec.voices[k]);
-    if (!avail.length) return false;
-    return this.play(rec, Util.choice(avail));
-  },
-};
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
    レコード: { id, name, cat('char'|'bg'|'pic'), dataURL,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
-               fukuParts:[{kind,x,y,w,h}], voices:{joy,greet,ouch,fail}, created } */
+               fukuParts:[{kind,x,y,w,h}],
+               voices:{joy,greet,ouch,fail}(dataURL・キャラの声), created } */
 const Store = {
   db: null,
   _mem: null, // IndexedDBが使えない環境用
@@ -1100,7 +1056,23 @@ const Backup = {
       if (r.rig) meta.rig = r.rig;
       if (r.diffSpots) meta.diffSpots = r.diffSpots;
       if (r.fukuParts) meta.fukuParts = r.fukuParts;
-      if (r.voices) meta.voices = r.voices;
+      // キャラの声(joy/greet/ouch/fail)も別ファイルとして同梱する
+      if (r.voices) {
+        const vmeta = {};
+        for (const key of Object.keys(r.voices)) {
+          const url = r.voices[key];
+          if (!url) continue;
+          const v = this._dataURLtoBytes(url);
+          const vext = v.mime.indexOf("mp4") >= 0 ? "mp4"
+            : v.mime.indexOf("ogg") >= 0 ? "ogg"
+            : v.mime.indexOf("wav") >= 0 ? "wav"
+            : v.mime.indexOf("mpeg") >= 0 ? "mp3" : "webm";
+          const vfile = "voices/" + String(i).padStart(4, "0") + "_" + key + "." + vext;
+          files.push({ name: vfile, data: v.bytes });
+          vmeta[key] = { file: vfile, mime: v.mime };
+        }
+        if (Object.keys(vmeta).length) meta.voices = vmeta;
+      }
       manifestImages.push(meta);
     });
     const ls = {};
@@ -1152,7 +1124,14 @@ const Backup = {
       if (m.rig) rec.rig = m.rig;
       if (m.diffSpots) rec.diffSpots = m.diffSpots;
       if (m.fukuParts) rec.fukuParts = m.fukuParts;
-      if (m.voices) rec.voices = m.voices;
+      if (m.voices) {
+        rec.voices = {};
+        for (const key of Object.keys(m.voices)) {
+          const vm = m.voices[key];
+          const vb = map[vm.file];
+          if (vb) rec.voices[key] = this._bytesToDataURL(vm.mime, vb);
+        }
+      }
       await Store.put(rec);
       n++;
     }

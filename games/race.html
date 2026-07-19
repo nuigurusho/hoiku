@@ -147,8 +147,8 @@ async function start(modeKey) {
       const parts = await Rig.load(rec);
       racers.push({
         name: (isAi ? "CPU " : "") + (rec.name || ""),
-        rec,
         puppet: new Puppet(parts, { h: 150 }),
+        voices: rec.voices || null,
         prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
         player: !isAi, ai: isAi,
       });
@@ -159,8 +159,8 @@ async function start(modeKey) {
       const parts = await Rig.load(rec);
       racers.push({
         name: rec.name || "",
-        rec,
         puppet: new Puppet(parts, { h: kind === "vs" ? 150 : Math.min(150, 560 / recs.length + 60) }),
+        voices: rec.voices || null,
         prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
       });
     }
@@ -241,8 +241,8 @@ function update(dt) {
         if (g.kind === "cpu" && !g.ended) return finishCpu(g, r);
         if (r.rank === 1) {
           Sound.fanfare(); Ui.confetti(); Ui.msg(`${r.name || "1ばん"} のかち!🏆`, 2400);
-          // 2体以上のレースなので、かった側の「よろこび」だけ再生(しっぱいは鳴らさない)
-          Voice.play(r.rec, "joy");
+          // 2体以上出るので、かった キャラの よろこびの こえ だけ 鳴らす(fail は鳴らさない)
+          Sound.playVoice(r.voices, ["joy"]);
         } else Sound.good();
         if (g.finished === g.racers.length) {
           g.state = "end";
@@ -259,6 +259,8 @@ function finishCpu(g, r) {
   g.ended = true;
   g.state = "end";
   $("endRow").classList.remove("hidden");
+  // さきに ゴールした(=かった)キャラの よろこびの こえ だけ 鳴らす
+  Sound.playVoice(r.voices, ["joy"]);
   if (r.player) {
     const secs = Math.max(1, Math.round(g.t * 10) / 10);
     Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
@@ -269,8 +271,6 @@ function finishCpu(g, r) {
     Sound.bad();
     Ui.msg("CPUの かち…ざんねん!", 2400, "#9775fa");
   }
-  // かった側の「よろこび」だけ再生(2体レースなので しっぱいは鳴らさない)
-  Voice.play(r.rec, "joy");
 }
 
 function draw() {

@@ -29,7 +29,7 @@ const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
 const GROUND = 660;
 
-const actors = [];   // {puppet, rec, target, pause, bubble, bubbleT, airY, vy, hover}
+const actors = [];   // {puppet, target, pause, bubble, bubbleT, airY, vy}
 let bgImg = null;
 
 async function init() {
@@ -40,24 +40,25 @@ async function init() {
   const chars = recs.filter((r) => r.cat === "char");
   for (const rec of chars) {
     const parts = await Rig.load(rec);
+    // ふわふわ(float)は地面ではなく画面の中段に うかせて配置する
+    const isFloat = parts.type === "float";
     // 同じ絵でも2体まで出すとにぎやか(キャラが少ないとき)
     const copies = chars.length < 3 ? 2 : 1;
     for (let i = 0; i < copies; i++) {
       actors.push({
         puppet: new Puppet(parts, {
           x: Util.rand(100, 1180),
-          y: GROUND,
+          y: isFloat ? Util.rand(280, 430) : GROUND,
           h: Util.rand(120, 190),
           facing: Math.random() < 0.5 ? 1 : -1,
         }),
-        rec,
         name: rec.name || "",
+        voices: rec.voices || null,
+        float: isFloat,
         target: Util.rand(100, 1180),
         pause: Util.rand(0, 2),
         bubbleT: 0,
         airY: 0, vy: 0,
-        // ふわふわタイプは 地面ではなく 画面中段くらいに うかせる
-        hover: parts.type === "float" ? Util.rand(210, 300) : 0,
       });
     }
   }
@@ -69,12 +70,12 @@ cv.addEventListener("pointerdown", (e) => {
   const p = Util.canvasPos(cv, e);
   for (let i = actors.length - 1; i >= 0; i--) {
     const a = actors[i];
-    const b = a.puppet.bbox(a.airY + a.hover);
+    const b = a.puppet.bbox(a.airY);
     if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
       a.vy = 520;
       a.bubbleT = 1.6;
-      // 登録したこえ(よろこび・あいさつ・おどろき)から ランダム再生。なければ効果音
-      if (!Voice.playRandom(a.rec)) Sound.pop();
+      // 登録ずみの こえ(よろこび・あいさつ・おどろき)からランダム再生。なければ従来の効果音
+      if (!Sound.playVoice(a.voices, ["joy", "greet", "ouch"])) Sound.pop();
       return;
     }
   }
@@ -123,9 +124,9 @@ function loop(now) {
   /* 奥のキャラ(小さい)から描く */
   const sorted = actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
   for (const a of sorted) {
-    a.puppet.draw(ctx, a.airY + a.hover);
+    a.puppet.draw(ctx, a.airY);
     if (a.bubbleT > 0 && a.name) {
-      const b = a.puppet.bbox(a.airY + a.hover);
+      const b = a.puppet.bbox(a.airY);
       ctx.font = "bold 26px sans-serif";
       const tw = ctx.measureText(a.name).width;
       const bx = a.puppet.x - tw / 2 - 14, by = b.y - 52;
