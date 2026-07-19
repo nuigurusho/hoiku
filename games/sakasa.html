@@ -74,7 +74,6 @@
       <div class="word-sub hidden" id="wordSub"></div>
       <div class="row">
         <button class="btn yellow" id="anotherBtn">🔀 べつの ことば</button>
-        <button class="btn gray" id="modeBackBtn">あそびかたを えらびなおす</button>
       </div>
       <div class="row">
         <button class="btn big pink" id="recBtn"><span id="recDot">🔴</span> ろくおん</button>
@@ -266,6 +265,17 @@ function backToModeSelect() {
   $("modeScreen").classList.remove("hidden");
 }
 
+/* 左上の「← もどる」は 1つずつ もどる:
+   ろくおん・こたえる画面 → あそびかたえらび → メニュー */
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a.back, a.back-float");
+  if (!a) return;
+  if ($("modeScreen").classList.contains("hidden")) {
+    e.preventDefault();
+    backToModeSelect();
+  }
+});
+
 /* --- Web Audio: デコードと さかさバッファ作成 --- */
 async function decodeBlob(blob) {
   const actx = Sound.ensure();
@@ -420,7 +430,6 @@ function backToMake() {
 /* --- ボタン配線 --- */
 $("modeMojiBtn").onclick = () => setMode("moji");
 $("modeRevBtn").onclick = () => setMode("rev");
-$("modeBackBtn").onclick = () => backToModeSelect();
 $("anotherBtn").onclick = () => { Sound.tap(); resetMake(); };
 $("recBtn").onclick = () => startRec();
 $("stopBtn").onclick = () => stopRec();
