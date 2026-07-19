@@ -204,7 +204,7 @@ async function startPic(rec) {
 /* ---- せんたく画面 ---- */
 async function initSelect() {
   const recs = await Store.ensureSamples();
-  const faces = recs.filter((r) => (r.cat === "pic" || r.cat === "char") && r.fukuParts && r.fukuParts.length);
+  const faces = recs.filter((r) => r.fukuParts && r.fukuParts.length);
   const gal = $("gallery");
   if (!faces.length) {
     gal.innerHTML = '<p class="note">「とりこみ・せってい」で 顔の絵を とりこんで、「ふくわらいパーツ」を せっていしてね</p>';

@@ -91,6 +91,7 @@
           <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
           <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
           <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵</label>
+          <label class="radio"><input type="radio" name="cat" value="fuku"> 😀 ふくわらいパーツ</label>
         </div>
 
         <div class="tool-row" style="margin-top:14px">
@@ -256,7 +257,7 @@ $("saveBtn").onclick = async () => {
     return;
   }
   const cat = document.querySelector('input[name="cat"]:checked').value;
-  const base = { char: "キャラ", bg: "はいけい", pic: "え" }[cat];
+  const base = { char: "キャラ", bg: "はいけい", pic: "え", fuku: "ふくわらい" }[cat];
   const existing = await Store.all(cat);
   const nm = prompt("なまえを いれてください", `${base}${existing.length + 1}`);
   if (nm === null) return;

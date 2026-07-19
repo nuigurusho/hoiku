@@ -30,11 +30,14 @@
       <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
       <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ 背景の絵</label>
       <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵(パズル・まちがいさがし用)</label>
+      <label class="radio"><input type="radio" name="cat" value="fuku"> 😀 ふくわらいパーツ</label>
+      <label class="radio"><input type="radio" name="cat" value="src"> ✂️ トリミング用の元素材</label>
     </p>
     <p class="note">
       キャラクターの絵は「白い紙に、濃く・はっきり」描いたものを、明るい場所でまっすぐ撮ると
       きれいに切り抜けます。取り込んだら「動き設定」で、首・腰・中央の線を合わせてください。
-      ふくわらいで使う絵は、白い紙に顔を大きく描いて取り込み、「ふくわらいパーツ」で目・鼻・口を囲むときれいに仕上がります。
+      ふくわらいで使う絵は「ふくわらいパーツ」に取り込み、白い紙に顔を大きく描いて「ふくわらいパーツ」ボタンで目・鼻・口を囲むときれいに仕上がります(キャラクターの絵とは別に管理できます)。
+      「トリミング用の元素材」は、切り出したい大きな絵や写真をそのまま高画質で保存しておく置き場です。「✂トリミング」でここから何枚でも切り出せます。
     </p>
     <div class="row" style="justify-content:flex-start">
       <button class="btn green" id="pickBtn">📁 ファイルを選ぶ(PDFも可)</button>
@@ -47,6 +50,8 @@
   <div class="admin-sec"><h3>🧍 キャラクターの絵</h3><div id="listChar"></div></div>
   <div class="admin-sec"><h3>🏞️ 背景の絵</h3><div id="listBg"></div></div>
   <div class="admin-sec"><h3>🖼️ 写真・絵</h3><div id="listPic"></div></div>
+  <div class="admin-sec"><h3>😀 ふくわらいパーツ</h3><div id="listFuku"></div></div>
+  <div class="admin-sec"><h3>✂️ トリミング用の元素材</h3><div id="listSrc"></div></div>
 
   <div class="panel" style="text-align:left">
     <h2>❓ クイズを作る</h2>
@@ -184,6 +189,7 @@
       <label class="radio"><input type="radio" name="cropCat" value="char" checked> 🧍 キャラ</label>
       <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ 背景</label>
       <label class="radio"><input type="radio" name="cropCat" value="pic"> 🖼️ 写真・絵</label>
+      <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 ふくわらい</label>
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
     <div class="row">
@@ -205,7 +211,7 @@ if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "js/vendor/pdf.worker.min.js";
 }
 const $ = (id) => document.getElementById(id);
-const CATS = { char: "listChar", bg: "listBg", pic: "listPic" };
+const CATS = { char: "listChar", bg: "listBg", pic: "listPic", fuku: "listFuku", src: "listSrc" };
 
 async function refresh() {
   await Store.ensureSamples();
@@ -233,10 +239,20 @@ function row(r) {
     const nm = prompt("名前を入力してください", r.name || "");
     if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
   });
+  mk("⬇DL", "blue", () => {
+    const ext = /^data:image\/png/i.test(r.dataURL) ? "png" : "jpg";
+    const a = document.createElement("a");
+    a.href = r.dataURL;
+    a.download = (r.name || "画像").replace(/[\\/:*?"<>|]/g, "_") + "." + ext;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    Sound.tap();
+  });
   if (r.cat === "char") mk("動き設定", "purple", () => openRig(r));
   if (r.cat === "char") mk("🎤こえ", "orange", () => openVoice(r));
   if (r.cat === "pic") mk("まちがいスポット", "orange", () => openSpot(r));
-  if (r.cat === "char" || r.cat === "pic") mk("ふくわらいパーツ", "green", () => openFuku(r));
+  if (r.cat === "fuku" || r.cat === "pic" || r.cat === "char") mk("ふくわらいパーツ", "green", () => openFuku(r));
   mk("✂トリミング", "pink", async () => {
     const img = await Util.loadImage(r.dataURL);
     const c = Util.makeCanvas(img.width, img.height);
@@ -244,8 +260,8 @@ function row(r) {
     openCrop([c], r.name || "切り出し");
   });
   mk("カテゴリ", "yellow", async () => {
-    const order = ["char", "bg", "pic"];
-    r.cat = order[(order.indexOf(r.cat) + 1) % 3];
+    const order = ["char", "bg", "pic", "fuku", "src"];
+    r.cat = order[(order.indexOf(r.cat) + 1) % order.length];
     await Store.put(r); refresh();
   });
   mk("削除", "gray", async () => {
@@ -276,8 +292,9 @@ async function importFiles(files) {
   const fails = [];
   for (const f of files) {
     try {
-      const dataURL = await Util.fileToDataURL(f, cat === "char" ? 900 : 1100);
-      const base = { char: "キャラ", bg: "背景", pic: "絵・写真" }[cat];
+      const maxDim = { char: 900, src: 1600 }[cat] || 1100;   // 元素材は切り出し前提で高画質のまま保持
+      const dataURL = await Util.fileToDataURL(f, maxDim);
+      const base = { char: "キャラ", bg: "背景", pic: "絵・写真", fuku: "ふくわらい", src: "元素材" }[cat];
       const rec = { name: `${base}${++n}`, cat, dataURL };
       if (cat === "char") rec.rig = { ...Rig.DEFAULT };
       await Store.put(rec);

@@ -281,7 +281,7 @@ const Sound = {
 window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
-   レコード: { id, name, cat('char'|'bg'|'pic'), dataURL,
+   レコード: { id, name, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
                fukuParts:[{kind,x,y,w,h}],
                voices:{joy,greet,ouch,fail}(dataURL・キャラの声), created } */
@@ -648,7 +648,7 @@ const Samples = {
              ] };
   },
 
-  /* しゃしん・え 3: ふくわらいサンプル顔(白い紙のクレヨン画ふう・パーツ設定ずみ) */
+  /* ふくわらいパーツ: サンプル顔(白い紙のクレヨン画ふう・パーツ設定ずみ) */
   fukuFace() {
     const W = 480, H = 560;
     const c = Util.makeCanvas(W, H);
@@ -696,7 +696,7 @@ const Samples = {
     ctx.beginPath(); ctx.arc(120, 330, 20, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(360, 330, 20, 0, 7); ctx.fill();
 
-    return { name: "サンプルの おかお", cat: "pic", dataURL: c.toDataURL("image/png"),
+    return { name: "サンプルの おかお", cat: "fuku", dataURL: c.toDataURL("image/png"),
              fukuParts: [
                { kind: "め",     x: 0.250, y: 0.393, w: 0.188, h: 0.125 },
                { kind: "め",     x: 0.562, y: 0.393, w: 0.188, h: 0.125 },
