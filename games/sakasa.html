@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>さかさクイズ</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .word-box {
+    text-align: center;
+    background: #fff;
+    border: 3px solid var(--cream-d);
+    border-radius: 20px;
+    padding: 20px 14px;
+    margin: 12px auto;
+    max-width: 560px;
+    box-shadow: 0 5px 0 var(--cream-d);
+  }
+  .word { font-size: 54px; font-weight: bold; letter-spacing: 6px; }
+  .bigplay { font-size: 28px; padding: 24px 32px; }
+  .rec-dot { color: #e03131; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .15; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🙃 さかさクイズ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <!-- つくるひとパート -->
+  <div id="makeScreen" class="panel">
+    <h2>つくるひと(こたえるひとには ないしょ!)</h2>
+    <p class="note">
+      でてきた ことばを、マイクに むかって <b>ふつうに</b> よんで ろくおんしてね。
+      あとで <b>さかさ</b>に なって ながれるよ。ことばは かえられるよ。
+    </p>
+    <div class="word-box"><div class="word" id="word"></div></div>
+    <div class="row">
+      <button class="btn yellow" id="anotherBtn">🔀 べつのことば</button>
+      <button class="btn green" id="recBtn">🎤 ろくおん</button>
+      <button class="btn orange hidden" id="stopBtn"><span class="rec-dot">●</span> とめる</button>
+    </div>
+    <div class="row hidden" id="madeRow">
+      <button class="btn blue" id="previewBtn">▶ さかさを きいてみる</button>
+      <button class="btn big pink" id="goBtn">✅ この もんだいに する!</button>
+    </div>
+    <p class="note" id="micNote"></p>
+  </div>
+
+  <!-- こたえるひとパート -->
+  <div id="answerScreen" class="panel hidden">
+    <h2>こたえるひと</h2>
+    <p class="note">さかさの こえを きいて、もとの ことばを あててね。なんかいでも きけるよ。</p>
+    <div class="row"><button class="btn big purple bigplay" id="playBtn">▶ さかさの こえを きく</button></div>
+    <div class="word-box hidden" id="revealBox"><div class="word" id="revealWord"></div></div>
+    <div class="row" id="judgeRow">
+      <button class="btn big green" id="okBtn">⭕ せいかい!</button>
+      <button class="btn big gray" id="ngBtn">❌ ざんねん(こたえを みる)</button>
+    </div>
+    <div class="row hidden" id="nextRow">
+      <button class="btn blue" id="normalBtn">▶ もとの こえを きく</button>
+      <button class="btn big pink" id="nextBtn">つぎの もんだい ▶</button>
+    </div>
+    <p class="note">せいかいか どうかは、おとなのひとが きいて えらんでね。</p>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+/* 保育園児が わかることば。ここに たせば もんだいが ふえる */
+const WORDS = [
+  "りんご", "ばなな", "いちご", "みかん", "ぶどう", "すいか", "めろん",
+  "おにぎり", "かれー", "ぷりん", "けーき", "あめ", "ぱん", "ぎゅうにゅう",
+  "ぞう", "きりん", "ぱんだ", "うさぎ", "らいおん", "ごりら", "こあら",
+  "ねこ", "いぬ", "ことり", "かえる", "さかな", "たこ", "ぺんぎん",
+  "ちょうちょ", "かぶとむし", "だんごむし", "ありさん", "てんとうむし",
+  "でんしゃ", "ひこうき", "しんかんせん", "ぱとかー", "しょうぼうしゃ", "ばす",
+  "おひさま", "おつきさま", "ほし", "にじ", "ゆき", "うみ", "やま", "さくら", "ひまわり",
+  "せんせい", "ほいくえん", "おかあさん", "おとうさん", "おともだち",
+  "おばけ", "さんたさん", "ろぼっと", "きょうりゅう", "にんじゃ",
+  "ぶらんこ", "すべりだい", "じてんしゃ", "ぼーる", "たいこ", "ぴあの", "しゃぼんだま",
+];
+
+const st = { word: "", handle: null, buffer: null, revBuffer: null, src: null };
+
+function pickWord() {
+  st.word = Util.choice(WORDS);
+  $("word").textContent = st.word;
+  st.buffer = null;
+  st.revBuffer = null;
+  $("madeRow").classList.add("hidden");
+}
+pickWord();
+
+if (!Voice.supported()) {
+  $("recBtn").disabled = true;
+  $("recBtn").style.opacity = 0.4;
+  $("micNote").innerHTML = "このブラウザでは録音できません。Chrome/Edge で <b>http://localhost</b>" +
+    "(serve.sh / serve.bat 起動)か HTTPS のページで開いてください。";
+}
+
+/* --- 録音(Voice.start を流用)→ WebAudio でデコードして さかさバッファを作る --- */
+async function decode(dataURL) {
+  const ctx = Sound.ensure();
+  const buf = await (await fetch(dataURL)).arrayBuffer();
+  return await ctx.decodeAudioData(buf);
+}
+function reverse(buffer) {
+  const ctx = Sound.ensure();
+  const out = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const d = buffer.getChannelData(ch);
+    const o = out.getChannelData(ch);
+    for (let i = 0; i < d.length; i++) o[i] = d[d.length - 1 - i];
+  }
+  return out;
+}
+function playBuffer(buf) {
+  if (!buf) return;
+  const ctx = Sound.ensure();
+  if (st.src) { try { st.src.stop(); } catch (e) {} }
+  const s = ctx.createBufferSource();
+  s.buffer = buf;
+  s.connect(ctx.destination);
+  s.start();
+  st.src = s;
+}
+
+$("anotherBtn").onclick = () => { if (!st.handle) { Sound.tap(); pickWord(); } };
+
+$("recBtn").onclick = async () => {
+  try {
+    st.handle = await Voice.start();
+  } catch (e) {
+    alert("マイクを使えませんでした。ブラウザのマイク許可を確認してください。\n" + ((e && e.message) || ""));
+    return;
+  }
+  Sound.tick();
+  $("recBtn").classList.add("hidden");
+  $("stopBtn").classList.remove("hidden");
+  $("madeRow").classList.add("hidden");
+  st.handle.done.then(async (dataURL) => {
+    st.handle = null;
+    $("recBtn").classList.remove("hidden");
+    $("stopBtn").classList.add("hidden");
+    try {
+      st.buffer = await decode(dataURL);
+      st.revBuffer = reverse(st.buffer);
+      Sound.good();
+      $("madeRow").classList.remove("hidden");
+    } catch (e) {
+      alert("録音を読み込めませんでした。もういちど ろくおんしてください。");
+    }
+  });
+};
+$("stopBtn").onclick = () => { if (st.handle) st.handle.stop(); };
+
+$("previewBtn").onclick = () => playBuffer(st.revBuffer);
+
+$("goBtn").onclick = () => {
+  if (!st.revBuffer) return;
+  Sound.pon();
+  $("makeScreen").classList.add("hidden");
+  $("answerScreen").classList.remove("hidden");
+  $("revealBox").classList.add("hidden");
+  $("judgeRow").classList.remove("hidden");
+  $("nextRow").classList.add("hidden");
+};
+
+$("playBtn").onclick = () => { Sound.tap(); playBuffer(st.revBuffer); };
+
+function reveal() {
+  $("revealWord").textContent = st.word;
+  $("revealBox").classList.remove("hidden");
+  $("judgeRow").classList.add("hidden");
+  $("nextRow").classList.remove("hidden");
+}
+$("okBtn").onclick = () => {
+  Sound.fanfare();
+  Ui.confetti();
+  Ui.msg("せいかい!🎉", 2000, "#51cf66");
+  reveal();
+};
+$("ngBtn").onclick = () => {
+  Sound.bad();
+  Ui.msg("ざんねん…こたえは これ!", 1800, "#9775fa");
+  reveal();
+};
+
+$("normalBtn").onclick = () => playBuffer(st.buffer);
+
+$("nextBtn").onclick = () => {
+  Sound.tap();
+  pickWord();
+  $("answerScreen").classList.add("hidden");
+  $("makeScreen").classList.remove("hidden");
+};
+</script>
+</body>
+</html>

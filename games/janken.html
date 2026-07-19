@@ -186,12 +186,14 @@ function play(playerHand) {
         best = Math.max(best, state.streak);
         Ui.msg("かち!🎉", 1500, "#51cf66");
         Sound.good();
+        Voice.play(selRec, "fail");   // キャラは まけたので「しっぱい」のこえ
         if (state.streak >= 3) Ui.confetti(1800, 80);
       } else {
         state.streak = 0;
         if (gmode && gmode.goal) miss++;
         Ui.msg("まけ〜", 1300, "#4dabf7");
         Sound.bad();
+        Voice.play(selRec, "joy");    // キャラは かったので「よろこび」のこえ
       }
       $("streak").textContent = state.streak > 0 ? `れんしょう: ${"⭐".repeat(Math.min(state.streak, 10))}` : "";
       updateGachiHud();

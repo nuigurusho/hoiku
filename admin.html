@@ -158,6 +158,22 @@
   </div>
 </div>
 
+<!-- キャラのこえ 録音モーダル -->
+<div class="modal hidden" id="voiceModal">
+  <div class="panel">
+    <h2>🎤 キャラのこえ 登録 — <span id="voiceName"></span></h2>
+    <p class="note">
+      「🎤 ろくおん」を押してマイクに向かって話し、「⏹ とめる」で終わりです(最長10秒・自動で止まります)。
+      登録したこえは「みんなのせかい」でタッチしたときや、ゲームの勝ち負けで再生されます。
+      こえは<b>この端末の中にだけ</b>保存されます(公開サイトには載りません)。
+    </p>
+    <div id="voiceRows"></div>
+    <div class="row">
+      <button class="btn gray" id="voiceClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- きりだし(トリミング)モーダル -->
 <div class="modal hidden" id="cropModal">
   <div class="panel">
@@ -217,6 +233,7 @@ function row(r) {
     if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
   });
   if (r.cat === "char") mk("動き設定", "purple", () => openRig(r));
+  if (r.cat === "char") mk("🎤こえ", "pink", () => openVoice(r));
   if (r.cat === "pic") mk("まちがいスポット", "orange", () => openSpot(r));
   if (r.cat === "char" || r.cat === "pic") mk("ふくわらいパーツ", "green", () => openFuku(r));
   mk("✂トリミング", "pink", async () => {
@@ -591,6 +608,96 @@ $("rigSave").onclick = async () => {
   refresh();
 };
 $("rigCancel").onclick = () => $("rigModal").classList.add("hidden");
+
+/* ---------- キャラのこえ 登録 ----------
+   種類ごとに 録音 → dataURL を rec.voices[kind] に保存(その場で Store.put)。 */
+const voiceEd = { rec: null, handle: null, kind: null };
+
+function openVoice(rec) {
+  voiceEd.rec = rec;
+  voiceEd.handle = null;
+  voiceEd.kind = null;
+  $("voiceName").textContent = rec.name || "(名前なし)";
+  $("voiceModal").classList.remove("hidden");
+  renderVoiceRows();
+}
+
+function renderVoiceRows() {
+  const box = $("voiceRows");
+  box.innerHTML = "";
+  if (!Voice.supported()) {
+    box.innerHTML = '<p class="note">このブラウザでは録音できません。Chrome/Edge で ' +
+      '<b>http://localhost</b>(serve.sh / serve.bat 起動)か HTTPS のページで開いてください。</p>';
+    return;
+  }
+  for (const k of Voice.KINDS) {
+    const has = !!(voiceEd.rec.voices && voiceEd.rec.voices[k.key]);
+    const recording = voiceEd.kind === k.key;
+    const busy = !!voiceEd.kind;   // どれかを録音中は ほかの操作を止める
+    const d = document.createElement("div");
+    d.className = "admin-row";
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.innerHTML = `<b>${k.label}</b> ${has ? "✅" : ""}` +
+      `<br><span style="font-size:13px;color:#868e96">例)${k.ex}</span>`;
+    d.appendChild(nm);
+    const mk = (label, cls, fn, dis) => {
+      const b = document.createElement("button");
+      b.className = "btn " + cls;
+      b.textContent = label;
+      if (dis) { b.disabled = true; b.style.opacity = 0.35; }
+      else b.onclick = fn;
+      d.appendChild(b);
+    };
+    if (recording) mk("⏹ とめる", "orange", stopVoiceRec);
+    else mk("🎤 ろくおん", "green", () => startVoiceRec(k.key), busy);
+    mk("▶ きく", "blue", () => Voice.play(voiceEd.rec, k.key), !has || busy);
+    mk("削除", "gray", async () => {
+      delete voiceEd.rec.voices[k.key];
+      await Store.put(voiceEd.rec);
+      Sound.tap();
+      renderVoiceRows();
+    }, !has || busy);
+    box.appendChild(d);
+  }
+}
+
+async function startVoiceRec(kind) {
+  const rec = voiceEd.rec;
+  let handle;
+  try {
+    handle = await Voice.start();
+  } catch (e) {
+    alert("マイクを使えませんでした。ブラウザのマイク許可を確認してください。\n" + ((e && e.message) || ""));
+    return;
+  }
+  voiceEd.handle = handle;
+  voiceEd.kind = kind;
+  Sound.tick();
+  renderVoiceRows();
+  // stop() でも 10秒自動停止でも ここに来る
+  handle.done.then(async (dataURL) => {
+    if (!rec.voices) rec.voices = {};
+    rec.voices[kind] = dataURL;
+    await Store.put(rec);
+    if (voiceEd.handle === handle) { voiceEd.handle = null; voiceEd.kind = null; }
+    Sound.good();
+    Ui.msg("ろくおんしました", 1200, "#51cf66");
+    if (voiceEd.rec === rec) renderVoiceRows();
+  }).catch(() => {
+    if (voiceEd.handle === handle) { voiceEd.handle = null; voiceEd.kind = null; }
+    if (voiceEd.rec === rec) renderVoiceRows();
+  });
+}
+
+function stopVoiceRec() {
+  if (voiceEd.handle) voiceEd.handle.stop();
+}
+
+$("voiceClose").onclick = () => {
+  stopVoiceRec();
+  $("voiceModal").classList.add("hidden");
+};
 
 /* ---------- まちがいスポット編集 ---------- */
 const spotEd = { rec: null, img: null, spots: [] };
