@@ -36,7 +36,7 @@
       <p class="note">
         たいせん:ひだりがわを れんだ = 1P、みぎがわを れんだ = 2P(キーボードは F と J)<br>
         CPUたいせん:がめんを れんだ(スペースでもOK)して CPUより はやく ゴール!<br>
-        おうえんレース:キャラたちが かってに はしるよ。だれが かつか おうえんしよう!
+        おうえんレース:キャラたちが かってに はしるよ。ときどき いねむり や スパートで じゅんいが かわる!だれが かつか おうえんしよう!
       </p>
     </div>
   </div>
@@ -162,6 +162,7 @@ async function start(modeKey) {
         puppet: new Puppet(parts, { h: kind === "vs" ? 150 : Math.min(150, 560 / recs.length + 60) }),
         voices: rec.voices || null,
         prog: 0, v: 0, rank: 0, wob: Util.rand(0, 9),
+        event: null, eventT: 0, eventCd: Util.rand(1.6, 3.6), emo: "",
       });
     }
   }
@@ -218,16 +219,69 @@ function dash(i) {
   Sound.step();
 }
 
+/* おうえんレースの えんしゅつ用チューニング(びょう) */
+const RACE_EV = {
+  cd:      [1.4, 3.4],   // つぎの ハプニングまでの あいだ
+  sleep:   [1.0, 2.2],   // いねむりの ながさ
+  boost:   [0.9, 1.7],   // スパートの ながさ
+  stumble: [0.5, 1.0],   // つまずきの ながさ
+};
+
+/* おうえんレース:かってに はしる キャラの 1フレームぶんの えんしゅつ。
+   ・追い上げ補正:先頭との差が おおきいほど はやい(遅れてる子が 加速)。
+     ゴールに ちかづくほど 効果が よわまり、トップが さいごに ぬけ出せる
+     = だれが かったか わかりやすい。
+   ・ときどき いねむり/スパート/つまずき の ハプニングで じゅんいが かわる。 */
+function cheerStep(g, r, dt) {
+  r.wob += dt;
+  let v = 190 + Math.sin(r.wob * 1.7) * 70 + Math.sin(r.wob * 4.3 + 1) * 45;
+
+  const prog01 = g.leadProg / GOAL;
+  const strength = 0.8 * (1 - prog01 * 0.7);            // 序盤0.8 → 終盤0.24
+  const gap = g.leadProg - r.prog;                      // 0=先頭、おおきいほど後ろ
+  v *= 1 + Math.min(strength, (gap / GOAL) * 2.4);
+
+  if (r.event) {
+    r.eventT -= dt;
+    if (r.event === "sleep")   { v = 0;     r.puppet.walking = false; }
+    if (r.event === "stumble") { v *= 0.12; r.puppet.walking = true;  }
+    if (r.event === "boost")   { v *= 2.3;  r.puppet.walking = true;  }
+    if (r.eventT <= 0) { r.event = null; r.emo = ""; r.eventCd = Util.rand(RACE_EV.cd[0], RACE_EV.cd[1]); }
+  } else {
+    r.puppet.walking = true;
+    r.eventCd -= dt;
+    // レース序盤・ゴール直前は ハプニングを おこさない
+    if (r.eventCd <= 0 && r.prog > 140 && r.prog < GOAL - 200) startRaceEvent(r, gap);
+  }
+  r.prog += Math.max(0, v) * dt;
+}
+
+function startRaceEvent(r, gap) {
+  const leading  = gap < GOAL * 0.05;   // ほぼ 先頭
+  const trailing = gap > GOAL * 0.13;   // だいぶ 後ろ
+  const roll = Math.random();
+  let ev;
+  if (leading && roll < 0.55)       ev = "sleep";   // 先頭は ゆだんして いねむり
+  else if (trailing && roll < 0.65) ev = "boost";   // 後ろの子は スパート
+  else if (roll < 0.30)             ev = "stumble";
+  else if (roll < 0.60)             ev = "sleep";
+  else                              ev = "boost";
+
+  r.event = ev;
+  if (ev === "sleep")   { r.eventT = Util.rand(RACE_EV.sleep[0], RACE_EV.sleep[1]);     r.emo = "💤"; if (leading)  Sound.beep(320, 0.55, "sine",   0.06, 0, -170); }
+  if (ev === "boost")   { r.eventT = Util.rand(RACE_EV.boost[0], RACE_EV.boost[1]);     r.emo = "💨"; if (trailing) Sound.beep(440, 0.16, "square", 0.07, 0,  260); }
+  if (ev === "stumble") { r.eventT = Util.rand(RACE_EV.stumble[0], RACE_EV.stumble[1]); r.emo = "💫"; }
+}
+
 function update(dt) {
   const g = G;
   if (g.state === "run") g.t += dt;
+  g.leadProg = 0;
+  for (const r of g.racers) if (r.prog > g.leadProg) g.leadProg = r.prog;
   for (const r of g.racers) {
     if (g.state === "run" && !r.rank) {
       if (g.kind === "cheer") {
-        r.wob += dt;
-        r.v = 190 + Math.sin(r.wob * 1.7) * 90 + Math.sin(r.wob * 4.3 + 1) * 60;
-        r.prog += Math.max(40, r.v) * dt;
-        r.puppet.walking = true;
+        cheerStep(g, r, dt);
       } else if (r.ai) {
         r.prog += g.cpuSpeed * dt;            // CPUは いっていの はやさ
         r.puppet.walking = true;
@@ -307,6 +361,11 @@ function draw() {
       const medal = ["", "🥇", "🥈", "🥉"][r.rank] || `${r.rank}い`;
       ctx.font = "44px serif";
       ctx.fillText(medal, x - 20, laneY - r.puppet.h - 16);
+    } else if (r.emo) {
+      ctx.font = "40px serif";
+      ctx.textAlign = "center";
+      ctx.fillText(r.emo, x, laneY - r.puppet.h - 14);
+      ctx.textAlign = "left";
     }
   });
 
