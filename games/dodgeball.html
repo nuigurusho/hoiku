@@ -574,13 +574,39 @@ function draw() {
   for (const p of order) drawPlayer(p);
 
   // ボール(試合中のみ・最前面)
-  if (!M.over) {
-    ctx.font = "48px serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("🏐", M.ballX, M.ballY);
-    ctx.textBaseline = "alphabetic";
-  }
+  if (!M.over) drawBall();
   ctx.textAlign = "left";
+}
+
+/* はっきり見える ドッヂボール(絵文字だと環境で 出ないので canvas で描く) */
+function drawBall() {
+  const x = M.ballX, y = M.ballY;
+  const flying = M.phase === "fly";
+  const r = (flying ? 30 : 25) * (0.42 + 0.58 * Math.min(1, M.hBase / 120));
+  const spin = M.ballX * 0.03;   // ころがり回転
+
+  ctx.save();
+  // 影(ふわっと)
+  ctx.fillStyle = "rgba(60,40,20,.18)";
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.95, r * 0.95, r * 0.34, 0, 0, 7); ctx.fill();
+  // 本体(立体感のある オレンジの ボール)
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.15, x, y, r);
+  g.addColorStop(0, "#ffe0b8"); g.addColorStop(0.45, "#ff922b"); g.addColorStop(1, "#e8590c");
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.lineWidth = Math.max(3, r * 0.16); ctx.strokeStyle = "#fff"; ctx.stroke();
+  // ボールの すじ(白ライン・回転する)
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(spin);
+  ctx.lineWidth = Math.max(2, r * 0.1); ctx.strokeStyle = "rgba(255,255,255,.9)";
+  ctx.beginPath(); ctx.arc(0, -r * 0.15, r * 0.85, 0.55, Math.PI - 0.55); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,  r * 0.15, r * 0.85, Math.PI + 0.55, -0.55); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+  ctx.restore();
+  // ハイライト
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.beginPath(); ctx.arc(x - r * 0.34, y - r * 0.4, r * 0.2, 0, 7); ctx.fill();
+  ctx.restore();
 }
 
 function drawPlayer(p) {
