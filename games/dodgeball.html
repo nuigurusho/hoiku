@@ -179,10 +179,6 @@
         <h2 id="winTitle">かち!</h2>
         <div class="db-winbtns">
           <div class="row"><button class="btn big pink" id="rematchBtn">もういっかい しょうぶ!</button></div>
-          <div class="row">
-            <button class="btn blue" id="reselectBtn">メンバーを えらびなおす</button>
-            <button class="btn gray" id="topBtn">トップに もどる</button>
-          </div>
         </div>
       </div>
     </div>
@@ -202,11 +198,12 @@ const SCREENS = ["selectScreen", "teamScreen", "playScreen"];
 function show(id) { for (const s of SCREENS) $(s).classList.toggle("hidden", s !== id); }
 
 /* ---- コート座標(px・足もと基準) ---- */
-const XMIN = 175, XMAX = 1105;
-const LINE = 360;                       // センターライン
-const RED_INNER = [236, 348];           // あか内野の 足もとY(上→下)
-const BLUE_INNER = [474, 610];          // あお内野の 足もとY
-const RED_BENCH = 116, BLUE_BENCH = 702; // ベンチ(脱落者)の 足もとY
+/* コートは 左右ぶんかつ:左=あか、右=あお */
+const YMIN = 175, YMAX = 632;           // 内野の たてはば
+const LINE = 640;                       // センターライン(たて)
+const RED_X  = [150, 545];              // あか(左)内野の よこはば
+const BLUE_X = [735, 1130];             // あお(右)内野の よこはば
+const RED_BENCH_X = 60, BLUE_BENCH_X = 1220;   // ベンチ(コートの そとへ)
 
 /* ---- 状態 ---- */
 let allChars = [];
@@ -359,8 +356,9 @@ async function startMatch() {
 
   layoutTeam("red", true);
   layoutTeam("blue", true);
-  for (const p of players) { p.puppet.x = p.tx; p.puppet.y = p.ty; }
-  M.ballY = M.ballTeam === "red" ? RED_INNER[1] : BLUE_INNER[0];
+  for (const p of players) { p.puppet.x = p.tx; p.puppet.y = p.ty; p.puppet.facing = p.team === "red" ? 1 : -1; }
+  M.ballX = M.ballTeam === "red" ? RED_X[1] : BLUE_X[0];
+  M.ballY = (YMIN + YMAX) / 2;
 
   updateHud();
   Ui.msg("しあい かいし!", 1200, "#ff922b");
@@ -383,23 +381,24 @@ function aliveCount(team) { return alivePlayers(team).length; }
 /* チームの キャラを コート内に ならべ直す(脱落者は ベンチへ) */
 function layoutTeam(team, snap) {
   const alive = alivePlayers(team);
-  const band = team === "red" ? RED_INNER : BLUE_INNER;
+  const xb = team === "red" ? RED_X : BLUE_X;
   const N = alive.length;
-  const cols = Math.min(N, 5) || 1;
+  const cols = Math.min(N, N <= 4 ? 2 : 3) || 1;   // 半面は せまいので たてに ならべる
   const rows = Math.ceil(N / cols);
   alive.forEach((p, i) => {
     const col = i % cols, row = Math.floor(i / cols);
-    const x = cols === 1 ? (XMIN + XMAX) / 2 : XMIN + (XMAX - XMIN) * col / (cols - 1);
-    const y = rows === 1 ? (band[0] + band[1]) / 2 : band[0] + (band[1] - band[0]) * row / (rows - 1);
+    const x = cols === 1 ? (xb[0] + xb[1]) / 2 : xb[0] + (xb[1] - xb[0]) * col / (cols - 1);
+    const y = rows === 1 ? (YMIN + YMAX) / 2 : YMIN + (YMAX - YMIN) * row / (rows - 1);
     p.homeX = x; p.homeY = y; p.tx = x; p.ty = y;
     if (snap) { p.puppet.x = x; p.puppet.y = y; }
   });
   const dead = M.players.filter((p) => !p.alive && p.team === team);
-  const benchY = team === "red" ? RED_BENCH : BLUE_BENCH;
+  const bx = team === "red" ? RED_BENCH_X : BLUE_BENCH_X;
   dead.forEach((p, i) => {
     const span = Math.max(1, dead.length - 1);
-    const x = dead.length === 1 ? 640 : XMIN + (XMAX - XMIN) * i / span;
-    p.tx = x; p.ty = benchY;
+    const y = dead.length === 1 ? 400 : YMIN + (YMAX - YMIN) * i / span;
+    p.benchX = bx; p.benchY = y;                    // 去っていく先(たてに ならぶ)
+    if (p.outState === "leave" || p.outState === "benched") { p.tx = bx; p.ty = y; }
   });
 }
 
@@ -429,8 +428,8 @@ function startThrow() {
   M.phase = "wind"; M.phaseT = 0;
 
   // なげる人は センターライン ちかくへ、相手の方を むく
-  thrower.tx = Util.clamp((thrower.homeX + target.homeX) / 2, XMIN, XMAX);
-  thrower.ty = thrower.team === "red" ? LINE - 14 : LINE + 14;
+  thrower.ty = Util.clamp((thrower.homeY + target.homeY) / 2, YMIN, YMAX);
+  thrower.tx = thrower.team === "red" ? LINE - 46 : LINE + 46;
 }
 
 function launchBall() {
@@ -457,7 +456,7 @@ function resolve() {
     Sound.pon(); Sound.good();
     Sound.playVoice(g.voices, ["joy"]);
   } else { // dodge
-    g.tx = Util.clamp(g.homeX + (Math.random() < 0.5 ? -110 : 110), XMIN, XMAX);
+    g.ty = Util.clamp(g.homeY + (Math.random() < 0.5 ? -95 : 95), YMIN, YMAX);
     g.puppet.hop();
     showBanner([nameSpan(g), txt(" ひらり! よけた!")], defTeam);
     Sound.beep(760, 0.18, "square", 0.10, 0, 320);
@@ -472,8 +471,11 @@ function resolve() {
 
 function eliminate(p) {
   p.alive = false;
-  p.puppet.h = p.hBase * 0.62;   // ベンチでは 小さく
-  layoutTeam(p.team);
+  // やられた えんしゅつ:その場で たおれる → たちあがる → コートの そとへ さる
+  p.outState = "fall";
+  p.outT = 0;
+  p.fall = 0;
+  layoutTeam(p.team);   // 生きてる子を 前へ つめる + ベンチ位置を 計算
 }
 
 /* テロップの ぶひん:キャラ名は チーム色、そのほかは 白文字 */
@@ -533,11 +535,11 @@ function updateMatch(dt) {
     }
   }
 
-  // 勝利演出:勝った チームだけ その場で つぎつぎ とびはねる(音は 鳴らさない)
+  // 勝利演出:みんなで その場で つぎつぎ とびはねて よろこぶ(音は 鳴らさない)
   if (M.over) {
-    for (const p of M.winners) {
+    for (const p of M.celebrants) {
       p.hopCd -= dt;
-      if (p.hopCd <= 0 && p.puppet.jumpT <= 0) { p.puppet.jumpT = 0.5; p.hopCd = Util.rand(0.05, 0.3); }
+      if (p.hopCd <= 0 && p.puppet.jumpT <= 0) { p.puppet.jumpT = 0.5; p.hopCd = Util.rand(0.05, 0.35); }
       p.puppet.walking = false;
       p.puppet.update(dt);
     }
@@ -547,21 +549,36 @@ function updateMatch(dt) {
   // キャラの うごき
   for (const p of M.players) {
     const pu = p.puppet;
-    if (p.alive && p !== M.thrower && (M.phase === "gap" || M.phase === "intro")) {
+
+    if (!p.alive) {
+      // やられた あとの えんしゅつ:たおれる → たちあがる → コートの そとへ さる
+      p.outT += dt;
+      if (p.outState === "fall") {
+        p.fall = Util.clamp(p.outT / 0.22, 0, 1);          // パタッと たおれる
+        if (p.outT >= 0.6) { p.outState = "up"; p.outT = 0; }
+      } else if (p.outState === "up") {
+        p.fall = 1 - Util.clamp(p.outT / 0.3, 0, 1);        // よいしょと おきあがる
+        if (p.outT >= 0.32) { p.outState = "leave"; p.outT = 0; p.fall = 0; pu.h = p.hBase * 0.6; }
+      } else {
+        p.tx = p.benchX; p.ty = p.benchY;                  // ベンチへ さる
+      }
+      if (p.outState === "fall" || p.outState === "up") { pu.walking = false; pu.update(dt); continue; }
+    } else if (p !== M.thrower && (M.phase === "gap" || M.phase === "intro")) {
       // ホーム付近を うろうろ
       p.wander -= dt;
       if (p.wander <= 0) {
         p.wander = Util.rand(0.5, 1.3);
-        const band = p.team === "red" ? RED_INNER : BLUE_INNER;
-        p.tx = Util.clamp(p.homeX + Util.rand(-45, 45), XMIN, XMAX);
-        p.ty = Util.clamp(p.homeY + Util.rand(-20, 20), band[0] - 4, band[1] + 4);
+        const xb = p.team === "red" ? RED_X : BLUE_X;
+        p.tx = Util.clamp(p.homeX + Util.rand(-35, 35), xb[0] - 6, xb[1] + 6);
+        p.ty = Util.clamp(p.homeY + Util.rand(-40, 40), YMIN, YMAX);
       }
     }
+
     // ターゲットへ 移動
     const dx = p.tx - pu.x, dy = p.ty - pu.y;
     const dist = Math.hypot(dx, dy);
     if (dist > 3) {
-      const sp = !p.alive ? 260 : (p === M.thrower ? 240 : 130);
+      const sp = !p.alive ? 300 : (p === M.thrower ? 240 : 120);
       const step = Math.min(dist, sp * dt);
       pu.x += dx / dist * step;
       pu.y += dy / dist * step;
@@ -569,6 +586,8 @@ function updateMatch(dt) {
       if (Math.abs(dx) > 2) pu.facing = Math.sign(dx);
     } else {
       pu.walking = false;
+      if (p.outState === "leave") p.outState = "benched";
+      if (p.alive) pu.facing = p.team === "red" ? 1 : -1;   // ふだんは 相手の方を むく
     }
     pu.update(dt);
   }
@@ -577,17 +596,17 @@ function updateMatch(dt) {
 function draw() {
   ctx.clearRect(0, 0, CW, CH);
   if (M.over) { drawVictory(); return; }
-  // 床
+  // 床(左=あか、右=あお)
   ctx.fillStyle = "#fbf7ee"; ctx.fillRect(0, 0, CW, CH);
-  ctx.fillStyle = "rgba(255,107,157,.12)"; ctx.fillRect(0, 0, CW, LINE);
-  ctx.fillStyle = "rgba(77,171,247,.12)";  ctx.fillRect(0, LINE, CW, CH - LINE);
-  // ベンチ帯
+  ctx.fillStyle = "rgba(255,107,157,.12)"; ctx.fillRect(0, 0, LINE, CH);
+  ctx.fillStyle = "rgba(77,171,247,.12)";  ctx.fillRect(LINE, 0, CW - LINE, CH);
+  // ベンチ帯(コートの そとがわ・左右のはし)
   ctx.fillStyle = "rgba(150,130,110,.10)";
-  ctx.fillRect(0, 0, CW, 152); ctx.fillRect(0, CH - 152, CW, 152);
-  // センターライン
+  ctx.fillRect(0, 0, 118, CH); ctx.fillRect(CW - 118, 0, 118, CH);
+  // センターライン(たて)
   ctx.save();
   ctx.setLineDash([26, 20]); ctx.lineWidth = 5; ctx.strokeStyle = "rgba(120,90,60,.35)";
-  ctx.beginPath(); ctx.moveTo(40, LINE); ctx.lineTo(CW - 40, LINE); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(LINE, 30); ctx.lineTo(LINE, CH - 30); ctx.stroke();
   ctx.restore();
 
   // キャラ(奥=足もとYが小さい ものから)
@@ -630,20 +649,24 @@ function drawBall() {
   ctx.restore();
 }
 
-/* 勝利画面:勝った チームだけを ならべて 大きく えがく(コート・脱落者は 出さない) */
+/* 勝利画面:みんな(全員)を えがく。勝ち残りは 中央に 大きく */
 function drawVictory() {
   const g = ctx.createLinearGradient(0, 0, 0, CH);
   g.addColorStop(0, M.winTeam === "red" ? "#ffe3ee" : "#e3f0ff");
   g.addColorStop(1, "#fffdf5");
   ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
 
-  const order = M.winners.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+  const order = M.celebrants.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+  const win = new Set(M.winners);
   for (const p of order) {
+    ctx.save();
+    if (!win.has(p)) ctx.globalAlpha = 0.9;   // ほかの子は ほんの少しだけ ひかえめ
     p.puppet.draw(ctx);
-    ctx.font = "bold 26px sans-serif";
+    ctx.font = win.has(p) ? "bold 24px sans-serif" : "bold 17px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillStyle = M.winTeam === "red" ? "#d6336c" : "#1c7ed6";
-    ctx.fillText(p.name, p.puppet.x, p.puppet.y + 28);
+    ctx.fillStyle = p.team === "red" ? "#d6336c" : "#1c7ed6";
+    ctx.fillText(p.name, p.puppet.x, p.puppet.y + (win.has(p) ? 26 : 18));
+    ctx.restore();
   }
   ctx.textAlign = "left";
 }
@@ -651,7 +674,7 @@ function drawVictory() {
 function drawPlayer(p) {
   const pu = p.puppet;
   ctx.save();
-  if (!p.alive) ctx.globalAlpha = 0.4;
+  if (p.outState === "benched") ctx.globalAlpha = 0.5;   // 去ったあとだけ うすく
   // ボールを もっている人は 光る
   if (!M.over && M.thrower === p && M.phase === "wind") {
     ctx.save();
@@ -659,7 +682,18 @@ function drawPlayer(p) {
     ctx.beginPath(); ctx.arc(pu.x, pu.y - pu.h * 0.5, pu.h * 0.62, 0, 7); ctx.fill();
     ctx.restore();
   }
-  pu.draw(ctx);
+  // たおれ演出:足もとを 中心に くるっと たおれる
+  if (p.fall > 0) {
+    const dir = p.team === "red" ? -1 : 1;   // あかは 左へ、あおは 右へ たおれる
+    ctx.save();
+    ctx.translate(pu.x, pu.y);
+    ctx.rotate(p.fall * 1.45 * dir);
+    ctx.translate(-pu.x, -pu.y);
+    pu.draw(ctx);
+    ctx.restore();
+  } else {
+    pu.draw(ctx);
+  }
   // なまえ
   ctx.font = "bold 20px sans-serif";
   ctx.textAlign = "center";
@@ -679,25 +713,21 @@ function endMatch() {
   M.winTeam = winTeam;
   const label = winTeam === "red" ? "🔴 あかチーム" : "🔵 あおチーム";
 
-  // 勝った チームを 中央に ならべて 大きく ジャンプ(勝者だけの画面)
+  // 勝ち残った人を 中心に、みんな(全員)出てきて いっしょに よろこぶ
   const winners = M.players.filter((p) => p.team === winTeam && p.alive);
+  const others = M.players.filter((p) => !(p.team === winTeam && p.alive));
   M.winners = winners;
-  const n = winners.length;
-  const cols = Math.min(n, 5);
-  const rows = Math.ceil(n / cols);
-  const winH = Util.clamp(210 - n * 9, 100, 200);
-  const gap = 200;
-  winners.forEach((p, i) => {
-    const row = Math.floor(i / cols);
-    const idxInRow = i - row * cols;
-    const inRow = Math.min(cols, n - row * cols);   // その行の 人数(中央ぞろえ)
-    const x = 640 - (inRow - 1) * gap / 2 + idxInRow * gap;
-    const y = rows === 1 ? 430 : 350 + 180 * row;
-    p.puppet.h = winH;
-    p.puppet.x = x; p.puppet.y = y; p.tx = x; p.ty = y;
-    p.puppet.facing = 1;
-    p.hopCd = Util.rand(0, 0.6);
-  });
+  M.celebrants = M.players.slice();
+  // みんな 元気に もどす(たおれ・去りを リセット)
+  for (const p of M.players) { p.fall = 0; p.outState = null; p.puppet.jumpT = 0; }
+
+  // 主役(勝ち残り)は 中央に 大きく
+  placeRow(winners, 405, Util.clamp(196 - winners.length * 11, 104, 176), 5);
+  // ほかの みんなは 上下に わけて 小さめに(いっしょに おいわい)
+  const oH = Util.clamp(104 - others.length * 3, 62, 92);
+  const half = Math.ceil(others.length / 2);
+  placeRow(others.slice(0, half), 205, oH, 9);      // 上のだん(奥)
+  placeRow(others.slice(half),   600, oH, 9);       // 下のだん(手前)
 
   const title = $("winTitle");
   title.textContent = `${label}の かち!`;
@@ -710,14 +740,26 @@ function endMatch() {
   if (withVoice.length) Sound.playVoice(Util.choice(withVoice).voices, ["joy"]);
 }
 
+/* 勝利画面で リストを 中央ぞろえで ならべる(必要なら 折りかえす) */
+function placeRow(list, cy, h, maxCols) {
+  const n = list.length;
+  if (!n) return;
+  const cols = Math.min(maxCols, n);
+  list.forEach((p, i) => {
+    const row = Math.floor(i / cols);
+    const inRow = Math.min(cols, n - row * cols);
+    const idx = i - row * cols;
+    const gap = inRow > 1 ? Math.min(190, 1120 / (inRow - 1)) : 0;
+    p.puppet.h = h;
+    p.puppet.x = 640 - gap * (inRow - 1) / 2 + idx * gap;
+    p.puppet.y = cy + row * (h * 0.95 + 10);
+    p.tx = p.puppet.x; p.ty = p.puppet.y;
+    p.puppet.facing = 1;
+    p.hopCd = Util.rand(0, 0.5);
+  });
+}
+
 $("rematchBtn").onclick = () => { Sound.pon(); startMatch(); };   // 同メンバー・同チームで さいせん
-$("reselectBtn").onclick = () => {
-  Sound.tap();
-  stopLoop();
-  show("selectScreen");
-  renderGallery();
-};
-$("topBtn").onclick = () => { Sound.tap(); location.href = "../index.html"; };
 
 /* ---- 起動 ---- */
 show("selectScreen");
