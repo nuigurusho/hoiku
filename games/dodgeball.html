@@ -72,29 +72,25 @@
   /* --- ステージ(コートの canvas + オーバーレイ) --- */
   .db-stage { position: relative; max-width: 1000px; margin: 0 auto; }
 
-  /* --- バナー(だれが だれに あてた!など) --- */
+  /* --- じっきょうテロップ(下部の黒おび・プレイを じゃましない) --- */
   .db-banner {
     position: absolute;
-    left: 50%; top: 18%;
-    transform: translate(-50%, -50%);
+    left: 0; right: 0; bottom: 0;
     z-index: 40;
-    max-width: 90%;
     text-align: center;
     font-weight: bold;
-    font-size: clamp(18px, 4.2vw, 34px);
-    line-height: 1.25;
+    font-size: clamp(15px, 3.2vw, 28px);
+    line-height: 1.2;
     color: #fff;
-    background: rgba(74,63,53,.92);
-    border-radius: 18px;
-    padding: 10px 20px;
-    box-shadow: 0 6px 16px rgba(0,0,0,.25);
-    animation: db-banner-in .3s cubic-bezier(.2,1.6,.4,1) both;
-    white-space: pre-line;
+    background: linear-gradient(to top, rgba(18,12,6,.86), rgba(18,12,6,.62));
+    padding: 9px 16px 11px;
+    border-top: 5px solid var(--yellow);
     pointer-events: none;
+    animation: db-banner-in .22s ease-out both;
   }
-  .db-banner.red  { background: rgba(214,51,108,.94); }
-  .db-banner.blue { background: rgba(28,126,214,.94); }
-  @keyframes db-banner-in { from { transform: translate(-50%,-50%) scale(.4); opacity: 0; } }
+  .db-banner.red  { border-top-color: var(--pink); }
+  .db-banner.blue { border-top-color: var(--blue); }
+  @keyframes db-banner-in { from { transform: translateY(100%); opacity: 0; } }
 
   /* --- 勝利オーバーレイ(canvasの上に タイトル+ボタン) --- */
   .db-winbar {
@@ -444,19 +440,19 @@ function resolve() {
 
   if (oc === "hit") {
     eliminate(g);
-    showBanner(`🏐 ${t.name} が ${g.name} に あてた!\n${g.name} せんじょう!`, defTeam);
+    showBanner(`🏐 ${t.name} が あてた! ${g.name} アウト!`, defTeam);
     Sound.bad();
     Sound.playVoice(g.voices, ["fail", "ouch"]);
   } else if (oc === "catch") {
     eliminate(t);
     g.puppet.hop();
-    showBanner(`🎉 ${g.name} ナイスキャッチ!\n${t.name} せんじょう!`, defTeam);
+    showBanner(`🎉 ${g.name} ナイスキャッチ! ${t.name} アウト!`, defTeam);
     Sound.pon(); Sound.good();
     Sound.playVoice(g.voices, ["joy"]);
   } else { // dodge
     g.tx = Util.clamp(g.homeX + (Math.random() < 0.5 ? -110 : 110), XMIN, XMAX);
     g.puppet.hop();
-    showBanner(`${g.name} ひらり!よけた!`, defTeam);
+    showBanner(`💨 ${g.name} ひらり! よけた!`, defTeam);
     Sound.beep(760, 0.18, "square", 0.10, 0, 320);
   }
 
@@ -520,14 +516,21 @@ function updateMatch(dt) {
     }
   }
 
+  // 勝利演出:勝った チームだけ その場で とびはねる
+  if (M.over) {
+    for (const p of M.winners) {
+      p.hopCd -= dt;
+      if (p.hopCd <= 0 && p.puppet.jumpT <= 0) { p.puppet.hop(); p.hopCd = Util.rand(0.4, 1.0); }
+      p.puppet.walking = false;
+      p.puppet.update(dt);
+    }
+    return;
+  }
+
   // キャラの うごき
   for (const p of M.players) {
     const pu = p.puppet;
-    if (M.over && p.team === M.winTeam) {
-      // 勝った チームは とびはねて よろこぶ
-      p.hopCd -= dt;
-      if (p.hopCd <= 0 && pu.jumpT <= 0) { pu.hop(); p.hopCd = Util.rand(0.4, 1.0); }
-    } else if (p.alive && p !== M.thrower && (M.phase === "gap" || M.phase === "intro")) {
+    if (p.alive && p !== M.thrower && (M.phase === "gap" || M.phase === "intro")) {
       // ホーム付近を うろうろ
       p.wander -= dt;
       if (p.wander <= 0) {
@@ -556,6 +559,7 @@ function updateMatch(dt) {
 
 function draw() {
   ctx.clearRect(0, 0, CW, CH);
+  if (M.over) { drawVictory(); return; }
   // 床
   ctx.fillStyle = "#fbf7ee"; ctx.fillRect(0, 0, CW, CH);
   ctx.fillStyle = "rgba(255,107,157,.12)"; ctx.fillRect(0, 0, CW, LINE);
@@ -609,6 +613,24 @@ function drawBall() {
   ctx.restore();
 }
 
+/* 勝利画面:勝った チームだけを ならべて 大きく えがく(コート・脱落者は 出さない) */
+function drawVictory() {
+  const g = ctx.createLinearGradient(0, 0, 0, CH);
+  g.addColorStop(0, M.winTeam === "red" ? "#ffe3ee" : "#e3f0ff");
+  g.addColorStop(1, "#fffdf5");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+  const order = M.winners.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+  for (const p of order) {
+    p.puppet.draw(ctx);
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = M.winTeam === "red" ? "#d6336c" : "#1c7ed6";
+    ctx.fillText(p.name, p.puppet.x, p.puppet.y + 28);
+  }
+  ctx.textAlign = "left";
+}
+
 function drawPlayer(p) {
   const pu = p.puppet;
   ctx.save();
@@ -640,14 +662,24 @@ function endMatch() {
   M.winTeam = winTeam;
   const label = winTeam === "red" ? "🔴 あかチーム" : "🔵 あおチーム";
 
-  // 勝った チームを 中央に あつめて 大きく ジャンプ
+  // 勝った チームを 中央に ならべて 大きく ジャンプ(勝者だけの画面)
   const winners = M.players.filter((p) => p.team === winTeam && p.alive);
+  M.winners = winners;
+  const n = winners.length;
+  const cols = Math.min(n, 5);
+  const rows = Math.ceil(n / cols);
+  const winH = Util.clamp(210 - n * 9, 100, 200);
+  const gap = 200;
   winners.forEach((p, i) => {
-    p.puppet.h = M.hBase * 1.25;
-    const span = Math.max(1, winners.length - 1);
-    p.tx = winners.length === 1 ? 640 : 300 + (680) * i / span;
-    p.ty = 470;
-    p.hopCd = Util.rand(0, 0.5);
+    const row = Math.floor(i / cols);
+    const idxInRow = i - row * cols;
+    const inRow = Math.min(cols, n - row * cols);   // その行の 人数(中央ぞろえ)
+    const x = 640 - (inRow - 1) * gap / 2 + idxInRow * gap;
+    const y = rows === 1 ? 430 : 350 + 180 * row;
+    p.puppet.h = winH;
+    p.puppet.x = x; p.puppet.y = y; p.tx = x; p.ty = y;
+    p.puppet.facing = 1;
+    p.hopCd = Util.rand(0, 0.6);
   });
 
   const title = $("winTitle");
@@ -657,7 +689,6 @@ function endMatch() {
 
   Sound.fanfare();
   Ui.confetti();
-  Ui.msg(`${label}の かち!`, 2200, winTeam === "red" ? "#d6336c" : "#1c7ed6");
   const withVoice = winners.filter((w) => w.voices);
   if (withVoice.length) Sound.playVoice(Util.choice(withVoice).voices, ["joy"]);
 }
