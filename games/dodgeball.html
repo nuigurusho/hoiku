@@ -67,6 +67,8 @@
   .db-hud span { background: #fff; border-radius: 999px; padding: 4px 18px; box-shadow: 0 3px 0 rgba(150,110,70,.16); white-space: nowrap; }
   .db-hud .db-red  { color: var(--pink-d); }
   .db-hud .db-blue { color: var(--blue-d); }
+  .db-hud .db-num { font-size: 1.5em; font-weight: 800; margin: 0 1px; }
+  .db-hud .db-lbl { font-size: .6em; font-weight: bold; }
   .db-hud .db-vslabel { background: none; box-shadow: none; color: #8a7a68; padding: 0 2px; }
 
   /* --- ステージ(コートの canvas + オーバーレイ) --- */
@@ -90,6 +92,9 @@
   }
   .db-banner.red  { border-top-color: var(--pink); }
   .db-banner.blue { border-top-color: var(--blue); }
+  .db-banner .db-nm { font-weight: 800; }
+  .db-banner .db-nm.red  { color: #ff9ec7; }
+  .db-banner .db-nm.blue { color: #74c0fc; }
   @keyframes db-banner-in { from { transform: translateY(100%); opacity: 0; } }
 
   /* --- 勝利オーバーレイ(canvasの上に タイトル+ボタン) --- */
@@ -318,7 +323,7 @@ $("startBtn").onclick = () => {
 /* ============================================================
    3. 試合(全自動・Canvas + Puppet)
    ============================================================ */
-const WIND = 0.55, FLY = 0.5, RESOLVE = 1.15, INTRO = 1.2;
+const WIND = 0.5, FLY = 0.5, RESOLVE = 1.0, INTRO = 1.2;
 
 async function startMatch() {
   stopLoop();
@@ -399,8 +404,10 @@ function layoutTeam(team, snap) {
 }
 
 function updateHud() {
-  $("hudRed").textContent  = `🔴あか ${aliveCount("red")}にん`;
-  $("hudBlue").textContent = `🔵あお ${aliveCount("blue")}にん`;
+  const html = (emoji, n) =>
+    `${emoji} <span class="db-lbl">のこり</span> <span class="db-num">${n}</span><span class="db-lbl">にん</span>`;
+  $("hudRed").innerHTML  = html("🔴", aliveCount("red"));
+  $("hudBlue").innerHTML = html("🔵", aliveCount("blue"));
 }
 
 function startThrow() {
@@ -412,9 +419,9 @@ function startThrow() {
   const thrower = Util.choice(attackers);
   const target = Util.choice(defenders);
 
-  // けっか(あたる/よける/キャッチ)を さきに きめる
-  let hit = 0.5, dodge = 0.32;             // のこりは catch
-  if (defenders.length === 1) { hit = 0.30; dodge = 0.38; }  // さいごの1人は ねばる
+  // けっか(あたる/よける/キャッチ)を さきに きめる。アウトになるのは あたり だけ
+  let hit = 0.55, dodge = 0.30;            // のこりは catch(0.15)
+  if (defenders.length === 1) { hit = 0.32; dodge = 0.40; }  // さいごの1人は ねばる
   const roll = Math.random();
   const outcome = roll < hit ? "hit" : roll < hit + dodge ? "dodge" : "catch";
 
@@ -440,19 +447,19 @@ function resolve() {
 
   if (oc === "hit") {
     eliminate(g);
-    showBanner(`🏐 ${t.name} が あてた! ${g.name} アウト!`, defTeam);
+    showBanner([nameSpan(t), txt(" が あてた! "), nameSpan(g), txt(" アウト!")], defTeam);
     Sound.bad();
     Sound.playVoice(g.voices, ["fail", "ouch"]);
   } else if (oc === "catch") {
-    eliminate(t);
+    // キャッチは アウトなし。うけとった 子が ボールを もつ(ナイスプレー)
     g.puppet.hop();
-    showBanner(`🎉 ${g.name} ナイスキャッチ! ${t.name} アウト!`, defTeam);
+    showBanner([nameSpan(g), txt(" ナイスキャッチ!")], defTeam);
     Sound.pon(); Sound.good();
     Sound.playVoice(g.voices, ["joy"]);
   } else { // dodge
     g.tx = Util.clamp(g.homeX + (Math.random() < 0.5 ? -110 : 110), XMIN, XMAX);
     g.puppet.hop();
-    showBanner(`💨 ${g.name} ひらり! よけた!`, defTeam);
+    showBanner([nameSpan(g), txt(" ひらり! よけた!")], defTeam);
     Sound.beep(760, 0.18, "square", 0.10, 0, 320);
   }
 
@@ -469,10 +476,20 @@ function eliminate(p) {
   layoutTeam(p.team);
 }
 
-function showBanner(text, team) {
+/* テロップの ぶひん:キャラ名は チーム色、そのほかは 白文字 */
+function nameSpan(p) {
+  const s = document.createElement("span");
+  s.className = "db-nm " + p.team;
+  s.textContent = p.name;
+  return s;
+}
+function txt(t) { return document.createTextNode(t); }
+
+function showBanner(nodes, edgeTeam) {
   const b = $("banner");
-  b.textContent = text;
-  b.className = "db-banner " + team;
+  b.className = "db-banner " + edgeTeam;   // うわべの ラインの色
+  b.textContent = "";
+  for (const n of nodes) b.appendChild(n);
   b.classList.remove("hidden");
   // アニメを 再生し直す
   b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
@@ -494,7 +511,7 @@ function updateMatch(dt) {
         hideBanner();
         if (aliveCount("red") === 0 || aliveCount("blue") === 0) { endMatch(); return; }
         const total = aliveCount("red") + aliveCount("blue");
-        M.throwGap = Util.clamp(0.3 + total * 0.06, 0.35, 1.05);   // 人数が へると テンポUP
+        M.throwGap = Util.clamp(0.25 + total * 0.045, 0.3, 0.85);   // 人数が へると テンポUP
         M.phase = "gap"; M.phaseT = 0;
       }
     } else if (M.phase === "gap") {
@@ -516,11 +533,11 @@ function updateMatch(dt) {
     }
   }
 
-  // 勝利演出:勝った チームだけ その場で とびはねる
+  // 勝利演出:勝った チームだけ その場で つぎつぎ とびはねる(音は 鳴らさない)
   if (M.over) {
     for (const p of M.winners) {
       p.hopCd -= dt;
-      if (p.hopCd <= 0 && p.puppet.jumpT <= 0) { p.puppet.hop(); p.hopCd = Util.rand(0.4, 1.0); }
+      if (p.hopCd <= 0 && p.puppet.jumpT <= 0) { p.puppet.jumpT = 0.5; p.hopCd = Util.rand(0.05, 0.3); }
       p.puppet.walking = false;
       p.puppet.update(dt);
     }
