@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>リレー</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  /* ===== リレー専用スタイル(1ファイル完結) ===== */
+
+  /* --- チーム発表 --- */
+  .rl-teams {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 10px;
+    max-width: 980px;
+    margin: 10px auto;
+    flex-wrap: nowrap;
+  }
+  .rl-teamcol {
+    flex: 1 1 0;
+    min-width: 0;
+    background: #fff;
+    border-radius: 22px;
+    border: 5px solid var(--cream-d);
+    box-shadow: 0 6px 0 var(--cream-d);
+    padding: 10px 8px 14px;
+  }
+  .rl-teamcol.red  { border-color: var(--pink); box-shadow: 0 6px 0 var(--pink-d); background: #fff0f6; }
+  .rl-teamcol.blue { border-color: var(--blue); box-shadow: 0 6px 0 var(--blue-d); background: #e7f5ff; }
+  .rl-teamcol h3 { margin: 4px 0 8px; font-size: clamp(20px, 4.5vw, 30px); }
+  .rl-teamcol.red  h3 { color: var(--pink-d); }
+  .rl-teamcol.blue h3 { color: var(--blue-d); }
+  .rl-members {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+    gap: 8px;
+    min-height: 90px;
+    align-content: start;
+  }
+  .rl-mem { position: relative; text-align: center; animation: rl-pop .4s cubic-bezier(.2,1.6,.4,1) both; }
+  .rl-mem img {
+    width: 100%;
+    aspect-ratio: 1/1;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 12px;
+    border: 3px solid #eee2d0;
+  }
+  .rl-mem .nm { font-size: 13px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* はしる じゅんばんの バッジ(⭐=アンカー) */
+  .rl-ord {
+    position: absolute;
+    top: -7px; left: -7px;
+    z-index: 2;
+    background: var(--yellow);
+    color: #7a5b00;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    box-shadow: 0 2px 0 var(--yellow-d);
+    white-space: nowrap;
+  }
+  .rl-ord.an { background: var(--pink); color: #fff; box-shadow: 0 2px 0 var(--pink-d); }
+  .rl-vs { align-self: center; font-size: clamp(24px, 6vw, 46px); font-weight: bold; color: #a99; flex: 0 0 auto; }
+  @keyframes rl-pop { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
+
+  /* --- レースHUD(なんにんめ/リード) --- */
+  .rl-hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-weight: bold;
+    font-size: clamp(18px, 4.4vw, 30px);
+    margin: 6px 0 8px;
+    flex-wrap: wrap;
+  }
+  .rl-hud span { background: #fff; border-radius: 999px; padding: 4px 18px; box-shadow: 0 3px 0 rgba(150,110,70,.16); white-space: nowrap; }
+  .rl-hud .rl-red  { color: var(--pink-d); }
+  .rl-hud .rl-blue { color: var(--blue-d); }
+  .rl-hud .rl-lead { background: none; box-shadow: none; color: #8a7a68; font-size: .72em; padding: 0 2px; min-width: 120px; text-align: center; }
+  .rl-hud .rl-lead.red  { color: var(--pink-d); }
+  .rl-hud .rl-lead.blue { color: var(--blue-d); }
+
+  /* --- ステージ(トラックの canvas + オーバーレイ) --- */
+  .rl-stage { position: relative; max-width: 1000px; margin: 0 auto; }
+
+  /* --- じっきょうテロップ(下部の黒おび) --- */
+  .rl-banner {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    z-index: 40;
+    text-align: center;
+    font-weight: bold;
+    font-size: clamp(15px, 3.2vw, 28px);
+    line-height: 1.2;
+    color: #fff;
+    background: linear-gradient(to top, rgba(18,12,6,.86), rgba(18,12,6,.62));
+    padding: 9px 16px 11px;
+    border-top: 5px solid var(--yellow);
+    pointer-events: none;
+    animation: rl-banner-in .22s ease-out both;
+  }
+  .rl-banner.red  { border-top-color: var(--pink); }
+  .rl-banner.blue { border-top-color: var(--blue); }
+  .rl-banner .rl-nm { font-weight: 800; }
+  .rl-banner .rl-nm.red  { color: #ff9ec7; }
+  .rl-banner .rl-nm.blue { color: #74c0fc; }
+  @keyframes rl-banner-in { from { transform: translateY(100%); opacity: 0; } }
+
+  /* --- 勝利オーバーレイ --- */
+  .rl-winbar {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    pointer-events: none;
+  }
+  .rl-winbar h2 {
+    margin: 0;
+    font-size: clamp(26px, 6.5vw, 52px);
+    text-align: center;
+    background: rgba(255,255,255,.9);
+    border-radius: 999px;
+    padding: 6px 26px;
+    box-shadow: 0 5px 0 rgba(150,110,70,.18);
+    pointer-events: auto;
+  }
+  .rl-winbar h2.red  { color: var(--pink-d); }
+  .rl-winbar h2.blue { color: var(--blue-d); }
+  .rl-winbar .rl-winbtns { pointer-events: auto; width: 100%; }
+  .rl-winbar .row { margin: 6px 0; }
+
+  @media (max-width: 560px) {
+    /* スマホ縦:ゲーム中は ヘッダーが「← もどる」フローティングになるので
+       HUDが かぶらないよう 上に すきまを あける */
+    .rl-hud { margin-top: 50px; font-size: clamp(16px, 4.4vw, 24px); }
+    .rl-winbar .btn.big { font-size: 20px; padding: 14px 20px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1>🏃 リレー</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <!-- 1. キャラ選択 -->
+  <div id="selectScreen">
+    <div class="panel">
+      <h2>はしる キャラを えらんでね<br><span style="font-size:18px;font-weight:normal;color:#8a7a68">(タッチで えらぶ / はずす)</span></h2>
+      <div class="gallery" id="gallery"></div>
+      <p class="note" id="selNote" style="font-size:17px;font-weight:bold;min-height:22px"></p>
+      <div class="row"><button class="btn big pink" id="decideBtn">けってい!</button></div>
+      <p class="note">えらんだ みんなが 2チームに わかれて、じどうで リレーたいけつ!<br>
+      バトンおとし や ころんじゃう ハプニングも!? みているだけでOK!</p>
+    </div>
+  </div>
+
+  <!-- 2. チーム発表 -->
+  <div id="teamScreen" class="hidden">
+    <h2 style="text-align:center;margin:10px 0 4px;font-size:clamp(22px,5vw,32px)">🎪 チームわけ!</h2>
+    <div class="rl-teams">
+      <div class="rl-teamcol red"><h3>🔴 あかチーム</h3><div class="rl-members" id="redMembers"></div></div>
+      <div class="rl-vs">VS</div>
+      <div class="rl-teamcol blue"><h3>🔵 あおチーム</h3><div class="rl-members" id="blueMembers"></div></div>
+    </div>
+    <p class="note" style="text-align:center;font-size:15px;margin:4px 0">バッジの すうじが はしる じゅんばん。⭐は さいごに はしる アンカーだよ!</p>
+    <div class="row" id="teamBtns">
+      <button class="btn big yellow" id="redoBtn">やりなおす</button>
+      <button class="btn big green"  id="startBtn">スタート!</button>
+    </div>
+  </div>
+
+  <!-- 3. レース(全自動)+ 4. 結果発表 -->
+  <div id="playScreen" class="hidden">
+    <div class="rl-hud">
+      <span class="rl-red"  id="hudRed">🔴 1にんめ</span>
+      <span class="rl-lead" id="leadLbl">よーい…</span>
+      <span class="rl-blue" id="hudBlue">🔵 1にんめ</span>
+    </div>
+    <div class="rl-stage">
+      <canvas id="cv" class="stage" width="1280" height="720"></canvas>
+      <div class="rl-banner hidden" id="banner"></div>
+      <div class="rl-winbar hidden" id="winOverlay">
+        <h2 id="winTitle">かち!</h2>
+        <div class="rl-winbtns">
+          <div class="row">
+            <button class="btn big pink" id="rematchBtn">もういっかい はしる!</button>
+            <button class="btn big yellow" id="reteamBtn">チームわけから やりなおす</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js"></script>
+<script src="../js/rig.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const CW = 1280, CH = 720;
+
+/* ---- 画面きりかえ ---- */
+const SCREENS = ["selectScreen", "teamScreen", "playScreen"];
+function show(id) { for (const s of SCREENS) $(s).classList.toggle("hidden", s !== id); }
+
+/* ============================================================
+   トラック(りくじょうトラックがた:直線2本+はんえん2つ)
+   pathPos(t, off) … 1しゅうの すすみぐあい t(0〜1)と
+   センターラインからの よこズレ off(+=そとがわ)で 座標をかえす
+   ============================================================ */
+const CY = 388, RTRK = 215;            // トラック中心Y・カーブ半径
+const CX1 = 400, CX2 = 880;            // 左右カーブの中心X
+const STR = CX2 - CX1;                 // 直線の ながさ
+const CURVE = Math.PI * RTRK;          // カーブの ながさ(センターライン)
+const LAPLEN = 2 * STR + 2 * CURVE;    // 1しゅうの ながさ(px)
+const LINEX = 560;                     // スタート/ゴールラインのX(下の直線)
+const S0 = LINEX - CX1;                // ラインの 弧長オフセット
+const HTRK = 52;                       // トラックの はば(センターから 片がわ)
+const LANE = { red: -28, blue: 28 };   // あか=うちがわ、あお=そとがわ
+
+function pathPos(t, off) {
+  let s = (S0 + (((t % 1) + 1) % 1) * LAPLEN) % LAPLEN;
+  if (s < STR) return { x: CX1 + s, y: CY + RTRK + off };                    // 下の直線(→)
+  s -= STR;
+  if (s < CURVE) {                                                          // 右カーブ(↑)
+    const a = Math.PI / 2 - (s / CURVE) * Math.PI;
+    return { x: CX2 + (RTRK + off) * Math.cos(a), y: CY + (RTRK + off) * Math.sin(a) };
+  }
+  s -= CURVE;
+  if (s < STR) return { x: CX2 - s, y: CY - RTRK - off };                   // 上の直線(←)
+  s -= STR;
+  const a = Math.PI * 1.5 - ((s - 0) / CURVE) * Math.PI;                    // 左カーブ(↓)
+  return { x: CX1 + (RTRK + off) * Math.cos(a), y: CY + (RTRK + off) * Math.sin(a) };
+}
+/* 奥は ちいさく 見せる(えんきんかん) */
+function depthScale(y) { return 0.72 + 0.28 * Util.clamp((y - 140) / (660 - 140), 0, 1); }
+
+/* ---- 状態 ---- */
+let allChars = [];
+const selectedIds = new Set();
+let roster = [];               // [{rec,name,voices}]
+let teams = { red: [], blue: [] };
+let teamGen = 0;
+let M = null;
+let rafId = 0;
+
+/* ============================================================
+   1. キャラ選択
+   ============================================================ */
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  allChars = recs.filter((r) => r.cat === "char");
+  allChars.forEach((r) => selectedIds.add(r.id));   // さいしょは ぜんいん
+  renderGallery();
+}
+function renderGallery() {
+  const el = $("gallery");
+  el.innerHTML = "";
+  for (const r of allChars) {
+    const d = document.createElement("div");
+    d.className = "thumb" + (selectedIds.has(r.id) ? " selected" : "");
+    d.innerHTML = `<img src="${r.dataURL}" alt=""><div class="name">${r.name || ""}</div>`;
+    d.onclick = () => {
+      Sound.tap();
+      selectedIds.has(r.id) ? selectedIds.delete(r.id) : selectedIds.add(r.id);
+      renderGallery();
+    };
+    el.appendChild(d);
+  }
+  refreshDecide();
+}
+function refreshDecide() {
+  const n = selectedIds.size;
+  const btn = $("decideBtn"), note = $("selNote");
+  if (n < 4) {
+    btn.disabled = true;
+    note.textContent = `あと ${4 - n}にん えらんでね(4にん いじょうで はじめられるよ)`;
+    note.style.color = "#d6336c";
+  } else {
+    btn.disabled = false;
+    note.textContent = `${n}にんで リレーたいけつ!`;
+    note.style.color = "#2f9e44";
+  }
+}
+$("decideBtn").onclick = () => {
+  if (selectedIds.size < 4) { Sound.bad(); return; }
+  Sound.pon();
+  roster = allChars
+    .filter((r) => selectedIds.has(r.id))
+    .map((r) => ({ rec: r, name: r.name || "", voices: r.voices || null }));
+  splitTeams();
+  goTeamReveal();
+};
+
+/* ============================================================
+   2. チーム発表(はしる じゅんばんつき)
+   ============================================================ */
+function splitTeams() {
+  const sh = Util.shuffle(roster);
+  const half = Math.ceil(sh.length / 2);   // 奇数なら あかが 1人 おおい
+  teams.red = sh.slice(0, half);
+  teams.blue = sh.slice(half);
+}
+function totalLegs() { return Math.max(teams.red.length, teams.blue.length); }
+/* そのメンバーが はしる 順番(1はじまり)。人数が すくないチームは 2回はしる子がいる */
+function legsFor(teamList, idx) {
+  const L = totalLegs(), out = [];
+  for (let j = 0; j < L; j++) if (j % teamList.length === idx) out.push(j + 1);
+  return out;
+}
+function goTeamReveal() { show("teamScreen"); revealTeams(); }
+async function revealTeams() {
+  const gen = ++teamGen;
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  $("redMembers").innerHTML = "";
+  $("blueMembers").innerHTML = "";
+  $("startBtn").disabled = true;
+  $("redoBtn").disabled = true;
+
+  const order = [];
+  const maxLen = Math.max(teams.red.length, teams.blue.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (teams.red[i])  order.push(["red", i]);
+    if (teams.blue[i]) order.push(["blue", i]);
+  }
+
+  await sleep(350);
+  for (const [team, i] of order) {
+    if (gen !== teamGen) return;
+    drumroll();
+    await sleep(360);
+    if (gen !== teamGen) return;
+    const list = teams[team];
+    const mem = list[i];
+    const legs = legsFor(list, i);
+    const anchor = legs.includes(totalLegs());
+    const box = $(team === "red" ? "redMembers" : "blueMembers");
+    const d = document.createElement("div");
+    d.className = "rl-mem";
+    d.innerHTML = `<span class="rl-ord${anchor ? " an" : ""}">${anchor ? "⭐" : ""}${legs.join("・")}</span>` +
+      `<img src="${mem.rec.dataURL}" alt=""><div class="nm">${mem.name}</div>`;
+    box.appendChild(d);
+    Sound.pon();
+    await sleep(180);
+  }
+  if (gen !== teamGen) return;
+  $("startBtn").disabled = false;
+  $("redoBtn").disabled = false;
+  Ui.msg("よういは いい?", 1200, "#2f9e44");
+}
+function drumroll() {
+  for (let i = 0; i < 5; i++) Sound.beep(180 + i * 6, 0.04, "square", 0.06, i * 0.05);
+}
+$("redoBtn").onclick = () => { Sound.tap(); splitTeams(); revealTeams(); };
+$("startBtn").onclick = () => {
+  if ($("startBtn").disabled) return;
+  teamGen++;
+  Sound.pon();
+  startRace();
+};
+
+/* ============================================================
+   3. レース(全自動・Canvas + Puppet)
+   ============================================================ */
+async function startRace() {
+  stopLoop();
+  show("playScreen");
+  $("banner").classList.add("hidden");
+  $("winOverlay").classList.add("hidden");
+
+  const perMax = Math.max(teams.red.length, teams.blue.length);
+  const hBase = Util.clamp(148 - perMax * 5, 96, 138);
+
+  // すべての キャラを パペット化(白背景を切りぬき+手足分割)
+  const chars = [];
+  const T = {};
+  for (const key of ["red", "blue"]) {
+    const members = [];
+    for (const b of teams[key]) {
+      const parts = await Rig.load(b.rec);
+      const c = {
+        name: b.name, voices: b.voices, team: key,
+        puppet: new Puppet(parts, { h: hBase, facing: 1 }),
+        state: "idle", tx: 640, ty: 470, hBase,
+        fall: 0, wob: Util.rand(0, 9), prevX: 0,
+        spd: Util.rand(300, 380),          // この子の きほんの はやさ(px/s)
+        hopCd: Util.rand(1.5, 4),
+      };
+      members.push(c);
+      chars.push(c);
+    }
+    T[key] = {
+      key, off: LANE[key], members,
+      leg: 0, pathP: 0, runT: 0, slots: [],
+      ev: null, calledNext: false,
+      done: false, finT: 0, rank: 0,
+      baton: { state: "held" },            // held / fly / ground
+    };
+  }
+
+  const LEGS = totalLegs();
+  M = {
+    chars, T, LEGS, hBase,
+    phase: "count", t: 0, raceT: 0, countStep: 0,
+    evCd: 0, finished: 0, winTeam: null, winWait: 0, annT: 0,
+    leader: null, pendLeader: null, pendT: 0, lastLeadHtml: "",
+    floats: [], crowd: [], stop: false,
+    celebrants: [], winners: [],
+  };
+
+  // かんきゃくせき(うえの おうえんだん)
+  for (let i = 0, x = 76; x < 1210; i++, x += 44) {
+    M.crowd.push({ x: x + (i % 2) * 10, y: i % 2 ? 92 : 50,
+                   r: Util.rand(13, 17), ph: Util.rand(0, 9),
+                   col: Util.choice(["#ff8fab", "#74c0fc", "#8ce99a", "#ffd43b", "#b197fc", "#ffa94d"]) });
+  }
+
+  // はいち:1人目は ライン、ほかは ベンチ(トラックの うちがわ)
+  for (const key of ["red", "blue"]) layoutBench(T[key], true);
+  for (const key of ["red", "blue"]) {
+    const t = T[key];
+    const first = t.members[0];
+    const p = pathPos(0, t.off);
+    first.state = "run";
+    first.puppet.x = first.prevX = p.x; first.puppet.y = p.y;
+    first.puppet.facing = 1;
+    startLeg(t);
+  }
+
+  updateHud();
+  $("leadLbl").textContent = "";
+  M.lastLeadHtml = "";
+
+  let last = performance.now();
+  (function loop(now) {
+    if (!M || M.stop) return;
+    const dt = Math.min(0.04, (now - last) / 1000); last = now;
+    update(dt);
+    draw();
+    rafId = requestAnimationFrame(loop);
+  })(last);
+}
+function stopLoop() { if (rafId) cancelAnimationFrame(rafId); rafId = 0; if (M) M.stop = true; }
+
+/* ベンチ(トラック うちがわ)の 立ちいち。あか=左はんぶん、あお=右はんぶん */
+function layoutBench(t, snap) {
+  t.members.forEach((c, i) => {
+    const row = Math.floor(i / 5), col = i % 5;
+    const y = 468 + row * 54;
+    const x = t.key === "red" ? 320 + col * 55 : 960 - col * 55;
+    c.spotX = x; c.spotY = y;
+    if (c.state !== "run") { c.tx = x; c.ty = y; }
+    if (snap) { c.puppet.x = x; c.puppet.y = y; c.puppet.facing = t.key === "red" ? 1 : -1; }
+  });
+}
+function curRunner(t) { return t.members[t.leg % t.members.length]; }
+function otherT(t) { return M.T[t.key === "red" ? "blue" : "red"]; }
+function teamProg(t) { return t.done ? M.LEGS : t.leg + t.pathP; }
+
+/* 1区かん(1しゅう)の じゅんび:ハプニングを おこす ばしょを きめる */
+function startLeg(t) {
+  t.pathP = Math.max(0, t.pathP - 1);   // うけつぎの はみだしぶんを もちこす
+  t.runT = 0;
+  t.calledNext = false;
+  t.ev = null;
+  const lastLeg = t.leg === M.LEGS - 1;
+  t.slots = lastLeg
+    ? (Math.random() < 0.75 ? [Util.rand(0.15, 0.4)] : [])            // アンカーは ゴールまえを あけておく
+    : [Util.rand(0.15, 0.45)].concat(Math.random() < 0.55 ? [Util.rand(0.52, 0.8)] : []);
+  t.slots.sort((a, b) => a - b);
+}
+
+function updateHud() {
+  for (const key of ["red", "blue"]) {
+    const t = M.T[key];
+    const el = $(key === "red" ? "hudRed" : "hudBlue");
+    const mark = key === "red" ? "🔴" : "🔵";
+    if (t.done) el.textContent = `${mark} ゴール! ${t.rank}い`;
+    else el.textContent = `${mark} ${Math.min(t.leg + 1, M.LEGS)}/${M.LEGS}にんめ`;
+  }
+}
+
+/* ---- じっきょうテロップ ---- */
+function nameSpan(c) {
+  const s = document.createElement("span");
+  s.className = "rl-nm " + c.team;
+  s.textContent = c.name;
+  return s;
+}
+function txt(t) { return document.createTextNode(t); }
+function showBanner(nodes, edgeTeam) {
+  const b = $("banner");
+  b.className = "rl-banner" + (edgeTeam ? " " + edgeTeam : "");
+  b.textContent = "";
+  for (const n of nodes) b.appendChild(n);
+  b.classList.remove("hidden");
+  b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
+}
+function hideBanner() { $("banner").classList.add("hidden"); }
+
+function addFloat(x, y, txt, col, big) {
+  M.floats.push({ x, y, txt, col: col || "#fff", t: 0, dur: big ? 1.3 : 0.9, big: !!big });
+}
+
+/* ---- ハプニング ---- */
+const EV_EMO = { drop: "💦", stumble: "💫", slow: "🐢", boost: "💨" };
+
+function pickEventType(t) {
+  const lead = teamProg(t) - teamProg(otherT(t));   // +なら この チームが リード
+  let w;
+  if (lead > 0.1)       w = { drop: 0.34, stumble: 0.30, slow: 0.26, boost: 0.10 };   // リード中は ゆだん
+  else if (lead < -0.1) w = { drop: 0.14, stumble: 0.14, slow: 0.12, boost: 0.60 };   // おくれてたら スパート
+  else                  w = { drop: 0.24, stumble: 0.24, slow: 0.20, boost: 0.32 };
+  let roll = Math.random() * (w.drop + w.stumble + w.slow + w.boost);
+  for (const k of ["drop", "stumble", "slow", "boost"]) {
+    if (roll < w[k]) return k;
+    roll -= w[k];
+  }
+  return "boost";
+}
+
+function startEvent(t) {
+  const c = curRunner(t);
+  const type = pickEventType(t);
+  M.evCd = 1.3;
+
+  if (type === "drop") {
+    // バトンが とんでいく → あわてて ひろいに いく
+    const fwd = Math.random() < 0.75;
+    const dp = fwd ? Util.rand(0.018, 0.032) : -Util.rand(0.010, 0.020);
+    const batonP = Util.clamp(t.pathP + dp, 0.02, 0.95);
+    const from = pathPos(t.pathP, t.off);
+    const to = pathPos(batonP, t.off);
+    t.ev = { type, phase: "shock", t: 0, batonP, emo: "💦" };
+    t.baton = { state: "fly", t: 0, dur: 0.5,
+                fx: from.x + c.puppet.facing * 14, fy: from.y - c.puppet.h * 0.42,
+                tx: to.x, ty: to.y - 4 };
+    c.puppet.hop();
+    Sound.bad();
+    Sound.playVoice(c.voices, ["ouch"]);
+    showBanner([txt("たいへん! "), nameSpan(c), txt(" バトンを おとした!")], t.key);
+  } else if (type === "stumble") {
+    t.ev = { type, phase: "fall", t: 0, emo: "💫" };
+    Sound.beep(150, 0.2, "square", 0.14);
+    Sound.beep(110, 0.25, "sawtooth", 0.10, 0.08);
+    Sound.playVoice(c.voices, ["ouch"]);
+    showBanner([nameSpan(c), txt(" ころんじゃった! がんばれ!")], t.key);
+  } else if (type === "slow") {
+    t.ev = { type, t: 0, dur: Util.rand(1.3, 2.1), emo: "🐢" };
+    Sound.beep(340, 0.5, "sine", 0.06, 0, -150);
+    showBanner([nameSpan(c), txt(" ちょっと マイペース…")], t.key);
+  } else {
+    t.ev = { type: "boost", t: 0, dur: Util.rand(0.9, 1.5), emo: "💨" };
+    Sound.beep(440, 0.16, "square", 0.08, 0, 260);
+    showBanner([nameSpan(c), txt(" ものすごい スピード!")], t.key);
+  }
+}
+
+/* リードに おうじた 接戦ほせい:おくれてる チームが はやくなる。
+   ゴールが ちかづくと 効果が よわまり、さいごは じつりょく しょうぶ */
+function rubber(t) {
+  const gap = teamProg(otherT(t)) - teamProg(t);   // +なら この チームが おくれ
+  const race01 = Math.max(teamProg(t), teamProg(otherT(t))) / M.LEGS;
+  let k = 0.6 * (1 - 0.7 * race01);
+  if (t.leg === M.LEGS - 1 && t.pathP > 0.78) {
+    k *= Math.max(0, 1 - (t.pathP - 0.78) / 0.22);   // ゴールまえは ほせいゼロへ
+  }
+  if (gap > 0) return 1 + Math.min(1.1, gap * 2.6) * k;
+  return 1 + Math.max(-0.5, gap * 2.6) * k * 0.45;
+}
+
+function stepTeam(t, dt) {
+  if (t.done) return;
+  const c = curRunner(t);
+  t.runT += dt;
+  c.wob += dt;
+
+  // きほんの はやさ+ゆらぎ+接戦ほせい+スタートの 加速
+  let v = c.spd * (1 + 0.12 * Math.sin(c.wob * 1.9) + 0.08 * Math.sin(c.wob * 4.3 + 1));
+  v *= rubber(t);
+  v *= Math.min(1, t.runT / 0.5);
+
+  let dp = 0;
+  const ev = t.ev;
+  if (ev) {
+    ev.t += dt;
+    if (ev.type === "slow") {
+      dp = v * 0.42 * dt / LAPLEN;
+      if (ev.t >= ev.dur) t.ev = null;
+    } else if (ev.type === "boost") {
+      dp = v * 1.85 * dt / LAPLEN;
+      if (ev.t >= ev.dur) t.ev = null;
+    } else if (ev.type === "stumble") {
+      // ばたっ → おきあがって かけなおす
+      if (ev.phase === "fall") {
+        c.fall = Util.clamp(ev.t / 0.3, 0, 1);
+        if (ev.t >= 0.62) { ev.phase = "up"; ev.t = 0; }
+      } else {
+        c.fall = 1 - Util.clamp(ev.t / 0.35, 0, 1);
+        if (ev.t >= 0.38) {
+          c.fall = 0;
+          t.ev = { type: "boost", t: 0, dur: 1.0, emo: "💨", silent: true };   // なきの ダッシュ
+        }
+      }
+    } else if (ev.type === "drop") {
+      const b = t.baton;
+      if (b.state === "fly") {
+        b.t += dt;
+        if (b.t >= b.dur) { b.state = "ground"; b.t = 0; }
+      }
+      if (ev.phase === "shock") {
+        if (ev.t >= 0.42) { ev.phase = "goto"; }
+      } else if (ev.phase === "goto") {
+        const dir = Math.sign(ev.batonP - t.pathP) || 1;
+        const step = 250 * dt / LAPLEN;
+        if (Math.abs(ev.batonP - t.pathP) <= step) {
+          t.pathP = ev.batonP;
+          ev.phase = "pick"; ev.t = 0;
+        } else {
+          dp = dir * step;
+        }
+      } else if (ev.phase === "pick") {
+        if (ev.t >= 0.4) {
+          t.baton = { state: "held" };
+          t.ev = { type: "boost", t: 0, dur: 0.9, emo: "💨", silent: true };   // とりかえしダッシュ
+        }
+      }
+    }
+  } else {
+    dp = v * dt / LAPLEN;
+    // ハプニングの ばしょに きたら はつどう(ゴールちょくぜん・勝敗が ついたあとは おこさない)
+    while (t.slots.length && t.pathP > t.slots[0]) {
+      t.slots.shift();
+      if (!t.ev && M.evCd <= 0 && t.pathP < 0.85 && !M.winTeam) { startEvent(t); break; }
+    }
+  }
+
+  t.pathP += dp;
+
+  // つぎの子は とちゅうで ラインの すこし てまえへ あるいて いく
+  if (!t.calledNext && t.pathP > 0.52 && t.leg + 1 < M.LEGS) {
+    t.calledNext = true;
+    const nx = t.members[(t.leg + 1) % t.members.length];
+    if (nx.state !== "run") {
+      const p = pathPos(0, t.off);
+      nx.tx = p.x - 34; nx.ty = p.y;
+    }
+  }
+
+  if (t.pathP >= 1) { handoff(t); return; }
+
+  // はしってる子の いちを パスから きめる
+  const p = pathPos(t.pathP, t.off);
+  const pu = c.puppet;
+  const dx = p.x - c.prevX;
+  if (Math.abs(dx) > 0.6) pu.facing = Math.sign(dx);
+  c.prevX = p.x;
+  pu.x = p.x; pu.y = p.y;
+  pu.walking = !(ev && (ev.type === "stumble" || (ev.type === "drop" && ev.phase !== "goto")));
+}
+
+/* バトンパス or ゴール */
+function handoff(t) {
+  const c = curRunner(t);
+  t.leg++;
+  const linePos = pathPos(0, t.off);
+
+  if (t.leg >= M.LEGS) {   // アンカーが ゴール!
+    t.done = true;
+    t.rank = ++M.finished;
+    t.finT = M.raceT;
+    t.baton = { state: "held" };
+    c.state = "idle"; c.fall = 0; c.tx = c.spotX; c.ty = c.spotY;
+    if (t.rank === 1) {
+      M.winTeam = t;
+      M.winWait = 0;
+      addFloat(linePos.x, linePos.y - 130, "ゴール!!", teamColor(t.key), true);
+      showBanner([txt("🏁 "), txt(teamLabel(t.key)), txt(" ゴール!!")], t.key);
+      Sound.good(); Sound.pon();
+      cheerTeam(t);
+    } else {
+      addFloat(linePos.x, linePos.y - 110, "ゴール!", teamColor(t.key), false);
+      showBanner([txt(teamLabel(t.key)), txt(" も ゴール!")], t.key);
+      Sound.good();
+    }
+    updateHud();
+    return;
+  }
+
+  // バトンタッチ
+  Sound.pon();
+  addFloat(linePos.x, linePos.y - 100, "タッチ!", "#fff", false);
+  c.state = "idle"; c.fall = 0; c.tx = c.spotX; c.ty = c.spotY;
+  const nx = t.members[t.leg % t.members.length];
+  nx.state = "run";
+  nx.prevX = nx.puppet.x;
+  startLeg(t);
+  const lastLeg = t.leg === M.LEGS - 1;
+  if (lastLeg) {
+    showBanner([txt("さいごは アンカー "), nameSpan(nx), txt("!")], t.key);
+  } else {
+    showBanner([nameSpan(c), txt(" → "), nameSpan(nx), txt(" バトンタッチ!")], t.key);
+  }
+  updateHud();
+}
+
+function teamLabel(key) { return key === "red" ? "🔴 あかチーム" : "🔵 あおチーム"; }
+function teamColor(key) { return key === "red" ? "#ff6b9d" : "#4dabf7"; }
+
+/* ベンチの みんなが よろこんで とびはねる */
+function cheerTeam(t) {
+  for (const c of t.members) {
+    if (c.state !== "run") c.hopCd = Util.rand(0, 0.3);
+  }
+}
+
+/* リードの いれかわりを 見はって テロップを だす */
+function leadWatch(dt) {
+  const r = teamProg(M.T.red), b = teamProg(M.T.blue);
+  const diff = r - b;
+  // HUDまんなかの リードひょうじ
+  const lbl = $("leadLbl");
+  let html, cls = "rl-lead";
+  if (M.winTeam) { html = ""; }
+  else if (Math.abs(diff) < 0.05) { html = "せっせん!"; }
+  else if (diff > 0) { html = "あかが リード!"; cls += " red"; }
+  else { html = "あおが リード!"; cls += " blue"; }
+  if (html !== M.lastLeadHtml) { lbl.textContent = html; lbl.className = cls; M.lastLeadHtml = html; }
+
+  if (Math.abs(diff) < 0.015 || M.winTeam) return;
+  const cur = diff > 0 ? "red" : "blue";
+  if (cur === M.leader) { M.pendLeader = null; return; }
+  if (M.pendLeader !== cur) { M.pendLeader = cur; M.pendT = 0; return; }
+  M.pendT += dt;
+  if (M.pendT < 0.45) return;
+  const firstTime = M.leader === null;
+  M.leader = cur;
+  M.pendLeader = null;
+  if (!firstTime && M.raceT > 2.5) {
+    showBanner([txt("🔥 ぎゃくてん! "), txt(teamLabel(cur)), txt(" が まえに でた!")], cur);
+    Sound.good();
+    cheerTeam(M.T[cur]);
+  }
+}
+
+/* ---- まいフレーム こうしん ---- */
+function update(dt) {
+  M.t += dt;
+  for (const f of M.floats) f.t += dt;
+  M.floats = M.floats.filter((f) => f.t < f.dur);
+
+  // 結果発表(勝ちチームが よろこぶ)
+  if (M.phase === "over") {
+    for (const c of M.celebrants) {
+      c.hopCd -= dt;
+      if (c.hopCd <= 0 && c.puppet.jumpT <= 0) { c.puppet.jumpT = 0.5; c.hopCd = Util.rand(0.05, 0.35); }
+      c.puppet.walking = false;
+      c.puppet.update(dt);
+    }
+    return;
+  }
+
+  if (M.phase === "count") {
+    // よーい… どん!
+    const steps = [[0.1, "いちに ついて…", "#4a3f35"], [1.3, "よーい…", "#4dabf7"], [2.4, "どん!", "#ff6b9d"]];
+    while (M.countStep < steps.length && M.t >= steps[M.countStep][0]) {
+      const [, msg, col] = steps[M.countStep];
+      Ui.msg(msg, M.countStep === 2 ? 900 : 1100, col);
+      if (M.countStep === 1) Sound.tick();
+      if (M.countStep === 2) { Sound.pon(); M.phase = "run"; }
+      M.countStep++;
+    }
+  } else if (M.phase === "run") {
+    M.raceT += dt;
+    M.evCd -= dt;
+    stepTeam(M.T.red, dt);
+    stepTeam(M.T.blue, dt);
+    leadWatch(dt);
+
+    if (M.winTeam) {
+      M.winWait += dt;
+      const bothDone = M.T.red.done && M.T.blue.done;
+      if (bothDone || M.winWait > 6) {
+        // まだ はしってる チームは そこまで
+        for (const key of ["red", "blue"]) {
+          const t = M.T[key];
+          if (!t.done) {
+            t.done = true; t.rank = ++M.finished;
+            const c = curRunner(t);
+            c.state = "idle"; c.fall = 0; c.tx = c.spotX; c.ty = c.spotY;
+          }
+        }
+        updateHud();
+        M.phase = "announce";
+        M.annT = 0;
+        showBanner([txt("✨ けっか はっぴょう!")], "");
+        drumroll();
+      }
+    }
+  } else if (M.phase === "announce") {
+    M.annT += dt;
+    if (M.annT > 0.6 && !M.drum2) { M.drum2 = true; drumroll(); }
+    if (M.annT > 1.2 && !M.drum3) { M.drum3 = true; drumroll(); }
+    if (M.annT >= 1.9) { showResult(); return; }
+  }
+
+  // はしってない キャラの あるき・とびはね
+  for (const c of M.chars) {
+    const pu = c.puppet;
+    if (c.state !== "run") {
+      const dx = c.tx - pu.x, dy = c.ty - pu.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 4) {
+        const step = Math.min(d, 175 * dt);
+        pu.x += dx / d * step; pu.y += dy / d * step;
+        pu.walking = true;
+        if (Math.abs(dx) > 2) pu.facing = Math.sign(dx);
+      } else {
+        pu.walking = false;
+        // じぶんの チームの はしってる子の ほうを むいて おうえん
+        const t = M.T[c.team];
+        if (!t.done) {
+          const run = curRunner(t);
+          if (run !== c) pu.facing = Math.sign(run.puppet.x - pu.x) || pu.facing;
+        }
+        c.hopCd -= dt;
+        if (c.hopCd <= 0) {
+          if (M.phase === "run" && pu.jumpT <= 0) pu.jumpT = 0.45;
+          c.hopCd = Util.rand(2.2, 5.5);
+        }
+      }
+    }
+    pu.h = c.hBase * depthScale(pu.y);
+    pu.update(dt);
+  }
+}
+
+/* ============================================================
+   えがく
+   ============================================================ */
+function draw() {
+  ctx.clearRect(0, 0, CW, CH);
+  if (M.phase === "over") { drawVictory(); return; }
+
+  // そら と かんきゃくせき
+  const sky = ctx.createLinearGradient(0, 0, 0, 130);
+  sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#d3ecff");
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, CW, 130);
+  ctx.fillStyle = "#f7e6c8"; ctx.fillRect(0, 16, CW, 102);        // かんきゃくせきの だん
+  ctx.fillStyle = "rgba(150,110,70,.16)"; ctx.fillRect(0, 112, CW, 6);
+  const cheerAmp = M.winTeam ? 5 : 2.6;
+  for (let i = 0; i < M.crowd.length; i++) {
+    const s = M.crowd[i];
+    const bob = Math.abs(Math.sin(M.t * 3 + s.ph)) * cheerAmp;
+    ctx.fillStyle = s.col;
+    ctx.beginPath(); ctx.arc(s.x, s.y - bob, s.r, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.5)";
+    ctx.beginPath(); ctx.arc(s.x - s.r * 0.3, s.y - bob - s.r * 0.3, s.r * 0.3, 0, 7); ctx.fill();
+  }
+
+  // しばふ と トラック
+  ctx.fillStyle = "#a9dd7e"; ctx.fillRect(0, 118, CW, CH - 118);
+  stadium(RTRK + HTRK);
+  ctx.fillStyle = "#e8a86c"; ctx.fill();                          // トラック(つちの色)
+  stadium(RTRK - HTRK);
+  ctx.fillStyle = "#96d06c"; ctx.fill();                          // うちがわの しばふ
+  // レーンの 線
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 4;
+  stadium(RTRK + HTRK); ctx.stroke();
+  stadium(RTRK - HTRK); ctx.stroke();
+  ctx.setLineDash([22, 18]); ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = 3;
+  stadium(RTRK); ctx.stroke();
+  ctx.restore();
+
+  // スタート/ゴールライン(したの直線・チェッカー)
+  const gy0 = CY + RTRK - HTRK, gy1 = CY + RTRK + HTRK;
+  const cellH = (gy1 - gy0) / 8;
+  for (let k = 0; k < 8; k++) {
+    for (let c2 = 0; c2 < 2; c2++) {
+      ctx.fillStyle = (k + c2) % 2 ? "#4a3f35" : "#fff";
+      ctx.fillRect(LINEX - 10 + c2 * 10, gy0 + cellH * k, 10, cellH + 0.5);
+    }
+  }
+  ctx.font = "26px serif"; ctx.textAlign = "center";
+  ctx.fillText("🏁", LINEX, gy0 - 10);
+
+  // うちがわの おはな
+  drawFlower(470, 330); drawFlower(640, 300); drawFlower(810, 330);
+  drawFlower(415, 400); drawFlower(865, 400);
+
+  // じめんに おちてる/とんでる バトン(キャラより さきに じめんの分)
+  for (const key of ["red", "blue"]) {
+    const t = M.T[key], b = t.baton;
+    if (b.state === "ground") {
+      const p = pathPos(t.ev ? t.ev.batonP : t.pathP, t.off);
+      const bounce = b.t < 0.3 ? Math.abs(Math.sin((b.t / 0.3) * Math.PI)) * 10 : 0;
+      b.t += 0.016;
+      drawBaton(p.x, p.y - 5 - bounce, 0.35, key);
+    }
+  }
+
+  // キャラ(奥=足もとYが小さい ものから)
+  const order = M.chars.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+  for (const c of order) drawRunner(c);
+
+  // とんでる バトン(いちばん てまえ)
+  for (const key of ["red", "blue"]) {
+    const b = M.T[key].baton;
+    if (b.state === "fly") {
+      const s = Util.clamp(b.t / b.dur, 0, 1);
+      const x = b.fx + (b.tx - b.fx) * s;
+      const y = b.fy + (b.ty - b.fy) * s - Math.sin(Math.PI * s) * 62;
+      drawBaton(x, y, b.t * 12, key);
+    }
+  }
+
+  // うかぶ もじ(タッチ!・ゴール!)
+  for (const f of M.floats) {
+    const a = 1 - f.t / f.dur;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, a * 2);
+    ctx.font = `bold ${f.big ? 58 : 30}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.lineWidth = f.big ? 8 : 5; ctx.strokeStyle = "#fff";
+    ctx.fillStyle = f.col;
+    const y = f.y - f.t * 34;
+    ctx.strokeText(f.txt, f.x, y);
+    ctx.fillText(f.txt, f.x, y);
+    ctx.restore();
+  }
+
+  // 結果発表まえの ドキドキ暗てん
+  if (M.phase === "announce") {
+    ctx.fillStyle = `rgba(40,25,10,${Util.clamp(M.annT / 1.9, 0, 1) * 0.42})`;
+    ctx.fillRect(0, 0, CW, CH);
+  }
+  ctx.textAlign = "left";
+}
+
+/* トラックがたの パスを つくる(はんけい r) */
+function stadium(r) {
+  ctx.beginPath();
+  ctx.arc(CX1, CY, r, Math.PI / 2, Math.PI * 1.5);
+  ctx.arc(CX2, CY, r, -Math.PI / 2, Math.PI / 2);
+  ctx.closePath();
+}
+
+function drawFlower(x, y) {
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    ctx.fillStyle = "#f783ac";
+    ctx.beginPath(); ctx.arc(x + Math.cos(a) * 9, y + Math.sin(a) * 9, 7, 0, 7); ctx.fill();
+  }
+  ctx.fillStyle = "#fff59d";
+  ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill();
+}
+
+function drawBaton(x, y, ang, teamKey) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(ang);
+  ctx.fillStyle = teamKey === "red" ? "#d6336c" : "#1c7ed6";
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(-19, -6, 38, 12, 6) : ctx.rect(-19, -6, 38, 12);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(-5, -6, 10, 12);
+  ctx.lineWidth = 2; ctx.strokeStyle = "rgba(74,63,53,.55)";
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(-19, -6, 38, 12, 6) : ctx.rect(-19, -6, 38, 12);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRunner(c) {
+  const pu = c.puppet;
+  const t = M.T[c.team];
+  const running = c.state === "run" && !t.done;
+  ctx.save();
+
+  // ダッシュ中の スピードせん
+  if (running && t.ev && t.ev.type === "boost") {
+    ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    for (let k = 0; k < 3; k++) {
+      const ly = pu.y - pu.h * (0.3 + k * 0.18);
+      ctx.beginPath();
+      ctx.moveTo(pu.x - pu.facing * (pu.h * 0.45 + k * 8), ly);
+      ctx.lineTo(pu.x - pu.facing * (pu.h * 0.72 + k * 8), ly);
+      ctx.stroke();
+    }
+  }
+
+  // ころび演出:足もとを 中心に くるっと まえに たおれる
+  if (c.fall > 0) {
+    ctx.save();
+    ctx.translate(pu.x, pu.y);
+    ctx.rotate(c.fall * 1.4 * pu.facing);
+    ctx.translate(-pu.x, -pu.y);
+    pu.draw(ctx);
+    ctx.restore();
+  } else {
+    pu.draw(ctx);
+  }
+
+  // バトン(もってる チームの はしってる子)
+  if (running && t.baton.state === "held" && c.fall === 0) {
+    const waggle = Math.sin(pu.phase * 1.1) * 0.18;
+    drawBaton(pu.x + pu.facing * pu.h * 0.17, pu.y - pu.h * 0.42, -0.55 * pu.facing + waggle, c.team);
+  }
+
+  // ハプニングの えもじ
+  if (running && t.ev && t.ev.emo && !t.ev.silentEmo) {
+    ctx.font = "36px serif"; ctx.textAlign = "center";
+    ctx.fillText(t.ev.emo, pu.x, pu.y - pu.h - 14);
+  }
+
+  // なまえ
+  ctx.font = `bold ${running ? 20 : 15}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillStyle = c.team === "red" ? "#d6336c" : "#1c7ed6";
+  ctx.fillText(c.name, pu.x, pu.y + (running ? 22 : 18));
+  ctx.restore();
+}
+
+/* ============================================================
+   4. 結果発表(勝ったチームが よろこぶ)
+   ============================================================ */
+function showResult() {
+  M.phase = "over";
+  hideBanner();
+  const t = M.winTeam;
+  const key = t.key;
+
+  // 勝ったチームだけ 登場して 大よろこび
+  M.winners = t.members.slice();
+  M.celebrants = t.members.slice();
+  for (const c of t.members) { c.fall = 0; c.state = "celebrate"; c.puppet.jumpT = 0; }
+  placeRow(t.members, 430, Util.clamp(200 - t.members.length * 12, 108, 180), 6);
+
+  const title = $("winTitle");
+  title.textContent = `${teamLabel(key)}の かち!`;
+  title.className = key;
+  $("winOverlay").classList.remove("hidden");
+
+  Sound.fanfare();
+  Ui.confetti();
+  const withVoice = t.members.filter((w) => w.voices);
+  if (withVoice.length) Sound.playVoice(Util.choice(withVoice).voices, ["joy"]);
+}
+
+/* 勝利画面で リストを 中央ぞろえで ならべる(必要なら 折りかえす) */
+function placeRow(list, cy, h, maxCols) {
+  const n = list.length;
+  if (!n) return;
+  const cols = Math.min(maxCols, n);
+  list.forEach((c, i) => {
+    const row = Math.floor(i / cols);
+    const inRow = Math.min(cols, n - row * cols);
+    const idx = i - row * cols;
+    const gap = inRow > 1 ? Math.min(200, 1120 / (inRow - 1)) : 0;
+    c.puppet.h = h;
+    c.puppet.x = 640 - gap * (inRow - 1) / 2 + idx * gap;
+    c.puppet.y = cy + row * (h * 0.95 + 12);
+    c.tx = c.puppet.x; c.ty = c.puppet.y;
+    c.puppet.facing = 1;
+    c.hopCd = Util.rand(0, 0.5);
+  });
+}
+
+function drawVictory() {
+  const g = ctx.createLinearGradient(0, 0, 0, CH);
+  g.addColorStop(0, M.winTeam.key === "red" ? "#ffe3ee" : "#e3f0ff");
+  g.addColorStop(1, "#fffdf5");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+  // きんメダルの たいよう…ではなく トロフィー
+  ctx.font = "64px serif"; ctx.textAlign = "center";
+  ctx.fillText("🏆", 640, 150);
+
+  const order = M.celebrants.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+  for (const c of order) {
+    c.puppet.draw(ctx);
+    ctx.font = "bold 24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = c.team === "red" ? "#d6336c" : "#1c7ed6";
+    ctx.fillText(c.name, c.puppet.x, c.puppet.y + 26);
+  }
+  ctx.textAlign = "left";
+}
+
+$("rematchBtn").onclick = () => { Sound.pon(); startRace(); };   // 同メンバー・同チームで さいレース
+$("reteamBtn").onclick = () => {
+  Sound.tap();
+  stopLoop();
+  splitTeams();
+  goTeamReveal();
+};
+
+/* ---- 起動 ---- */
+show("selectScreen");
+initSelect();
+</script>
+</body>
+</html>
