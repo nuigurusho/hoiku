@@ -18,19 +18,16 @@
   <!-- えらぶ画面 -->
   <div id="selectScreen">
     <div class="panel">
-      <h2>どの えで あそぶ?</h2>
-      <div class="gallery" id="gallery"></div>
+      <h2>あそびかたを えらんでね</h2>
 
       <div class="mode-sec">🧩 ピースの かたち<span class="tag">えらんでね</span></div>
       <div class="row" id="shapeRow">
-        <button class="btn big green"  data-shape="wavy">🌊 なみなみ</button>
-        <button class="btn big orange" data-shape="classic">🧩 パズル</button>
+        <button class="btn big green"  data-shape="wavy">なみなみ</button>
+        <button class="btn big orange" data-shape="classic">パズル</button>
       </div>
 
-      <div class="mode-sec">🌈 ゆるふわ<span class="tag">じどうで くみあがるのを みるだけ(1〜2さいから)</span></div>
-      <div class="row"><button class="btn big pink" data-mode="demo">🌈 じどうで くみたてる</button></div>
-
-      <div class="mode-sec">🎵 れんしゅう<span class="tag">じかんむせいげん・ピースのかずを えらんでね</span></div>
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">みるだけ・じかんむせいげん(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="demo">みるだけ(オート)</button></div>
       <div class="row" id="countRow">
         <button class="btn big blue"   data-mode="ren4">4</button>
         <button class="btn big green"  data-mode="ren6">6</button>
@@ -38,6 +35,7 @@
         <button class="btn big purple" data-mode="ren12">12</button>
         <button class="btn big pink"   data-mode="ren20">20</button>
       </div>
+      <p class="note">すうじは ピースの かずだよ</p>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">タイムアタック・はやさランキング・クリアで つぎが とけるよ</span></div>
       <div class="row" id="gachiRow">
@@ -46,7 +44,7 @@
         <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30ピース・180びょう</span></button>
       </div>
       <div class="rank" id="rankView"></div>
-      <p class="note">えをえらんでから、モードのボタンをおしてね(小さい子は 🌈 か 4 がおすすめ)</p>
+      <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます(小さい子は「みるだけ(オート)」か 4 がおすすめ)</p>
     </div>
   </div>
 
@@ -54,7 +52,7 @@
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="progress"></span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="800"></canvas></div>
-    <div class="row"><button class="btn gray" id="againBtn">べつの えで あそぶ</button></div>
+    <div class="row"><button class="btn gray" id="againBtn">えらびなおす</button></div>
   </div>
 </main>
 
@@ -66,29 +64,24 @@ const GRID = { 4: [2, 2], 6: [3, 2], 9: [3, 3], 12: [4, 3], 20: [5, 4], 30: [6, 
 const GAME = "puzzle";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  demo:  { label: "ゆるふわ", count: 6, demo: true },
-  ren4:  { label: "れんしゅう", count: 4 },
-  ren6:  { label: "れんしゅう", count: 6 },
-  ren9:  { label: "れんしゅう", count: 9 },
-  ren12: { label: "れんしゅう", count: 12 },
-  ren20: { label: "れんしゅう", count: 20 },
+  demo:  { label: "みるだけ", count: 6, demo: true },
+  ren4:  { label: "ゆるふわ", count: 4 },
+  ren6:  { label: "ゆるふわ", count: 6 },
+  ren9:  { label: "ゆるふわ", count: 9 },
+  ren12: { label: "ゆるふわ", count: 12 },
+  ren20: { label: "ゆるふわ", count: 20 },
   g1: { label: "かんたん",   count: 12, limit: 90,  lv: 1 },
   g2: { label: "ふつう",     count: 20, limit: 120, lv: 2 },
   g3: { label: "むずかしい", count: 30, limit: 180, lv: 3 },
 };
 
-let selected = null;
+let selected = null, allPics = [];
 let game = null;
 let shapeStyle = "wavy";   // "wavy" = なみなみ / "classic" = 一般的なパズル形状
 
 async function initSelect() {
-  const recs = await Store.ensureSamples();
-  selected = recs[0] || null;
-  Ui.renderGallery($("gallery"), recs, (r, el) => {
-    selected = r;
-    document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
-    el.classList.add("selected");
-  }, selected && selected.id);
+  allPics = await Store.ensureSamples();
+  selected = allPics[0] || null;
   refreshLocks();
 }
 initSelect();
@@ -122,9 +115,14 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
       Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
       return;
     }
-    if (!selected) { Ui.msg("えを えらんでね", 1200, "#4dabf7"); return; }
     Sound.tap();
-    await startGame(selected, m);
+    /* あそびかたを えらんだ あとに、えらび せんようがめんへ */
+    const rec = await Picker.one({
+      title: "どの えで あそぶ?", records: allPics, selectedId: selected && selected.id,
+    });
+    if (!rec) return;
+    selected = rec;
+    await startGame(rec, m);
   };
 });
 $("againBtn").onclick = () => {
@@ -296,7 +294,7 @@ function startTimer() {
   })(last);
 }
 
-/* 🌈 ゆるふわ:ピースが じどうで はまっていくデモ */
+/* 🌈 みるだけ(オート):ピースが じどうで はまっていくデモ */
 function runDemo() {
   const g = game;
   const queue = Util.shuffle(g.pieces.slice());

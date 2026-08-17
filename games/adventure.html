@@ -17,16 +17,11 @@
 <main>
   <div id="selectScreen">
     <div class="panel">
-      <h2>だれで ぼうけんする?</h2>
-      <div class="gallery" id="charGallery"></div>
-      <h2 style="margin-top:18px">どこを ぼうけんする?</h2>
-      <div class="gallery" id="bgGallery"></div>
+      <h2>あそびかたを えらんでね</h2>
 
-      <div class="mode-sec">🌈 ゆるふわ<span class="tag">じどうで ぼうけんするのを みるだけ(1〜2さいから)</span></div>
-      <div class="row"><button class="btn big pink" data-mode="auto">🌈 じどうで ぼうけん</button></div>
-
-      <div class="mode-sec">🎵 れんしゅう<span class="tag">じかんむせいげん・⭐10こ あつめて ゴール</span></div>
-      <div class="row"><button class="btn big green" data-mode="ren">🎵 ぼうけんに しゅっぱつ!🚀</button></div>
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">みるだけ・じかんむせいげん(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="auto">みるだけ(オート)</button></div>
+      <div class="row"><button class="btn big green" data-mode="ren">ぼうけんに しゅっぱつ!</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・のこりタイムランキング・クリアで つぎが とけるよ</span></div>
       <div class="row" id="gachiRow">
@@ -44,7 +39,7 @@
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="clearRow">
       <button class="btn big green" id="againBtn">もういちど あそぶ</button>
-      <button class="btn gray" id="selBtn">キャラをかえる</button>
+      <button class="btn gray" id="selBtn">えらびなおす</button>
     </div>
   </div>
 </main>
@@ -68,34 +63,42 @@ const $ = (id) => document.getElementById(id);
 const GAME = "adventure";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  auto: { label: "ゆるふわ", auto: true },
-  ren:  { label: "れんしゅう" },
+  auto: { label: "みるだけ", auto: true },
+  ren:  { label: "ゆるふわ" },
   g1: { label: "かんたん",   time: 90, lv: 1 },
   g2: { label: "ふつう",     time: 60, lv: 2 },
   g3: { label: "むずかしい", time: 45, lv: 3 },
 };
 
 let selChar = null, selBg = null, G = null;
+let allChars = [], allBgs = [];
 
 async function initSelect() {
   const recs = await Store.ensureSamples();
-  const chars = recs.filter((r) => r.cat === "char");
-  const bgs = recs.filter((r) => r.cat === "bg");
-  selChar = chars[0] || null;
-  selBg = bgs[0] || null;
-  Ui.renderGallery($("charGallery"), chars, (r, el) => {
-    selChar = r;
-    document.querySelectorAll("#charGallery .thumb").forEach((t) => t.classList.remove("selected"));
-    el.classList.add("selected");
-  }, selChar && selChar.id);
-  Ui.renderGallery($("bgGallery"), bgs, (r, el) => {
-    selBg = r;
-    document.querySelectorAll("#bgGallery .thumb").forEach((t) => t.classList.remove("selected"));
-    el.classList.add("selected");
-  }, selBg && selBg.id);
+  allChars = recs.filter((r) => r.cat === "char");
+  allBgs = recs.filter((r) => r.cat === "bg");
+  selChar = allChars[0] || null;
+  selBg = allBgs[0] || null;
   refreshLocks();
 }
 initSelect();
+
+/* あそびかたを えらんだ あとに キャラ → はいけい の じゅんで えらぶ */
+async function pickCharAndBg() {
+  const char = await Picker.one({
+    title: "だれで ぼうけんする?", records: allChars, selectedId: selChar && selChar.id,
+  });
+  if (!char) return false;
+  selChar = char;
+  if (allBgs.length) {
+    const bg = await Picker.one({
+      title: "どこを ぼうけんする?", records: allBgs, selectedId: selBg && selBg.id,
+    });
+    if (!bg) return false;
+    selBg = bg;
+  }
+  return true;
+}
 
 function refreshLocks() {
   const lv = Tiers.unlock(GAME);
@@ -122,14 +125,15 @@ for (const [id, key] of [["tLeft", "left"], ["tRight", "right"], ["tJump", "a"]]
 
 let curMode = MODES.ren;
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
-  b.onclick = () => {
+  b.onclick = async () => {
     const m = MODES[b.dataset.mode];
     if (m.lv && m.lv > Tiers.unlock(GAME)) {
       Sound.bad();
       Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
       return;
     }
-    if (!selChar) return;
+    Sound.tap();
+    if (!(await pickCharAndBg())) return;
     curMode = m;
     startGame(m);
   };

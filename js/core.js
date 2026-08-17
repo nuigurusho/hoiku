@@ -813,8 +813,94 @@ const Ui = {
   },
 };
 
+/* ---------------- Picker(キャラえらび せんよう がめん) ----------------
+   あそびかたを えらんだ あと、キャラや えが ひつような ときだけ ひらく。
+   さきに キャラを えらばせないので、ちいさい子でも まよいにくい。
+     Picker.one({title, note, records, selectedId})   … タッチした しゅんかんに けってい
+     Picker.many({title, note, records, preselect, min, confirmLabel})
+                                                     … なんこか えらんで「けってい!」
+   えらんだ record(one) / recordの配列(many)を Promise でかえす。
+   「← もどる」を おしたときは null(= あそびかた えらびに もどる)。 */
+const Picker = {
+  one(opts) { return this._open(Object.assign({}, opts, { multi: false })); },
+  many(opts) { return this._open(Object.assign({}, opts, { multi: true })); },
+
+  _open(opts) {
+    const recs = opts.records || [];
+    return new Promise((resolve) => {
+      const wrap = document.createElement("div");
+      wrap.className = "picker";
+      const panel = document.createElement("div");
+      panel.className = "panel";
+      wrap.appendChild(panel);
+
+      const h = document.createElement("h2");
+      h.textContent = opts.title || "えらんでね";
+      panel.appendChild(h);
+
+      if (opts.note) {
+        const p = document.createElement("p");
+        p.className = "note";
+        p.textContent = opts.note;
+        panel.appendChild(p);
+      }
+
+      const gal = document.createElement("div");
+      gal.className = "gallery";
+      panel.appendChild(gal);
+
+      const row = document.createElement("div");
+      row.className = "row";
+      panel.appendChild(row);
+
+      const close = (val) => { wrap.remove(); resolve(val); };
+
+      const back = document.createElement("button");
+      back.className = "btn gray";
+      back.type = "button";
+      back.textContent = "← もどる";
+      back.onclick = () => { Sound.tap(); close(null); };
+      row.appendChild(back);
+
+      if (!recs.length) {
+        gal.innerHTML = '<p class="note">えが ないよ。「とりこみ・せってい」で とりこんでね</p>';
+      } else if (opts.multi) {
+        const sel = new Set(opts.preselect || []);
+        const ok = document.createElement("button");
+        ok.className = "btn big pink";
+        ok.type = "button";
+        ok.textContent = opts.confirmLabel || "けってい!";
+        row.appendChild(ok);
+
+        /* タッチで えらぶ / はずす */
+        Ui.renderGallery(gal, recs, (r, el) => {
+          sel.has(r.id) ? sel.delete(r.id) : sel.add(r.id);
+          el.classList.toggle("selected", sel.has(r.id));
+        });
+        [...gal.children].forEach((el, i) => el.classList.toggle("selected", sel.has(recs[i].id)));
+
+        const min = opts.min || 1;
+        ok.onclick = () => {
+          const picked = recs.filter((r) => sel.has(r.id));
+          if (picked.length < min) {
+            Sound.bad();
+            Ui.msg(`${min}つ いじょう えらんでね`, 1500, "#4dabf7");
+            return;
+          }
+          Sound.tap();
+          close(picked);
+        };
+      } else {
+        Ui.renderGallery(gal, recs, (r) => close(r), opts.selectedId);
+      }
+
+      document.body.appendChild(wrap);
+    });
+  },
+};
+
 /* ---------------- Tiers(ガチンコの解放レベル & ランキング) ----------------
-   ゲームを 🌈ゆるふわ / 🎵れんしゅう / 🔥ガチンコ の3層で あそぶための共通基盤。
+   ゲームを 🌈ゆるふわ / 🔥ガチンコ の2層で あそぶための共通基盤。
    ガチンコは「かんたん→ふつう→むずかしい」を クリアで順に解放し、
    段階ごとに TOP5 ランキングを のこす。
    localStorageキー:

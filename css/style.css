@@ -240,7 +240,20 @@ canvas.stage {
 .panel h2 { margin-top: 0; font-size: 26px; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
 
-/* ---------- モードのカテゴリ(🌈ゆるふわ/🎵れんしゅう/🔥ガチンコ) ---------- */
+/* ---------- キャラえらび せんよう がめん(あそびかたを えらんだ あとに でる) ---------- */
+.picker {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: auto;
+  padding: 10px;
+  background: linear-gradient(160deg, #fff6e5 0%, #ffe9f3 50%, #e5f4ff 100%);
+  animation: pickerIn .16s ease-out;
+}
+.picker .panel { max-width: 900px; margin: 12px auto; }
+@keyframes pickerIn { from { opacity: 0; transform: translateY(16px); } }
+
+/* ---------- モードのカテゴリ(🌈ゆるふわ/🔥ガチンコ) ---------- */
 .mode-sec { margin: 16px 0 4px; font-size: 19px; font-weight: bold; }
 .mode-sec .tag { font-size: 13px; color: #8a7a68; font-weight: normal; margin-left: 8px; }
 .btn.locked { opacity: .4; }

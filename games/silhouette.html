@@ -33,11 +33,9 @@
   <div id="startScreen" class="panel">
     <h2>これ なんの かげ?</h2>
 
-    <div class="mode-sec">🌈 ゆるふわ<span class="tag">みんなの えが かげで とうじょう・はっぴょうかいに(1〜2さいから)</span></div>
-    <div class="row"><button class="btn big pink" id="drawBtn">🖍️ だれの え でしょう?</button></div>
-
-    <div class="mode-sec">🎵 れんしゅう<span class="tag">どうぶつの かげあて・5もん・まちがえても へいき</span></div>
-    <div class="row"><button class="btn big blue" id="animalBtn">🐾 どうぶつクイズ</button></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">はっぴょうかいに・どうぶつの かげあて 5もん(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" id="drawBtn">だれの え でしょう?</button></div>
+    <div class="row"><button class="btn big blue" id="animalBtn">どうぶつクイズ</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
@@ -62,7 +60,7 @@
     <div class="shadow-box" id="dbox"><canvas id="dcv" width="420" height="420"></canvas></div>
     <div class="revealName" id="dname">&nbsp;</div>
     <div class="row">
-      <button class="btn big yellow" id="revealBtn">🔆 こたえを みる!</button>
+      <button class="btn big yellow" id="revealBtn">こたえを みる!</button>
       <button class="btn big green hidden" id="nextBtn">つぎの かげ ▶</button>
     </div>
   </div>
@@ -100,7 +98,7 @@ function silhouette(srcCanvas, dst, black = true) {
   }
 }
 
-/* ---------- どうぶつクイズ(れんしゅう & ガチンコ) ---------- */
+/* ---------- どうぶつクイズ(ゆるふわ & ガチンコ) ---------- */
 let apool = [], aidx = 0, ascore = 0, abusy = false;
 const ROUNDS = 5;
 let gmode = null, astreak = 0, amiss = 0;

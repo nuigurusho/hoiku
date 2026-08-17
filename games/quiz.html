@@ -32,7 +32,7 @@
     <p class="note hidden" id="customNote"></p>
     <p style="font-size:22px">4つのなかから こたえを えらんでね</p>
 
-    <div class="mode-sec">🎵 れんしゅう<span class="tag">スコアを ためるだけ・まちがえても へいき</span></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">スコアを ためるだけ・まちがえても へいき</span></div>
     <div class="row">
       <button class="btn big pink" data-mode="ren5">5もん</button>
       <button class="btn big blue" data-mode="renAll">ぜんぶ</button>
@@ -73,8 +73,8 @@ const $ = (id) => document.getElementById(id);
 const GAME = "quiz";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  ren5:   { label: "れんしゅう", n: 5 },
-  renAll: { label: "れんしゅう", n: 0 },
+  ren5:   { label: "ゆるふわ", n: 5 },
+  renAll: { label: "ゆるふわ", n: 0 },
   g1: { label: "かんたん",   goal: 5,  missLimit: 3, lv: 1 },
   g2: { label: "ふつう",     goal: 8,  missLimit: 3, lv: 2 },
   g3: { label: "むずかしい", goal: 10, missLimit: 3, lv: 3 },
@@ -197,7 +197,7 @@ function answer(ci, btn) {
   }, 1500);
 }
 
-/* れんしゅう:1周おわり */
+/* ゆるふわ:1周おわり */
 function finish() {
   $("quizScreen").classList.add("hidden");
   $("endScreen").classList.remove("hidden");

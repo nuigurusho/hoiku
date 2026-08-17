@@ -31,14 +31,11 @@
 
 <main>
   <div id="selectScreen" class="panel">
-    <h2>だれと じゃんけんする?</h2>
-    <div class="gallery" id="gallery"></div>
+    <h2>あそびかたを えらんでね</h2>
 
-    <div class="mode-sec">🌈 ゆるふわ<span class="tag">みんなで いっしょに・かちまけなし(1〜2さいから)</span></div>
-    <div class="row"><button class="btn big pink" data-mode="crowd">📣 みんなで じゃんけん</button></div>
-
-    <div class="mode-sec">🎵 れんしゅう<span class="tag">たいせん・れんしょうを ためるだけ</span></div>
-    <div class="row"><button class="btn big green" data-mode="vs">✊ たいせん(れんしょう)</button></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">かちまけなし・れんしょうを ためるだけ(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" data-mode="crowd">みんなで じゃんけん</button></div>
+    <div class="row"><button class="btn big green" data-mode="vs">たいせん(れんしょう)</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんしょうノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
@@ -60,7 +57,7 @@
       <button class="hbtn" data-h="2">✋</button>
     </div>
     <div class="row">
-      <button class="btn big pink hidden" id="ponBtn">📣 ぽん!</button>
+      <button class="btn big pink hidden" id="ponBtn">ぽん!</button>
       <button class="btn gray" id="backBtn">えらびなおす</button>
     </div>
   </div>
@@ -83,21 +80,18 @@ const GAME = "janken";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
   crowd: { label: "みんなで", crowd: true },
-  vs:    { label: "たいせん" },
+  vs:    { label: "たいせん" },   /* キャラとの 1たい1(2人そうさは いらない) */
   g1: { label: "かんたん",   goal: 2, missLimit: 3, lv: 1 },
   g2: { label: "ふつう",     goal: 3, missLimit: 3, lv: 2 },
   g3: { label: "むずかしい", goal: 5, missLimit: 3, lv: 3 },
 };
 
+let allChars = [];
+
 async function initSelect() {
   const recs = await Store.ensureSamples();
-  const chars = recs.filter((r) => r.cat === "char");
-  selRec = chars[0] || null;
-  Ui.renderGallery($("gallery"), chars, (r, el) => {
-    selRec = r;
-    document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
-    el.classList.add("selected");
-  }, selRec && selRec.id);
+  allChars = recs.filter((r) => r.cat === "char");
+  selRec = allChars[0] || null;
   refreshLocks();
 }
 initSelect();
@@ -121,8 +115,13 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
       Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
       return;
     }
-    if (!selRec) return;
     Sound.tap();
+    /* あそびかたを えらんだ あとに、キャラえらび せんようがめんへ */
+    const rec = await Picker.one({
+      title: "だれと じゃんけんする?", records: allChars, selectedId: selRec && selRec.id,
+    });
+    if (!rec) return;
+    selRec = rec;
     gmode = m;
     const parts = await Rig.load(selRec);
     charName = selRec.name || "";

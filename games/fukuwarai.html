@@ -16,13 +16,12 @@
 
 <main>
   <div id="startScreen" class="panel">
-    <h2>どの かおで あそぶ?</h2>
+    <h2>あそびかたを えらんでね</h2>
 
-    <div class="mode-sec">😊 きほんのかお<span class="tag">よういされた かおで すぐ あそべる</span></div>
-    <div class="row"><button class="btn big green" id="basicBtn">😊 きほんのかお で あそぶ</button></div>
-
-    <div class="mode-sec">🖼️ とりこんだ 絵で あそぶ<span class="tag">おえかきした かおの パーツで あそぶ</span></div>
-    <div class="gallery" id="gallery"></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">かちまけなし・すきなだけ あそべる</span></div>
+    <div class="row"><button class="btn big green" id="basicBtn">きほんのかお で あそぶ</button></div>
+    <div class="row"><button class="btn big pink" id="picBtn">とりこんだ えで あそぶ</button></div>
+    <p class="note" id="picNote"></p>
 
     <p class="note">「とりこみ・せってい」で 顔の絵を とりこんで「ふくわらいパーツ」を せっていすると、みんなの おえかきで あそべます</p>
   </div>
@@ -34,8 +33,8 @@
     <div class="stage-wrap"><canvas id="cv" class="stage" width="900" height="640" style="max-width:860px"></canvas></div>
     <div class="row">
       <button class="btn big green" id="doneBtn">かんせい!</button>
-      <button class="btn yellow" id="shuffleBtn">🔀 シャッフル</button>
-      <button class="btn purple" id="blindBtn">🙈 めかくしモード</button>
+      <button class="btn yellow" id="shuffleBtn">シャッフル</button>
+      <button class="btn purple" id="blindBtn">めかくしモード</button>
       <button class="btn gray" id="againBtn">べつの かおに する</button>
     </div>
   </div>
@@ -178,7 +177,7 @@ function beginPlay() {
   wiggle = 0;
   completed = false;
   drag = null;
-  $("blindBtn").textContent = "🙈 めかくしモード";
+  $("blindBtn").textContent = "めかくしモード";
   scatter();
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
@@ -202,19 +201,24 @@ async function startPic(rec) {
 }
 
 /* ---- せんたく画面 ---- */
+let faces = [];
 async function initSelect() {
   const recs = await Store.ensureSamples();
-  const faces = recs.filter((r) => r.fukuParts && r.fukuParts.length);
-  const gal = $("gallery");
+  faces = recs.filter((r) => r.fukuParts && r.fukuParts.length);
   if (!faces.length) {
-    gal.innerHTML = '<p class="note">「とりこみ・せってい」で 顔の絵を とりこんで、「ふくわらいパーツ」を せっていしてね</p>';
-  } else {
-    Ui.renderGallery(gal, faces, (r) => startPic(r));
+    $("picBtn").disabled = true;
+    $("picNote").textContent = "「ふくわらいパーツ」を せっていした 絵が まだ ないよ";
   }
 }
 initSelect();
 
 $("basicBtn").onclick = startBasic;
+/* あそびかたを えらんだ あとに、かおえらび せんようがめんへ */
+$("picBtn").onclick = async () => {
+  Sound.tap();
+  const rec = await Picker.one({ title: "どの かおで あそぶ?", records: faces });
+  if (rec) startPic(rec);
+};
 $("againBtn").onclick = () => {
   Sound.tap();
   $("playScreen").classList.add("hidden");
@@ -250,13 +254,13 @@ $("doneBtn").onclick = () => {
   Sound.laugh();
   Ui.confetti(2000, 90);
   Ui.msg("できたー!😆", 1800);
-  if (blind) { blind = false; $("blindBtn").textContent = "🙈 めかくしモード"; }
+  if (blind) { blind = false; $("blindBtn").textContent = "めかくしモード"; }
 };
 $("shuffleBtn").onclick = () => { Sound.tap(); scatter(); };
 $("blindBtn").onclick = () => {
   blind = !blind;
   Sound.tap();
-  $("blindBtn").textContent = blind ? "👀 かおを みせる" : "🙈 めかくしモード";
+  $("blindBtn").textContent = blind ? "かおを みせる" : "めかくしモード";
 };
 
 /* ---- 描画 ---- */

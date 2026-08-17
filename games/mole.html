@@ -18,11 +18,9 @@
   <div id="startScreen" class="panel">
     <h2>でてきた みんなの えを タッチ!</h2>
 
-    <div class="mode-sec">🌈 ゆるふわ<span class="tag">かおが ぴょこぴょこ・タッチで よろこぶ(1〜2さいから)</span></div>
-    <div class="row"><button class="btn big pink" data-mode="yuru">🌈 ぴょこぴょこ みる</button></div>
-
-    <div class="mode-sec">🎵 れんしゅう<span class="tag">30びょうで なんかい タッチできるかな?</span></div>
-    <div class="row"><button class="btn big blue" data-mode="ren">🎵 30びょう チャレンジ</button></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">みているだけでもOK・タッチすると よろこぶ(1〜2さいから)</span></div>
+    <div class="row"><button class="btn big pink" data-mode="yuru">みるだけ(オート)</button></div>
+    <div class="row"><button class="btn big blue" data-mode="ren">30びょう チャレンジ</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">タッチノルマ&ランキング・だんだん はやい・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
@@ -54,8 +52,8 @@ const CELLW = 1000 / COLS, CELLH = 620 / ROWS;
 const GAME = "mole";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  yuru: { label: "ゆるふわ", yuru: true, speed: 0.75 },
-  ren:  { label: "れんしゅう", time: 30, speed: 1 },
+  yuru: { label: "みるだけ", yuru: true, speed: 0.75 },
+  ren:  { label: "ゆるふわ", time: 30, speed: 1 },
   g1: { label: "かんたん",   time: 30, speed: 1.2,  goal: 10, lv: 1 },
   g2: { label: "ふつう",     time: 30, speed: 1.55, goal: 15, lv: 2 },
   g3: { label: "むずかしい", time: 30, speed: 2.0,  goal: 20, lv: 3 },

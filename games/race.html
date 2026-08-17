@@ -17,14 +17,11 @@
 <main>
   <div id="selectScreen">
     <div class="panel">
-      <h2>はしる キャラを えらんでね(タッチで えらぶ/はずす)</h2>
-      <div class="gallery" id="gallery"></div>
+      <h2>あそびかたを えらんでね</h2>
 
-      <div class="mode-sec">🌈 ゆるふわ<span class="tag">キャラが かってに はしる・おうえんするだけ(1〜2さいから)</span></div>
-      <div class="row"><button class="btn big pink" data-mode="cheer">📣 おうえんレース</button></div>
-
-      <div class="mode-sec">🎵 れんしゅう<span class="tag">2にんで れんだたいせん・かちまけを たのしむ</span></div>
-      <div class="row"><button class="btn big green" data-mode="vs">🎮 2にんで たいせん</button></div>
+      <div class="mode-sec">🌈 ゆるふわ<span class="tag">みるだけ・2にんで れんだたいせん(1〜2さいから)</span></div>
+      <div class="row"><button class="btn big pink" data-mode="cheer">みるだけ(オート)</button></div>
+      <div class="row"><button class="btn big green" data-mode="vs">2Pたいせん</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">CPUたいせん・かつと つぎが とける・かちタイムランキング</span></div>
       <div class="row" id="gachiRow">
@@ -34,9 +31,10 @@
       </div>
       <div class="rank" id="rankView"></div>
       <p class="note">
-        たいせん:ひだりがわを れんだ = 1P、みぎがわを れんだ = 2P(キーボードは F と J)<br>
-        CPUたいせん:がめんを れんだ(スペースでもOK)して CPUより はやく ゴール!<br>
-        おうえんレース:キャラたちが かってに はしるよ。ときどき いねむり や スパートで じゅんいが かわる!だれが かつか おうえんしよう!
+        2Pたいせん:ひだりがわを れんだ = 1P、みぎがわを れんだ = 2P(キーボードは F と J)<br>
+        ガチンコ:がめんを れんだ(スペースでもOK)して CPUより はやく ゴール!<br>
+        みるだけ(オート):キャラたちが かってに はしるよ。ときどき いねむり や スパートで じゅんいが かわる!だれが かつか おうえんしよう!<br>
+        あそびかたを おすと、つぎの がめんで キャラを えらべます
       </p>
     </div>
   </div>
@@ -45,7 +43,7 @@
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
-      <button class="btn gray" id="backBtn">キャラをえらびなおす</button>
+      <button class="btn gray" id="backBtn">えらびなおす</button>
     </div>
   </div>
 </main>
@@ -60,8 +58,8 @@ const GOAL = 2400;
 const GAME = "race";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  cheer: { label: "おうえんレース", kind: "cheer" },
-  vs:    { label: "2にんたいせん", kind: "vs" },
+  cheer: { label: "みるだけ", kind: "cheer" },
+  vs:    { label: "2Pたいせん", kind: "vs" },
   c1: { label: "かんたん",   kind: "cpu", speed: 170, lv: 1 },
   c2: { label: "ふつう",     kind: "cpu", speed: 235, lv: 2 },
   c3: { label: "むずかしい", kind: "cpu", speed: 300, lv: 3 },
@@ -73,30 +71,36 @@ async function initSelect() {
   const recs = await Store.ensureSamples();
   allChars = recs.filter((r) => r.cat === "char");
   allChars.slice(0, 2).forEach((r) => selectedIds.add(r.id));
-  renderGal();
   refreshLocks();
-}
-function renderGal() {
-  const el = $("gallery");
-  el.innerHTML = "";
-  for (const r of allChars) {
-    const d = document.createElement("div");
-    d.className = "thumb" + (selectedIds.has(r.id) ? " selected" : "");
-    d.innerHTML = `<img src="${r.dataURL}"><div class="name">${r.name || ""}</div>`;
-    d.onclick = () => {
-      Sound.tap();
-      selectedIds.has(r.id) ? selectedIds.delete(r.id) : selectedIds.add(r.id);
-      renderGal();
-    };
-    el.appendChild(d);
-  }
 }
 initSelect();
 
 function picked(n) {
-  let recs = allChars.filter((r) => selectedIds.has(r.id));
-  if (recs.length < 2) recs = allChars.slice();
-  return recs.slice(0, n);
+  const recs = allChars.filter((r) => selectedIds.has(r.id));
+  return (recs.length ? recs : allChars).slice(0, n);
+}
+
+/* あそびかたを えらんだ あとの キャラえらび(モードで えらびかたが かわる) */
+async function pickChars(mode) {
+  if (mode.kind === "cpu") {
+    const rec = await Picker.one({
+      title: "きみの キャラを えらんでね",
+      note: "あいては CPU が えらばれるよ",
+      records: allChars, selectedId: picked(1)[0] && picked(1)[0].id,
+    });
+    if (!rec) return false;
+    selectedIds = new Set([rec.id]);
+    return true;
+  }
+  const vs = mode.kind === "vs";
+  const recs = await Picker.many({
+    title: vs ? "1P・2P の キャラを えらんでね" : "はしる キャラを えらんでね",
+    note: vs ? "2にん えらんでね(ひだり=1P・みぎ=2P)" : "なんにんでも えらべるよ(さいだい6にん)",
+    records: allChars, preselect: [...selectedIds], min: 2,
+  });
+  if (!recs) return false;
+  selectedIds = new Set(recs.map((r) => r.id));
+  return true;
 }
 
 function refreshLocks() {
@@ -111,13 +115,15 @@ function refreshLocks() {
 }
 
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
-  b.onclick = () => {
+  b.onclick = async () => {
     const m = MODES[b.dataset.mode];
     if (m.lv && m.lv > Tiers.unlock(GAME)) {
       Sound.bad();
       Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
       return;
     }
+    Sound.tap();
+    if (!(await pickChars(m))) return;
     start(b.dataset.mode);
   };
 });

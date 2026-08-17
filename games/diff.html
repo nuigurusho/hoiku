@@ -36,11 +36,10 @@
 
 <main>
   <div id="selectScreen" class="panel">
-    <h2>どの えで あそぶ?</h2>
-    <div class="gallery" id="gallery"></div>
+    <h2>あそびかたを えらんでね</h2>
 
-    <div class="mode-sec">🎵 れんしゅう<span class="tag">じかんむせいげん・のんびり さがす</span></div>
-    <div class="row"><button class="btn big blue" data-mode="ren">🎵 のんびり さがす</button></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">じかんむせいげん・のんびり さがす</span></div>
+    <div class="row"><button class="btn big blue" data-mode="ren">のんびり さがす</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・はやさランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
@@ -49,7 +48,7 @@
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">15びょう</span></button>
     </div>
     <div class="rank" id="rankView"></div>
-    <p class="note">えをえらんでから モードを おしてね。「とりこみ・せってい」で写真を入れて「まちがいスポット」を設定すると、園の写真でも遊べます</p>
+    <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます。「とりこみ・せってい」で写真を入れて「まちがいスポット」を設定すると、園の写真でも遊べます</p>
   </div>
 
   <div id="playScreen" class="hidden">
@@ -64,8 +63,8 @@
       <canvas id="cvR"></canvas>
     </div>
     <div class="row">
-      <button class="btn yellow" id="hintBtn">💡 ヒント</button>
-      <button class="btn gray" id="againBtn">べつの えで あそぶ</button>
+      <button class="btn yellow" id="hintBtn">ヒント</button>
+      <button class="btn gray" id="againBtn">えらびなおす</button>
     </div>
   </div>
 </main>
@@ -77,22 +76,17 @@ const $ = (id) => document.getElementById(id);
 const GAME = "diff";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  ren: { label: "れんしゅう" },
+  ren: { label: "ゆるふわ" },
   g1: { label: "かんたん",   limit: 40, lv: 1 },
   g2: { label: "ふつう",     limit: 25, lv: 2 },
   g3: { label: "むずかしい", limit: 15, lv: 3 },
 };
-let G = null, selPic = null;
+let G = null, selPic = null, allPics = [];
 
 async function initSelect() {
   const recs = await Store.ensureSamples();
-  const pics = recs.filter((r) => r.cat === "pic");
-  selPic = pics[0] || null;
-  Ui.renderGallery($("gallery"), pics, (r, el) => {
-    selPic = r;
-    document.querySelectorAll("#gallery .thumb").forEach((t) => t.classList.remove("selected"));
-    el.classList.add("selected");
-  }, selPic && selPic.id);
+  allPics = recs.filter((r) => r.cat === "pic");
+  selPic = allPics[0] || null;
   refreshLocks();
 }
 initSelect();
@@ -109,16 +103,21 @@ function refreshLocks() {
 }
 
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
-  b.onclick = () => {
+  b.onclick = async () => {
     const m = MODES[b.dataset.mode];
     if (m.lv && m.lv > Tiers.unlock(GAME)) {
       Sound.bad();
       Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
       return;
     }
-    if (!selPic) { Ui.msg("えを えらんでね", 1200, "#4dabf7"); return; }
     Sound.tap();
-    startGame(selPic, m);
+    /* あそびかたを えらんだ あとに、えらび せんようがめんへ */
+    const rec = await Picker.one({
+      title: "どの えで あそぶ?", records: allPics, selectedId: selPic && selPic.id,
+    });
+    if (!rec) return;
+    selPic = rec;
+    startGame(rec, m);
   };
 });
 

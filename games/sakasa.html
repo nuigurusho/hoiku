@@ -60,9 +60,9 @@
     <div class="panel">
       <h2>あそびかたを えらんでね</h2>
       <div class="row">
-        <button class="btn big green" id="modeMojiBtn">🔤 さかさもじ<br>
+        <button class="btn big green" id="modeMojiBtn">さかさもじ<br>
           <span class="mode-desc">キーワードを さかさに よんで ろくおん(かんたん)</span></button>
-        <button class="btn big purple" id="modeRevBtn">🔁 ぎゃくさいせい<br>
+        <button class="btn big purple" id="modeRevBtn">ぎゃくさいせい<br>
           <span class="mode-desc">ふつうに よんだ こえを きかいが さかさまに(むずかしい)</span></button>
       </div>
       <p class="note">
@@ -82,12 +82,12 @@
       <div class="word-romaji" id="wordRomaji"></div>
       <div class="word-sub hidden" id="wordSub"></div>
       <div class="row">
-        <button class="btn yellow" id="anotherBtn">🔀 べつの ことば</button>
+        <button class="btn yellow" id="anotherBtn">べつの ことば</button>
       </div>
       <div class="row">
         <button class="btn big pink" id="recBtn"><span id="recDot">🔴</span> ろくおん</button>
-        <button class="btn big gray hidden" id="stopBtn">⏹ ていし</button>
-        <button class="btn big blue hidden" id="previewBtn">🔊 きいてみる</button>
+        <button class="btn big gray hidden" id="stopBtn">ていし</button>
+        <button class="btn big blue hidden" id="previewBtn">きいてみる</button>
       </div>
       <p class="note" id="makeHint" style="min-height:22px"></p>
       <div class="row">
@@ -104,7 +104,7 @@
       <p style="font-size:22px; font-weight:bold" id="readyNote"></p>
       <p class="note">こえは なんかいでも きけるよ。ぜんもん せいかい めざして がんばろう!</p>
       <div class="row">
-        <button class="btn big pink" id="startBtn">▶ ゲームかいし</button>
+        <button class="btn big pink" id="startBtn">ゲームかいし</button>
       </div>
     </div>
   </div>
@@ -360,7 +360,7 @@ async function startRec() {
   clearInterval(rec.tick);
   rec.tick = setInterval(() => {
     const left = Math.max(0, 10 - Math.floor((performance.now() - rec.t0) / 1000));
-    $("stopBtn").textContent = `⏹ ていし(のこり${left}びょう)`;
+    $("stopBtn").textContent = `ていし(のこり${left}びょう)`;
   }, 200);
   rec.timer = setTimeout(() => stopRec(), 10000);
 }
