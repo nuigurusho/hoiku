@@ -243,6 +243,7 @@ canvas.stage {
 /* ---------- キャラえらび せんよう がめん(あそびかたを えらんだ あとに でる) ---------- */
 .picker {
   position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;   /* 古いブラウザ用に inset を展開して書く */
   inset: 0;
   z-index: 80;
   overflow: auto;
