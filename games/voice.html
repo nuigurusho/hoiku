@@ -19,9 +19,9 @@
     <h2>こえを だすと キャラが とぶよ!</h2>
     <p style="font-size:20px">「わーーー!」って いっぱい こえを だしてね</p>
 
-    <div class="mode-sec">🌈 ゆるふわ<span class="tag">タイマーなし・⭐を あつめるだけ(1〜2さいから)</span></div>
+    <div class="mode-sec">🌈 ゆるふわ<span class="tag">タイマーなし・45びょうで ⭐を あつめる(1〜2さいから)</span></div>
     <div class="row"><button class="btn big pink" data-mode="yuru">ふわふわ あそぶ</button></div>
-    <div class="row"><button class="btn big blue" data-mode="ren">⭐あつめ(45びょう)</button></div>
+    <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">⭐ノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
@@ -54,7 +54,7 @@ const GAME = "voice";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
   yuru: { label: "ゆるふわ", yuru: true },
-  ren:  { label: "⭐あつめ", time: 45 },
+  ren:  { label: "れんしゅう", time: 45 },
   g1: { label: "かんたん",   time: 45, goal: 8,  lv: 1 },
   g2: { label: "ふつう",     time: 45, goal: 12, lv: 2 },
   g3: { label: "むずかしい", time: 45, goal: 16, lv: 3 },

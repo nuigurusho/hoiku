@@ -21,7 +21,7 @@
 
       <div class="mode-sec">🌈 ゆるふわ<span class="tag">みるだけ・タップでジャンプ・しっぱいしても へいき(1〜2さいから)</span></div>
       <div class="row"><button class="btn big pink" data-mode="yuru">みるだけ(オート)</button></div>
-      <div class="row"><button class="btn big green" data-mode="ren">とんだかずを ためる</button></div>
+      <div class="row"><button class="btn big green" data-mode="ren">れんしゅう</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくノルマ&ランキング・クリアで つぎが とけるよ</span></div>
       <div class="row" id="gachiRow">
@@ -61,7 +61,7 @@ const GROUND = 610;
 /* モード定義:period=なわ1回転の秒数 */
 const MODES = {
   yuru: { label: "みるだけ",   period: 1.7, goal: 0,  missLimit: 0, auto: true },
-  ren:  { label: "ゆるふわ",   period: 1.7, goal: 0,  missLimit: 0 },
+  ren:  { label: "れんしゅう", period: 1.7, goal: 0,  missLimit: 0 },
   g1:   { label: "かんたん",   period: 1.9, goal: 10, missLimit: 3, lv: 1 },
   g2:   { label: "ふつう",     period: 1.4, goal: 20, missLimit: 3, lv: 2 },
   g3:   { label: "むずかしい", period: 1.15, goal: 30, missLimit: 3, lv: 3, accel: true },
