@@ -62,7 +62,7 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=11"></script>
+<script src="js/core.js?v=12"></script>
 <script src="js/rig.js?v=11"></script>
 <script src="js/editors.js?v=11"></script>
 <script>
@@ -220,7 +220,7 @@ $("importInput").onchange = async (e) => {
 
 /* ---------- そのほか ---------- */
 $("resampleBtn").onclick = async () => {
-  for (const r of Samples.makeAll()) await Store.put(r);
+  for (const r of await Samples.makeAll()) await Store.put(r);
   Sound.good();
   refresh();
 };

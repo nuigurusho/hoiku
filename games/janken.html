@@ -63,12 +63,14 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=11"></script>
+<script src="../js/core.js?v=12"></script>
 <script src="../js/rig.js?v=11"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
+let sceneBg = null;
+Util.loadImage("../assets/backgrounds/janken.jpg").then((img) => { sceneBg = img; });
 const HANDS = ["✊", "✌️", "✋"];
 const HAND_CV = HANDS.map((h) => Util.emojiCanvas(h, 300));
 
@@ -236,10 +238,13 @@ let last = performance.now();
 (function loop(now) {
   const dt = Math.min(0.04, (now - last) / 1000); last = now;
   ctx.clearRect(0, 0, 1000, 540);
-  const sky = ctx.createLinearGradient(0, 0, 0, 540);
-  sky.addColorStop(0, "#fff0f6"); sky.addColorStop(1, "#fff9db");
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1000, 540);
-  ctx.fillStyle = "#96d06c"; ctx.fillRect(0, 505, 1000, 35);
+  if (sceneBg) ctx.drawImage(sceneBg, 0, 0, 1000, 540);
+  else {
+    const sky = ctx.createLinearGradient(0, 0, 0, 540);
+    sky.addColorStop(0, "#fff0f6"); sky.addColorStop(1, "#fff9db");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1000, 540);
+    ctx.fillStyle = "#96d06c"; ctx.fillRect(0, 505, 1000, 35);
+  }
 
   if (puppet) {
     puppet.walking = state.mode === "shake";

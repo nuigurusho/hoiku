@@ -48,12 +48,14 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=11"></script>
+<script src="../js/core.js?v=12"></script>
 <script src="../js/rig.js?v=11"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
+let sceneBg = null;
+Util.loadImage("../assets/backgrounds/race.jpg").then((img) => { sceneBg = img; });
 const GOAL = 2400;
 const GAME = "race";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
@@ -336,16 +338,19 @@ function finishCpu(g, r) {
 function draw() {
   const g = G;
   ctx.clearRect(0, 0, 1280, 720);
-  const sky = ctx.createLinearGradient(0, 0, 0, 720);
-  sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#e7f5ff");
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
+  if (sceneBg) ctx.drawImage(sceneBg, 0, 0, 1280, 720);
+  else {
+    const sky = ctx.createLinearGradient(0, 0, 0, 720);
+    sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#e7f5ff");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
+  }
 
   const n = g.racers.length;
   const laneH = 620 / n;
   g.racers.forEach((r, i) => {
     const laneY = 80 + laneH * (i + 1);
     // コース
-    ctx.fillStyle = i % 2 ? "#96d06c" : "#a9dd7e";
+    ctx.fillStyle = i % 2 ? "rgba(150,208,108,.82)" : "rgba(169,221,126,.82)";
     ctx.fillRect(0, laneY - laneH + 24, 1280, laneH - 8);
     // ゴールライン
     ctx.fillStyle = "#fff";

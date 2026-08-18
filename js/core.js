@@ -5,6 +5,11 @@
    ============================================================ */
 "use strict";
 
+/* core.js から見た内蔵画像フォルダ。ゲーム配下から読んでも同じURLになる */
+const CORE_ASSET_ROOT = document.currentScript
+  ? new URL("../assets/", document.currentScript.src)
+  : new URL("assets/", document.baseURI);
+
 /* ---------------- Util ---------------- */
 const Util = {
   clamp(v, a, b) { return v < a ? a : v > b ? b : v; },
@@ -385,18 +390,86 @@ const Store = {
     });
   },
 
-  /* 1枚もなければサンプルを入れる */
+  /* 初回は全サンプル、更新時は新しい内蔵サンプルだけを重複なく追加する */
   async ensureSamples() {
     const list = await this.all();
-    if (list.length > 0) return list;
-    const recs = Samples.makeAll();
-    for (const r of recs) await this.put(r);
+    if (list.length === 0) {
+      const recs = await Samples.makeAll();
+      for (const r of recs) await this.put(r);
+      return this.all();
+    }
+
+    const ids = new Set(list.map((r) => r.id));
+    for (const def of Samples.ASSET_SAMPLES) {
+      if (!ids.has(def.id)) await this.put(await Samples.assetRecord(def));
+    }
     return this.all();
   },
 };
 
 /* ---------------- Samples(クレヨン風サンプル画像を生成) ---------------- */
 const Samples = {
+  /* 画像生成で作った内蔵サンプル。固定IDで既存端末にも1回だけ追加する */
+  ASSET_SAMPLES: [
+    {
+      id: "sample-bg-crayon-hills-v1", name: "おかの せかい", cat: "bg",
+      path: "backgrounds/world-land.jpg",
+    },
+    {
+      id: "sample-pic-crayon-picnic-v1", name: "ピクニックこうえん", cat: "pic",
+      path: "samples/diff-picnic.jpg",
+      diffSpots: [
+        { x: 0.19, y: 0.20, r: 0.075 }, { x: 0.84, y: 0.16, r: 0.075 },
+        { x: 0.50, y: 0.60, r: 0.085 }, { x: 0.17, y: 0.83, r: 0.075 },
+        { x: 0.83, y: 0.82, r: 0.080 },
+      ],
+    },
+    {
+      id: "sample-pic-crayon-playroom-v1", name: "おもちゃの おへや", cat: "pic",
+      path: "samples/diff-playroom.jpg",
+      diffSpots: [
+        { x: 0.50, y: 0.14, r: 0.065 }, { x: 0.19, y: 0.29, r: 0.085 },
+        { x: 0.82, y: 0.52, r: 0.085 }, { x: 0.20, y: 0.81, r: 0.075 },
+        { x: 0.78, y: 0.82, r: 0.080 },
+      ],
+    },
+    {
+      id: "sample-fuku-crayon-smile-v1", name: "にこにこ おかお", cat: "fuku",
+      path: "samples/fuku-smile.png",
+      fukuParts: [
+        { kind: "め", x: 0.274, y: 0.466, w: 0.128, h: 0.145 },
+        { kind: "め", x: 0.616, y: 0.466, w: 0.128, h: 0.145 },
+        { kind: "まゆげ", x: 0.235, y: 0.338, w: 0.190, h: 0.085 },
+        { kind: "まゆげ", x: 0.595, y: 0.338, w: 0.190, h: 0.085 },
+        { kind: "はな", x: 0.430, y: 0.590, w: 0.140, h: 0.115 },
+        { kind: "くち", x: 0.335, y: 0.695, w: 0.330, h: 0.170 },
+      ],
+    },
+    {
+      id: "sample-fuku-crayon-pigtails-v1", name: "おさげの おかお", cat: "fuku",
+      path: "samples/fuku-pigtails.png",
+      fukuParts: [
+        { kind: "め", x: 0.270, y: 0.433, w: 0.145, h: 0.125 },
+        { kind: "め", x: 0.606, y: 0.433, w: 0.145, h: 0.125 },
+        { kind: "まゆげ", x: 0.235, y: 0.312, w: 0.215, h: 0.090 },
+        { kind: "まゆげ", x: 0.560, y: 0.312, w: 0.215, h: 0.090 },
+        { kind: "はな", x: 0.430, y: 0.540, w: 0.145, h: 0.115 },
+        { kind: "くち", x: 0.365, y: 0.675, w: 0.270, h: 0.165 },
+      ],
+    },
+  ],
+
+  async _assetDataURL(path) {
+    const res = await fetch(new URL(path, CORE_ASSET_ROOT));
+    if (!res.ok) throw new Error(`内蔵画像を読み込めません: ${path}`);
+    return Util.blobToDataURL(await res.blob());
+  },
+
+  async assetRecord(def) {
+    const { path, ...meta } = def;
+    return { ...meta, dataURL: await this._assetDataURL(path) };
+  },
+
   /* 手ぶれ風の線 */
   _line(ctx, x1, y1, x2, y2, seg = 6) {
     ctx.beginPath();
@@ -773,10 +846,11 @@ const Samples = {
              ] };
   },
 
-  makeAll() {
+  async makeAll() {
+    const assets = await Promise.all(this.ASSET_SAMPLES.map((def) => this.assetRecord(def)));
     return [this.charA(), this.charB(), this.charC(), this.charSkirt(), this.charFloat(),
             this.charButterfly(),
-            this.bgA(), this.picA(), this.picB(), this.fukuFace()];
+            this.picA(), this.picB(), this.fukuFace(), ...assets];
   },
 };
 
