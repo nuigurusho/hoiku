@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>かげえクイズ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=4">
+<link rel="stylesheet" href="../css/style.css?v=5">
 <style>
   .shadow-box {
     width: min(420px, 80vw);
@@ -33,9 +33,9 @@
   <div id="startScreen" class="panel">
     <h2>これ なんの かげ?</h2>
 
-    <div class="mode-sec">🌈 ゆるふわ<span class="tag">はっぴょうかいに・どうぶつの かげあて 5もん(1〜2さいから)</span></div>
-    <div class="row"><button class="btn big pink" id="drawBtn">だれの え でしょう?</button></div>
-    <div class="row"><button class="btn big blue" id="animalBtn">どうぶつクイズ</button></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">はっぴょうかいに・どうぶつの かげあて 5もん(1〜2さいから)</span></div>
+    <div class="row" data-tier="yuru"><button class="btn big pink" id="drawBtn" data-mode="draw">だれの え でしょう?</button></div>
+    <div class="row"><button class="btn big blue" id="animalBtn" data-mode="animal">どうぶつクイズ</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
@@ -72,7 +72,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=4"></script>
+<script src="../js/core.js?v=5"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);

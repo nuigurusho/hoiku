@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかき</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 <style>
   .draw-wrap { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
   .paper {
@@ -86,8 +86,8 @@
           <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
         </div>
 
-        <h3>なんの え?</h3>
-        <div class="cat-row">
+        <h3 id="catTitle">なんの え?</h3>
+        <div class="cat-row" id="catRow">
           <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
           <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
           <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵</label>
@@ -99,15 +99,15 @@
         </div>
         <p class="note" style="margin:10px 0 0">
           ほぞんした あとの こまかい せってい(うごき・まちがいスポットなど)は
-          <a href="admin.html">とりこみ・せってい</a> でできます。
+          <a href="create.html">つくる</a> でできます。
         </p>
       </div>
     </div>
   </div>
 </main>
 
-<script src="js/core.js?v=4"></script>
-<script src="js/rig.js?v=4"></script>
+<script src="js/core.js?v=5"></script>
+<script src="js/rig.js?v=5"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -251,6 +251,18 @@ function isBlank() {
   return true;
 }
 
+/* 「つくる」画面から きたとき:なにを かくかは きまっているので えらばせない */
+const fixedCat = (() => {
+  const c = new URLSearchParams(location.search).get("cat");
+  return ["char", "bg", "pic", "fuku"].includes(c) ? c : null;
+})();
+const CAT_NAME = { char: "キャラクターの ぜんしん", bg: "はいけい", pic: "しゃしん・え", fuku: "キャラクターの かお" };
+if (fixedCat) {
+  document.querySelector(`input[name="cat"][value="${fixedCat}"]`).checked = true;
+  $("catRow").classList.add("hidden");
+  $("catTitle").textContent = CAT_NAME[fixedCat] + " を かこう!";
+}
+
 $("saveBtn").onclick = async () => {
   if (isBlank()) {
     Ui.msg("なにか かいてね!", 1400, "#4dabf7");
@@ -283,6 +295,8 @@ $("saveBtn").onclick = async () => {
   Sound.good();
   Ui.confetti(1800, 90);
   Ui.msg("ほぞんしたよ!", 1500, "#51cf66");
+  // 「つくる」画面から きたときは そこへ もどる
+  if (fixedCat) setTimeout(() => { location.href = "create.html"; }, 1500);
 };
 
 syncTools();

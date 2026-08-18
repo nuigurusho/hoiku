@@ -240,6 +240,53 @@ canvas.stage {
 .panel h2 { margin-top: 0; font-size: 26px; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
 
+/* ---------- トップの タブ(つくる → みる → あそぶ / ゲーム別) ---------- */
+.tabbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 980px;
+  margin: 4px auto 10px;
+}
+.tabflow { display: flex; align-items: center; gap: 6px; }
+.tab {
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: bold;
+  color: var(--ink);
+  background: #fff;
+  border: 3px solid var(--cream-d);
+  border-radius: 999px;
+  padding: 10px 22px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--cream-d);
+  transition: transform .08s, box-shadow .08s, background .12s, color .12s;
+}
+.tab:active { transform: translateY(4px); box-shadow: none; }
+@media (hover: hover) {
+  .tab:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
+}
+.tab.on {
+  background: var(--pink);
+  border-color: var(--pink-d);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--pink-d);
+}
+/* つくる → みる → あそぶ を つなぐ やじるし */
+.tab-arrow { display: flex; align-items: center; color: #d3b189; }
+.tab-arrow svg { width: 15px; height: 15px; display: block; }
+/* ながれ と「ゲーム別」の くぎり */
+.tab-div { width: 3px; height: 28px; border-radius: 2px; background: var(--cream-d); margin: 0 4px; }
+@media (max-width: 620px) {
+  .tab { font-size: 17px; padding: 9px 15px; }
+  .tabflow { gap: 4px; }
+  .tab-div { display: none; }
+}
+
 /* ---------- ぜんがめん ボタン(みぎうえに ちいさく) ---------- */
 .fs-btn {
   width: 44px;
@@ -408,6 +455,105 @@ canvas.stage {
 .card.matched { animation: matched .5s; }
 .card.matched .backface { outline: 5px solid var(--yellow); }
 @keyframes matched { 50% { transform: rotateY(180deg) scale(1.12); } }
+
+/* ---------- つくる画面 ---------- */
+.make-sec {
+  max-width: 1000px;
+  margin: 0 auto 26px;
+  background: rgba(255,255,255,.92);
+  border-radius: 22px;
+  box-shadow: 0 6px 18px rgba(120,80,40,.14);
+  padding: 16px 18px 20px;
+}
+.make-sec h2 { font-size: 24px; margin: 4px 0 10px; }
+.make-sec h3 {
+  font-size: 18px;
+  margin: 16px 0 6px;
+  border-bottom: 3px dashed var(--cream-d);
+  padding-bottom: 5px;
+}
+.make-tag { font-size: 13px; color: #8a7a68; font-weight: normal; margin-left: 10px; }
+/* リストの さいごの ＋ボタン */
+.add-row {
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: bold;
+  color: #7a6a58;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fffdf5;
+  border: 3px dashed var(--cream-d);
+  border-radius: 14px;
+  padding: 14px 12px;
+  margin: 8px 0;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.add-row .add-mark {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--pink);
+}
+.add-row:active { background: #fff0f6; border-color: var(--pink); }
+@media (hover: hover) {
+  .add-row:hover { background: #fff0f6; border-color: var(--pink); }
+}
+
+/* ---------- 説明の iボタン と 箇条書き ---------- */
+.info-btn {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: bold;
+  font-style: italic;
+  color: #fff;
+  background: var(--blue);
+  border: 2px solid var(--blue-d);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  margin-left: 8px;
+  padding: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  box-shadow: 0 3px 0 var(--blue-d);
+}
+.info-btn:active { transform: translateY(3px); box-shadow: none; }
+.info-list { margin: 4px 0 14px; padding-left: 22px; line-height: 1.7; font-size: 15px; }
+.info-list li { margin-bottom: 4px; }
+.modal .panel h3 { font-size: 17px; margin: 12px 0 2px; border-bottom: 2px dashed var(--cream-d); padding-bottom: 4px; }
+
+/* ---------- エディタ(うごき・スポット・ふくわらい・きりだし) ---------- */
+.edit-canvas {
+  border-radius: 12px;
+  background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 0 0 / 24px 24px;
+  touch-action: none;
+  max-width: 100%;
+}
+.rig-flex { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.rig-types { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 4px 0 12px; }
+.rig-types .btn { opacity: .55; }
+.rig-types .btn.active { opacity: 1; outline: 3px solid #212529; transform: translateY(1px); }
+
+/* ---------- ダイアログの ラジオ・メニュー ---------- */
+.radio-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  background: #fff;
+  border: 3px solid var(--cream-d);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.radio-row input { width: 22px; height: 22px; accent-color: var(--pink); }
+.radio-row:has(input:checked) { border-color: var(--pink); background: #fff0f6; }
+.menu-list { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.menu-list .btn { font-size: 22px; padding: 16px 20px; }
 
 /* ---------- 管理画面 ---------- */
 .admin-list { max-width: 1000px; margin: 0 auto; }

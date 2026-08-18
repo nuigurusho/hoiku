@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>つくる</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css?v=5">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="index.html">← もどる</a>
+  <h1>つくる</h1>
+  <div class="spacer"></div>
+</header>
+
+<main class="admin-list">
+  <nav class="tabbar" aria-label="やることを えらぶ">
+    <span class="tabflow">
+      <a class="tab on" href="create.html" data-tab="create">つくる</a>
+      <span class="tab-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+      <a class="tab" href="index.html#miru" data-tab="see">みる</a>
+      <span class="tab-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+      <a class="tab" href="index.html#asobu" data-tab="play">あそぶ</a>
+    </span>
+    <span class="tab-div" aria-hidden="true"></span>
+    <a class="tab" href="index.html#gamebetsu" data-tab="games">ゲーム別</a>
+  </nav>
+
+  <!-- ============ キャラクター ============ -->
+  <div class="make-sec">
+    <h2>キャラクター<button class="info-btn" type="button" id="charInfo" aria-label="キャラクターの説明">i</button></h2>
+
+    <h3>ぜんしん<span class="make-tag">はしる・とぶ ゲームで うごく え</span></h3>
+    <div id="listChar"></div>
+
+    <h3>かお<span class="make-tag">ふくわらいで つかう かおの え</span></h3>
+    <div id="listFuku"></div>
+  </div>
+
+  <!-- ============ ４たくクイズ ============ -->
+  <div class="make-sec">
+    <h2>４たくクイズ<button class="info-btn" type="button" id="quizInfo" aria-label="クイズの説明">i</button></h2>
+    <h3>かんたん作成 — 答えを入れるだけ</h3>
+    <div id="quizTemplates"></div>
+    <h3>自分で作る</h3>
+    <div class="row" style="justify-content:flex-start; gap:8px">
+      <input type="text" id="qfQ" placeholder="問題文" style="flex:2 1 260px">
+      <input type="text" id="qfE" placeholder="絵文字(🏫など)" style="width:130px">
+    </div>
+    <div class="row" style="justify-content:flex-start; gap:8px">
+      <input type="text" id="qfA0" placeholder="正解" style="flex:1 1 150px; border-color:#51cf66">
+      <input type="text" id="qfA1" placeholder="不正解1" style="flex:1 1 150px">
+      <input type="text" id="qfA2" placeholder="不正解2" style="flex:1 1 150px">
+      <input type="text" id="qfA3" placeholder="不正解3" style="flex:1 1 150px">
+      <button class="btn green" id="qfAdd">クイズに追加</button>
+    </div>
+    <h3>この端末のオリジナル問題</h3>
+    <div id="quizList"></div>
+  </div>
+
+  <!-- ============ まちがいさがし ============ -->
+  <div class="make-sec">
+    <h2>まちがいさがし<button class="info-btn" type="button" id="picInfo" aria-label="まちがいさがしの説明">i</button></h2>
+    <h3>しゃしん・え<span class="make-tag">まちがいスポットを きめると あそべます</span></h3>
+    <div id="listPic"></div>
+  </div>
+
+  <p class="note" style="max-width:1000px;margin:18px auto;text-align:center">
+    絵の 名前かえ・DL・トリミング・カテゴリ・削除は
+    <a href="admin.html">とりこみ・せってい</a> でできます。
+  </p>
+</main>
+
+<script src="js/vendor/pdf.min.js"></script>
+<script src="js/core.js?v=5"></script>
+<script src="js/rig.js?v=5"></script>
+<script src="js/editors.js?v=5"></script>
+<script>
+"use strict";
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "js/vendor/pdf.worker.min.js";
+}
+const $ = (id) => document.getElementById(id);
+
+/* このページで あつかう 3つの リスト
+   btns … その カテゴリで だせる 編集ボタン(DL・トリミング・カテゴリ・削除は ここには ださない) */
+const LISTS = [
+  { cat: "char", el: "listChar", what: "キャラクターの ぜんしん", btns: ["rig", "voice"] },
+  { cat: "fuku", el: "listFuku", what: "キャラクターの かお", btns: ["fuku"] },
+  { cat: "pic", el: "listPic", what: "しゃしん・え", btns: ["spot"] },
+];
+
+async function refresh() {
+  await Store.ensureSamples();
+  for (const L of LISTS) {
+    const el = $(L.el);
+    el.innerHTML = "";
+    const recs = await Store.all(L.cat);
+    for (const r of recs) el.appendChild(row(r, L));
+    el.appendChild(addButton(L));
+  }
+}
+Editors.onChange = refresh;
+
+function row(r, L) {
+  const d = document.createElement("div");
+  d.className = "admin-row";
+  d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(名前なし)"}</span>`;
+  const mk = (label, cls, fn) => {
+    const b = document.createElement("button");
+    b.className = "btn " + cls;
+    b.textContent = label;
+    b.onclick = fn;
+    d.appendChild(b);
+  };
+  mk("名前", "blue", async () => {
+    const nm = prompt("名前を入力してください", r.name || "");
+    if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
+  });
+  if (L.btns.includes("rig")) mk("うごきせってい", "purple", () => Editors.openRig(r));
+  if (L.btns.includes("voice")) mk("こえ", "orange", () => Editors.openVoice(r));
+  if (L.btns.includes("fuku")) mk("ふくわらいパーツ", "green", () => Editors.openFuku(r));
+  if (L.btns.includes("spot")) mk("まちがいスポット", "orange", () => Editors.openSpot(r));
+  return d;
+}
+
+/* リストの さいごの ＋ボタン */
+function addButton(L) {
+  const b = document.createElement("button");
+  b.className = "add-row";
+  b.type = "button";
+  b.innerHTML = '<span class="add-mark">＋</span>' + L.what + 'を ふやす';
+  b.onclick = () => addNew(L);
+  return b;
+}
+
+async function addNew(L) {
+  Sound.tap();
+  const how = await Ui.menu({
+    title: L.what + "を ふやす",
+    note: "やりかたを えらんでね",
+    items: [
+      { value: "file", label: "ファイルを えらぶ", color: "green" },
+      { value: "camera", label: "カメラで とる", color: "blue" },
+      { value: "draw", label: "おえかきする", color: "pink" },
+      { value: "src", label: "元素材から きりだす", color: "purple" },
+    ],
+  });
+  if (!how) return;
+  if (how === "file") return Editors.chooseFiles(L.cat);
+  if (how === "camera") return Editors.chooseCamera(L.cat);
+  if (how === "draw") { location.href = "draw.html?cat=" + L.cat; return; }
+
+  /* 元素材から:えらんだ 1枚を そのまま きりだし画面へ(保存先は このカテゴリ) */
+  const srcs = await Store.all("src");
+  if (!srcs.length) {
+    Ui.msg("元素材が まだ ないよ", 1800, "#4dabf7");
+    return;
+  }
+  const rec = await Picker.one({
+    title: "どの 元素材から きりだす?",
+    note: "つぎの がめんで かこんだ ところが「" + L.what + "」に なります",
+    records: srcs,
+  });
+  if (rec) Editors.cropRecord(rec, L.cat);
+}
+
+/* ---------- せつめい(iボタン) ---------- */
+$("charInfo").onclick = () => {
+  Sound.tap();
+  Ui.info("キャラクターの つくりかた", `
+    <h3>ぜんしん</h3>
+    <ul class="info-list">
+      <li>走る・跳ぶゲームで <b>手足を動かして歩く</b> 絵です</li>
+      <li>ふやしたら <b>うごきせってい</b> で 首・腰・中央の3本線を絵に合わせてください</li>
+      <li>合わせると 隣のプレビューで歩き出します。それでOKです</li>
+      <li><b>こえ</b> で よろこび・あいさつ・おどろき・しっぱい を録音できます(1つ10秒まで)</li>
+    </ul>
+    <h3>かお</h3>
+    <ul class="info-list">
+      <li>ふくわらい専用の絵です。ぜんしんとは別に管理します</li>
+      <li><b>ふくわらいパーツ</b> で 目・まゆげ・鼻・口 を四角く囲むと、パーツが抜けた顔で遊べます</li>
+    </ul>
+    <h3>きれいに つくるコツ</h3>
+    <ul class="info-list">
+      <li>白い紙に <b>濃く・はっきり</b>、紙いっぱいに <b>大きく</b> 描く</li>
+      <li>明るい場所で <b>影が入らないよう</b> 真上からまっすぐ撮る</li>
+      <li>白い部分は自動で透明になります</li>
+      <li>大きさは自動で縮小(長辺 <b>900px</b>)。比率は <b>たて長</b> が画面に収まりやすいです</li>
+    </ul>
+  `);
+};
+$("quizInfo").onclick = () => {
+  Sound.tap();
+  Ui.info("クイズの つくりかた", `
+    <ul class="info-list">
+      <li>ここで作った問題は <b>この端末の中にだけ</b> 保存されます(公開サイトには載りません)</li>
+      <li>園の名前・先生の名前など、<b>固有名詞を入れても大丈夫</b>です</li>
+      <li>「かんたん作成」は答えを入れるだけ。不正解の選択肢は自動で入ります</li>
+      <li>作った問題は ４たくクイズに <b>自動で合流</b>します</li>
+      <li>全端末で共通の問題を変えたいときだけ <code>js/quiz-data.js</code> を編集してください</li>
+    </ul>
+  `);
+};
+$("picInfo").onclick = () => {
+  Sound.tap();
+  Ui.info("まちがいさがしの つくりかた", `
+    <ul class="info-list">
+      <li>写真や絵をふやして、<b>まちがいスポット</b> で消したい場所をタップします(最大8個)</li>
+      <li>右の絵から その場所が消えるので、それを探して遊びます</li>
+      <li>スポットを決めていない絵は、<b>自動で5か所</b> 作って遊べます</li>
+      <li>園の写真もそのまま使えます(端末の中だけに保存されます)</li>
+      <li>大きさは自動で縮小(長辺 <b>1100px</b>)。<b>よこ長</b> が2枚ならべて見やすいです</li>
+    </ul>
+  `);
+};
+
+Editors.initQuiz();
+refresh();
+</script>
+</body>
+</html>

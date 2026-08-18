@@ -800,6 +800,66 @@ const Ui = {
     return d;
   },
 
+  /* ---- ちいさな ダイアログ 3つ(モーダル) ---- */
+  _modal(inner) {
+    const wrap = document.createElement("div");
+    wrap.className = "modal";
+    wrap.innerHTML = `<div class="panel" style="text-align:left">${inner}</div>`;
+    document.body.appendChild(wrap);
+    return wrap;
+  },
+
+  /* せつめいを だすだけ(html は じぶんで かいた ものだけ わたすこと) */
+  info(title, html) {
+    const wrap = this._modal(`<h2>${title}</h2>${html}
+      <div class="row"><button class="btn gray" type="button">とじる</button></div>`);
+    wrap.querySelector("button").onclick = () => { Sound.tap(); wrap.remove(); };
+    return wrap;
+  },
+
+  /* ラジオボタンで 1つ えらぶ。えらんだ value を Promise でかえす(やめるは null) */
+  choose(opts) {
+    return new Promise((resolve) => {
+      const name = "ch" + Math.random().toString(36).slice(2);
+      const list = (opts.options || []).map((o) => `
+        <label class="radio-row"><input type="radio" name="${name}" value="${o.value}"${
+          o.value === opts.current ? " checked" : ""}> <span>${o.label}</span></label>`).join("");
+      const wrap = this._modal(`<h2>${opts.title || "えらんでください"}</h2>
+        ${opts.note ? `<p class="note">${opts.note}</p>` : ""}
+        <div class="radio-list">${list}</div>
+        <div class="row">
+          <button class="btn gray" type="button" data-x="0">やめる</button>
+          <button class="btn green" type="button" data-x="1">決定</button>
+        </div>`);
+      const close = (v) => { wrap.remove(); resolve(v); };
+      wrap.querySelector('[data-x="0"]').onclick = () => { Sound.tap(); close(null); };
+      wrap.querySelector('[data-x="1"]').onclick = () => {
+        const el = wrap.querySelector(`input[name="${name}"]:checked`);
+        Sound.tap();
+        close(el ? el.value : null);
+      };
+    });
+  },
+
+  /* たてに ならんだ ボタンから 1つ えらぶ(おした しゅんかんに けってい) */
+  menu(opts) {
+    return new Promise((resolve) => {
+      const items = opts.items || [];
+      const btns = items.map((it, i) => `
+        <button class="btn big ${it.color || "blue"}" type="button" data-i="${i}"
+                style="width:100%">${it.label}</button>`).join("");
+      const wrap = this._modal(`<h2>${opts.title || "えらんでください"}</h2>
+        ${opts.note ? `<p class="note">${opts.note}</p>` : ""}
+        <div class="menu-list">${btns}</div>
+        <div class="row"><button class="btn gray" type="button" data-x="0">やめる</button></div>`);
+      const close = (v) => { wrap.remove(); resolve(v); };
+      wrap.querySelectorAll("[data-i]").forEach((b) => {
+        b.onclick = () => { Sound.tap(); close(items[+b.dataset.i].value); };
+      });
+      wrap.querySelector('[data-x="0"]').onclick = () => { Sound.tap(); close(null); };
+    });
+  },
+
   /* ギャラリーを描画して選択させる汎用ヘルパー */
   renderGallery(el, recs, onPick, selectedId) {
     el.innerHTML = "";
@@ -1240,6 +1300,31 @@ const Backup = {
   },
 };
 
+/* ---------------- Entry(トップページからの ちょくつう) ----------------
+   ・?mode=xxx  … その あそびかたの ボタンを じどうで おす
+                  (キャラえらびが ひつような ゲームは えらび がめんが でる)
+   ・?tier=gachi … ゆるふわの みだしと「みるだけ(オート)」を かくして、
+                   れんしゅう と なんいどだけの がめんに する
+   がめんの HTML には data-tier="yuru" を、みだしと オートのボタンの行に つける。 */
+const Entry = {
+  init() {
+    const q = new URLSearchParams(location.search);
+
+    if (q.get("tier") === "gachi") {
+      document.querySelectorAll('[data-tier="yuru"]').forEach((el) => el.classList.add("hidden"));
+    }
+
+    const mode = q.get("mode");
+    if (!mode) return;
+    const btn = document.querySelector(`[data-mode="${mode.replace(/[^\w-]/g, "")}"]`);
+    if (!btn) return;
+    /* え の よみこみが おわってから おす(ゲームがわの したくを まつ) */
+    Promise.resolve(Store.ensureSamples()).then(() => {
+      setTimeout(() => btn.click(), 80);
+    });
+  },
+};
+
 /* ---------------- Fullscreen(ぜんがめん ボタン) ----------------
    みぎうえに ちいさく うかべる。ページを いどうすると ぜんがめんは
    かいじょされるので、core.js を よむ ページ ぜんぶに つける。
@@ -1319,7 +1404,7 @@ const GameChrome = {
     update();
   },
 };
-function initChrome() { GameChrome.init(); Fullscreen.init(); }
+function initChrome() { GameChrome.init(); Fullscreen.init(); Entry.init(); }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initChrome);
 } else {

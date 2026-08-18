@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきのたび</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=4">
+<link rel="stylesheet" href="../css/style.css?v=5">
 </head>
 <body>
 <header class="bar">
@@ -19,8 +19,8 @@
     <div class="panel">
       <h2>あそびかたを えらんでね</h2>
 
-      <div class="mode-sec">🌈 ゆるふわ<span class="tag">みるだけ・じかんむせいげんで ⭐10こ あつめて ゴール(1〜2さいから)</span></div>
-      <div class="row"><button class="btn big pink" data-mode="auto">みるだけ(オート)</button></div>
+      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">みるだけ・じかんむせいげんで ⭐10こ あつめて ゴール(1〜2さいから)</span></div>
+      <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="auto">みるだけ(オート)</button></div>
       <div class="row"><button class="btn big green" data-mode="ren">れんしゅう</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・のこりタイムランキング・クリアで つぎが とけるよ</span></div>
@@ -55,8 +55,8 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=4"></script>
-<script src="../js/rig.js?v=4"></script>
+<script src="../js/core.js?v=5"></script>
+<script src="../js/rig.js?v=5"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);

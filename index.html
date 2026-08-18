@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>みんなの ゲームパック</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 <style>
   .logo {
     display: block;
@@ -72,8 +72,21 @@
     </a>
   </div>
   <h1 style="margin:0"><img class="logo" src="assets/logo.png" alt="みんなの ゲームパック"></h1>
-  <p class="subtitle">あそびたい ゲームを えらんでね!</p>
 
+  <nav class="tabbar" aria-label="やることを えらぶ">
+    <span class="tabflow">
+      <a class="tab" href="create.html" data-tab="create">つくる</a>
+      <span class="tab-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+      <a class="tab" href="#miru" data-tab="see">みる</a>
+      <span class="tab-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+      <a class="tab" href="#asobu" data-tab="play">あそぶ</a>
+    </span>
+    <span class="tab-div" aria-hidden="true"></span>
+    <a class="tab" href="#gamebetsu" data-tab="games">ゲーム別</a>
+  </nav>
+
+  <div class="tab-panel" id="panel-games">
+    <p class="subtitle">あそびたい ゲームを えらんでね!</p>
   <div class="tiles games">
     <!-- 1だんめ -->
     <a class="tile" href="draw.html"><img class="icon" src="assets/buttons/draw.png" alt="">おえかき</a>
@@ -100,11 +113,62 @@
   <p class="subtitle" style="margin-top:16px;font-size:15px;font-weight:normal">
     🌈ゆるふわ(みるだけ・じぶんの ペースで) ・ 🔥ガチンコ(クリア&ランキング)
   </p>
+  </div>
+
+  <div class="tab-panel hidden" id="panel-see">
+    <p class="subtitle">みているだけで たのしめるよ。ゲームを えらんでね!</p>
+    <div class="tiles games">
+    <a class="tile" href="games/world.html"><img class="icon" src="assets/buttons/world.png" alt="">みんなの せかい</a>
+    <a class="tile" href="games/race.html?mode=cheer"><img class="icon" src="assets/buttons/race.png" alt="">よーいドン!</a>
+    <a class="tile" href="games/janken.html?mode=crowd"><img class="icon" src="assets/buttons/janken.png" alt="">じゃんけん</a>
+    <a class="tile" href="games/silhouette.html?mode=draw"><img class="icon" src="assets/buttons/silhouette.png" alt="">かげえクイズ</a>
+    <a class="tile" href="games/memory.html?mode=demo"><img class="icon" src="assets/buttons/memory.png" alt="">カードあわせ</a>
+    <a class="tile" href="games/puzzle.html?mode=demo"><img class="icon" src="assets/buttons/puzzle.png" alt="">おえかきパズル</a>
+    <a class="tile" href="games/adventure.html?mode=auto"><img class="icon" src="assets/buttons/adventure.png" alt="">おえかきのたび</a>
+    <a class="tile" href="games/mole.html?mode=yuru"><img class="icon" src="assets/buttons/mole.png" alt="">もぐらたたき</a>
+    <a class="tile" href="games/voice.html?mode=yuru"><img class="icon" src="assets/buttons/voice.png" alt="">こえで ジャンプ</a>
+    <a class="tile" href="games/rope.html?mode=yuru"><img class="icon" src="assets/buttons/rope.png" alt="">なわとび</a>
+    <a class="tile" href="games/dodgeball.html"><span class="icon">🏐</span>ドッヂボール</a>
+    <a class="tile" href="games/relay.html"><span class="icon">🏃</span>リレー</a>
+    </div>
+  </div>
+
+  <div class="tab-panel hidden" id="panel-play">
+    <p class="subtitle">れんしゅう と ガチンコ。ゲームを えらんでね!</p>
+    <div class="tiles games">
+    <a class="tile" href="games/race.html?tier=gachi"><img class="icon" src="assets/buttons/race.png" alt="">よーいドン!</a>
+    <a class="tile" href="games/janken.html?tier=gachi"><img class="icon" src="assets/buttons/janken.png" alt="">じゃんけん</a>
+    <a class="tile" href="games/quiz.html?tier=gachi"><img class="icon" src="assets/buttons/quiz.png" alt="">４たくクイズ</a>
+    <a class="tile" href="games/silhouette.html?tier=gachi"><img class="icon" src="assets/buttons/silhouette.png" alt="">かげえクイズ</a>
+    <a class="tile" href="games/diff.html?tier=gachi"><img class="icon" src="assets/buttons/diff.png" alt="">まちがいさがし</a>
+    <a class="tile" href="games/memory.html?tier=gachi"><img class="icon" src="assets/buttons/memory.png" alt="">カードあわせ</a>
+    <a class="tile" href="games/puzzle.html?tier=gachi"><img class="icon" src="assets/buttons/puzzle.png" alt="">おえかきパズル</a>
+    <a class="tile" href="games/adventure.html?tier=gachi"><img class="icon" src="assets/buttons/adventure.png" alt="">おえかきのたび</a>
+    <a class="tile" href="games/mole.html?tier=gachi"><img class="icon" src="assets/buttons/mole.png" alt="">もぐらたたき</a>
+    <a class="tile" href="games/voice.html?tier=gachi"><img class="icon" src="assets/buttons/voice.png" alt="">こえで ジャンプ</a>
+    <a class="tile" href="games/rope.html?tier=gachi"><img class="icon" src="assets/buttons/rope.png" alt="">なわとび</a>
+    </div>
+  </div>
+
 </main>
-<script src="js/core.js?v=4"></script>
+<script src="js/core.js?v=5"></script>
 <script>
   // 初回アクセス時にサンプル画像を用意しておく
   Store.ensureSamples();
+
+  /* タブ切りかえ(#miru / #asobu / #gamebetsu。なければ ゲーム別) */
+  const TAB_OF_HASH = { miru: "see", asobu: "play", gamebetsu: "games" };
+  function showTab() {
+    const key = TAB_OF_HASH[location.hash.replace("#", "")] || "games";
+    document.querySelectorAll(".tab-panel").forEach((el) => {
+      el.classList.toggle("hidden", el.id !== "panel-" + key);
+    });
+    document.querySelectorAll(".tabbar .tab").forEach((el) => {
+      el.classList.toggle("on", el.dataset.tab === key);
+    });
+  }
+  addEventListener("hashchange", showTab);
+  showTab();
 </script>
 </body>
 </html>
