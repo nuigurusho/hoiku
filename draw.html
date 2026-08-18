@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかき</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=5">
+<link rel="stylesheet" href="css/style.css?v=6">
 <style>
   .draw-wrap { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
   .paper {
@@ -20,6 +20,8 @@
     background: #fff;
     touch-action: none;
     max-width: 100%;
+    max-height: calc(100vh - 150px);
+    width: auto;
     height: auto;
     cursor: crosshair;
   }
@@ -81,10 +83,12 @@
 
         <h3>どうぐ</h3>
         <div class="tool-row">
+          <button class="btn purple" id="fillBtn">ぬりつぶし</button>
           <button class="btn gray" id="eraserBtn">けしゴム</button>
           <button class="btn blue" id="undoBtn">↩ もどす</button>
           <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
         </div>
+        <p class="note" id="toolHint" style="margin:6px 0 0">ペンで かけます</p>
 
         <h3 id="catTitle">なんの え?</h3>
         <div class="cat-row" id="catRow">
@@ -96,6 +100,13 @@
 
         <div class="tool-row" style="margin-top:14px">
           <button class="btn green big" id="saveBtn" style="flex:1">✔ ほぞんする</button>
+          <button class="btn green big hidden" id="overwriteBtn" style="flex:1">✔ うわがき ほぞん</button>
+        </div>
+        <div class="tool-row hidden" id="saveNewRow">
+          <button class="btn blue" id="saveNewBtn" style="flex:1">べつの えとして ほぞん</button>
+        </div>
+        <div class="tool-row" style="margin-top:10px">
+          <button class="btn yellow" id="openBtn" style="flex:1">とりこんだ えを なおす</button>
         </div>
         <p class="note" style="margin:10px 0 0">
           ほぞんした あとの こまかい せってい(うごき・まちがいスポットなど)は
@@ -106,8 +117,8 @@
   </div>
 </main>
 
-<script src="js/core.js?v=5"></script>
-<script src="js/rig.js?v=5"></script>
+<script src="js/core.js?v=6"></script>
+<script src="js/rig.js?v=6"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -121,11 +132,12 @@ const SIZES = [6, 14, 26, 44];
 const state = {
   color: "#333333",
   size: 14,
-  eraser: false,
+  tool: "pen",   // "pen" / "eraser" / "fill"
   drawing: false,
   last: null,
   history: [],   // もどす用スナップショット(dataURL)
 };
+const isEraser = () => state.tool === "eraser";
 
 const cv = $("drawCanvas");
 const ctx = cv.getContext("2d");
@@ -147,7 +159,7 @@ COLORS.forEach((col, i) => {
   s.onclick = () => {
     Sound.tap();
     state.color = col;
-    state.eraser = false;
+    if (isEraser()) state.tool = "pen";   // いろを えらんだら ペン(か ぬりつぶし)に もどる
     syncTools();
   };
   s.dataset.color = col;
@@ -169,13 +181,21 @@ SIZES.forEach((sz) => {
   $("sizes").appendChild(b);
 });
 
+const TOOL_HINT = {
+  pen: "ペンで かけます",
+  eraser: "けしゴム:なぞった ところが しろく なります",
+  fill: "ぬりつぶし:かこまれた ところを タッチすると いろが つきます",
+};
 function syncTools() {
   $("swatches").querySelectorAll(".swatch").forEach((s) =>
-    s.classList.toggle("active", !state.eraser && s.dataset.color === state.color));
+    s.classList.toggle("active", !isEraser() && s.dataset.color === state.color));
   $("sizes").querySelectorAll(".size-btn").forEach((b) =>
     b.classList.toggle("active", +b.dataset.size === state.size));
-  $("eraserBtn").classList.toggle("green", state.eraser);
-  $("eraserBtn").classList.toggle("gray", !state.eraser);
+  $("eraserBtn").classList.toggle("green", isEraser());
+  $("eraserBtn").classList.toggle("gray", !isEraser());
+  $("fillBtn").classList.toggle("green", state.tool === "fill");
+  $("fillBtn").classList.toggle("purple", state.tool !== "fill");
+  $("toolHint").textContent = TOOL_HINT[state.tool];
 }
 
 /* ---------- もどす(履歴) ---------- */
@@ -195,24 +215,82 @@ async function undo() {
   ctx.drawImage(img, 0, 0);
 }
 
+/* ---------- ぬりつぶし(バケツ) ----------
+   タッチした ところと にた いろの ところを ひとつづきに ぬる。
+   えんぴつの せんは いろが ちがうので、せんの てまえで とまる。 */
+function hexRgb(hex) {
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+}
+
+function floodFill(sx, sy, hex) {
+  const w = cv.width, h = cv.height;
+  sx = Math.floor(Util.clamp(sx, 0, w - 1));
+  sy = Math.floor(Util.clamp(sy, 0, h - 1));
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const at = (x, y) => (y * w + x) * 4;
+  const s = at(sx, sy);
+  const sr = d[s], sg = d[s + 1], sb = d[s + 2];
+  const [fr, fg, fb] = hexRgb(hex);
+  // すでに おなじ いろなら なにも しない(むげんループよけ)
+  if (Math.abs(sr - fr) < 6 && Math.abs(sg - fg) < 6 && Math.abs(sb - fb) < 6) return false;
+
+  const TOL = 60;                       // せんの ふちの ぼやけも すこし ぬる
+  const seen = new Uint8Array(w * h);
+  const near = (i) =>
+    Math.abs(d[i] - sr) <= TOL && Math.abs(d[i + 1] - sg) <= TOL && Math.abs(d[i + 2] - sb) <= TOL;
+
+  const stack = [[sx, sy]];
+  while (stack.length) {
+    const [px, py] = stack.pop();
+    let x = px;
+    while (x >= 0 && !seen[py * w + x] && near(at(x, py))) x--;   // ひだり端まで
+    x++;
+    let up = false, down = false;
+    for (; x < w && !seen[py * w + x] && near(at(x, py)); x++) {  // みぎへ ぬっていく
+      const i = at(x, py);
+      d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; d[i + 3] = 255;
+      seen[py * w + x] = 1;
+      if (py > 0) {
+        const okUp = !seen[(py - 1) * w + x] && near(at(x, py - 1));
+        if (okUp && !up) { stack.push([x, py - 1]); up = true; }
+        else if (!okUp) up = false;
+      }
+      if (py < h - 1) {
+        const okDown = !seen[(py + 1) * w + x] && near(at(x, py + 1));
+        if (okDown && !down) { stack.push([x, py + 1]); down = true; }
+        else if (!okDown) down = false;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return true;
+}
+
 /* ---------- えがく ---------- */
 function strokeStyle() {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.lineWidth = state.size;
-  ctx.strokeStyle = state.eraser ? "#ffffff" : state.color;
+  ctx.strokeStyle = isEraser() ? "#ffffff" : state.color;
 }
 
 cv.addEventListener("pointerdown", (e) => {
   Sound.ensure();
   pushHistory();
+  const at = Util.canvasPos(cv, e);
+  if (state.tool === "fill") {
+    if (floodFill(at.x, at.y, state.color)) Sound.pop();
+    else { state.history.pop(); Sound.tap(); }
+    return;
+  }
   state.drawing = true;
-  state.last = Util.canvasPos(cv, e);
+  state.last = at;
   strokeStyle();
   // 点をうつ(タップだけでも かける)
   ctx.beginPath();
   ctx.arc(state.last.x, state.last.y, state.size / 2, 0, 7);
-  ctx.fillStyle = state.eraser ? "#ffffff" : state.color;
+  ctx.fillStyle = isEraser() ? "#ffffff" : state.color;
   ctx.fill();
   cv.setPointerCapture(e.pointerId);
 });
@@ -232,7 +310,8 @@ cv.addEventListener("pointercancel", endStroke);
 cv.addEventListener("pointerleave", endStroke);
 
 /* ---------- どうぐ ---------- */
-$("eraserBtn").onclick = () => { Sound.tap(); state.eraser = !state.eraser; syncTools(); };
+$("eraserBtn").onclick = () => { Sound.tap(); state.tool = isEraser() ? "pen" : "eraser"; syncTools(); };
+$("fillBtn").onclick = () => { Sound.tap(); state.tool = state.tool === "fill" ? "pen" : "fill"; syncTools(); };
 $("undoBtn").onclick = undo;
 $("clearBtn").onclick = () => {
   if (!confirm("かいた えを ぜんぶ けしますか?")) return;
@@ -252,29 +331,70 @@ function isBlank() {
 }
 
 /* 「つくる」画面から きたとき:なにを かくかは きまっているので えらばせない */
+const q = new URLSearchParams(location.search);
 const fixedCat = (() => {
-  const c = new URLSearchParams(location.search).get("cat");
+  const c = q.get("cat");
   return ["char", "bg", "pic", "fuku"].includes(c) ? c : null;
 })();
 const CAT_NAME = { char: "キャラクターの ぜんしん", bg: "はいけい", pic: "しゃしん・え", fuku: "キャラクターの かお" };
+const CAT_BASE = { char: "キャラ", bg: "はいけい", pic: "え", fuku: "ふくわらい" };
 if (fixedCat) {
   document.querySelector(`input[name="cat"][value="${fixedCat}"]`).checked = true;
   $("catRow").classList.add("hidden");
   $("catTitle").textContent = CAT_NAME[fixedCat] + " を かこう!";
 }
 
-$("saveBtn").onclick = async () => {
-  if (isBlank()) {
-    Ui.msg("なにか かいてね!", 1400, "#4dabf7");
-    return;
-  }
-  const cat = document.querySelector('input[name="cat"]:checked').value;
-  const base = { char: "キャラ", bg: "はいけい", pic: "え", fuku: "ふくわらい" }[cat];
-  const existing = await Store.all(cat);
-  const nm = prompt("なまえを いれてください", `${base}${existing.length + 1}`);
-  if (nm === null) return;
+/* ---------- とりこんだ えを なおす ---------- */
+let editRec = null;          // なおしているとき、その レコード
 
-  // とりこみと おなじ おおきさに ちぢめる
+async function loadForEdit(rec) {
+  editRec = rec;
+  const img = await Util.loadImage(rec.dataURL);
+  // もとの えの たてよこ比の まま かけるように キャンバスを あわせる
+  const max = rec.cat === "char" ? 900 : 1100;
+  const sc = Math.min(1, max / Math.max(img.width, img.height));
+  cv.width = Math.max(1, Math.round(img.width * sc));
+  cv.height = Math.max(1, Math.round(img.height * sc));
+  fillWhite();
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  state.history = [];
+
+  const r = document.querySelector(`input[name="cat"][value="${rec.cat}"]`);
+  if (r) r.checked = true;
+  $("catRow").classList.add("hidden");
+  $("catTitle").textContent = `「${rec.name || "なまえなし"}」を なおしています`;
+  $("saveBtn").classList.add("hidden");
+  $("overwriteBtn").classList.remove("hidden");
+  $("saveNewRow").classList.remove("hidden");
+  Ui.msg("なおして いいよ!", 1200, "#51cf66");
+}
+
+/* 「とりこんだ えを なおす」ボタン:えらび がめんを だす */
+$("openBtn").onclick = async () => {
+  Sound.tap();
+  const recs = await Store.ensureSamples();
+  const rec = await Picker.one({
+    title: "どの えを なおす?",
+    note: "えらんだ えの うえから かけます",
+    records: recs,
+    selectedId: editRec && editRec.id,
+  });
+  if (rec) loadForEdit(rec);
+};
+
+/* ?edit=<id> で ちょくせつ ひらく(つくる画面からの ちかみち) */
+(async () => {
+  const id = q.get("edit");
+  if (!id) return;
+  const all = await Store.ensureSamples();
+  const rec = all.find((r) => String(r.id) === String(id));
+  if (rec) loadForEdit(rec);
+  else Ui.msg("その えが みつからないよ", 1800, "#4dabf7");
+})();
+
+/* ---------- ほぞん ---------- */
+/* いまの キャンバスを ほぞんサイズに ちぢめた canvas にする */
+function outputCanvas(cat) {
   const max = cat === "char" ? 900 : 1100;
   const sc = Math.min(1, max / Math.max(cv.width, cv.height));
   const out = Util.makeCanvas(Math.round(cv.width * sc), Math.round(cv.height * sc));
@@ -282,22 +402,48 @@ $("saveBtn").onclick = async () => {
   octx.fillStyle = "#fff";
   octx.fillRect(0, 0, out.width, out.height);
   octx.drawImage(cv, 0, 0, out.width, out.height);
+  return out;
+}
+const toDataURL = (out, cat) =>
+  // キャラは 白ぬきの きれいさ優先で PNG、しゃしん/はいけいは JPEG
+  cat === "char" ? out.toDataURL("image/png") : out.toDataURL("image/jpeg", 0.9);
 
-  const rec = {
-    name: nm.trim() || base,
-    cat,
-    // キャラは 白ぬきの きれいさ優先で PNG、しゃしん/はいけいは JPEG
-    dataURL: cat === "char" ? out.toDataURL("image/png") : out.toDataURL("image/jpeg", 0.9),
-  };
-  if (cat === "char") rec.rig = { ...Rig.DEFAULT };
-  await Store.put(rec);
-
+function afterSave(msg) {
   Sound.good();
   Ui.confetti(1800, 90);
-  Ui.msg("ほぞんしたよ!", 1500, "#51cf66");
+  Ui.msg(msg, 1500, "#51cf66");
   // 「つくる」画面から きたときは そこへ もどる
-  if (fixedCat) setTimeout(() => { location.href = "create.html"; }, 1500);
-};
+  if (fixedCat || editRec) setTimeout(() => { location.href = "create.html"; }, 1500);
+}
+
+/* あたらしく ほぞん(なおしている ときは「べつの えとして」) */
+async function saveAsNew() {
+  if (isBlank()) { Ui.msg("なにか かいてね!", 1400, "#4dabf7"); return; }
+  const cat = editRec ? editRec.cat : document.querySelector('input[name="cat"]:checked').value;
+  const base = CAT_BASE[cat];
+  const existing = await Store.all(cat);
+  const suggest = editRec ? `${editRec.name || base}のつづき` : `${base}${existing.length + 1}`;
+  const nm = prompt("なまえを いれてください", suggest);
+  if (nm === null) return;
+
+  const rec = { name: nm.trim() || base, cat, dataURL: toDataURL(outputCanvas(cat), cat) };
+  if (cat === "char") rec.rig = { ...Rig.DEFAULT, ...((editRec && editRec.rig) || {}) };
+  await Store.put(rec);
+  afterSave("ほぞんしたよ!");
+}
+
+/* うわがき(なまえ・うごきせってい・まちがいスポットなどは そのまま のこす) */
+async function saveOverwrite() {
+  if (!editRec) return;
+  if (!confirm(`「${editRec.name || "なまえなし"}」を かきかえますか?`)) return;
+  editRec.dataURL = toDataURL(outputCanvas(editRec.cat), editRec.cat);
+  await Store.put(editRec);
+  afterSave("うわがき しました!");
+}
+
+$("saveBtn").onclick = saveAsNew;
+$("saveNewBtn").onclick = saveAsNew;
+$("overwriteBtn").onclick = saveOverwrite;
 
 syncTools();
 </script>
