@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>かげえクイズ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=11">
+<link rel="stylesheet" href="../css/style.css?v=12">
 <style>
   .shadow-box {
     width: min(420px, 80vw);
@@ -20,6 +20,8 @@
   }
   .shadow-box canvas { max-width: 92%; max-height: 92%; }
   .revealName { text-align: center; font-size: 34px; font-weight: bold; color: var(--pink); }
+  /* みるモードは こたえを おおきく出すので、かげを すこし ちいさくして ばしょを あける */
+  body.view-mode .shadow-box { width: min(320px, 66vw); height: min(300px, 46vw); margin: 6px auto; }
 </style>
 </head>
 <body>
@@ -33,8 +35,13 @@
   <div id="startScreen" class="panel">
     <h2>これ なんの かげ?</h2>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">はっぴょうかいに・どうぶつの かげあて 5もん(1〜2さいから)</span></div>
-    <div class="row" data-tier="yuru"><button class="btn big pink" id="drawBtn" data-mode="draw">だれの え でしょう?</button></div>
+    <div class="mode-sec" data-tier="yuru">👀 みる<span class="tag">えらばずに ながめるだけ・「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="row" data-tier="yuru">
+      <button class="btn big yellow" id="viewBtn" data-mode="miru">みんなで かんがえる</button>
+      <button class="btn big pink" id="drawBtn" data-mode="draw">だれの え でしょう?</button>
+    </div>
+
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じぶんで えらぶ・どうぶつの かげあて 5もん(1〜2さいから)</span></div>
     <div class="row"><button class="btn big blue" id="animalBtn" data-mode="animal">どうぶつクイズ</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
@@ -53,6 +60,11 @@
     <div class="hud hidden" id="agHud"><span id="agStreak"></span><span id="agHeart"></span></div>
     <div class="shadow-box"><canvas id="acv" width="420" height="420"></canvas></div>
     <div class="choices" id="achoices"></div>
+    <div class="answer-big hidden" id="aAnswer"></div>
+    <div class="row hidden" id="aViewRow">
+      <button class="btn big yellow" id="aRevealBtn">こたえを みる!</button>
+      <button class="btn big green hidden" id="aNextBtn">つぎの かげ ▶</button>
+    </div>
   </div>
 
   <!-- おえかきモード -->
@@ -101,7 +113,9 @@ function silhouette(srcCanvas, dst, black = true) {
 /* ---------- どうぶつクイズ(ゆるふわ & ガチンコ) ---------- */
 let apool = [], aidx = 0, ascore = 0, abusy = false;
 const ROUNDS = 5;
+const VIEW_ROUNDS = 8;
 let gmode = null, astreak = 0, amiss = 0;
+let aview = false;   // みるモード(えらばずに ながめるだけ)
 const GAME = "silhouette";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const GMODES = {
@@ -122,7 +136,8 @@ function refreshLocks() {
 }
 refreshLocks();
 
-$("animalBtn").onclick = () => { gmode = null; startAnimal(); };
+$("animalBtn").onclick = () => { gmode = null; aview = false; startAnimal(); };
+$("viewBtn").onclick = () => { gmode = null; aview = true; startAnimal(); };
 document.querySelectorAll("#gachiRow [data-mode]").forEach((b) => {
   b.onclick = () => {
     const m = GMODES[b.dataset.mode];
@@ -131,17 +146,19 @@ document.querySelectorAll("#gachiRow [data-mode]").forEach((b) => {
       Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
       return;
     }
-    gmode = m; startAnimal();
+    gmode = m; aview = false; startAnimal();
   };
 });
 
 function startAnimal() {
   Sound.tap();
   apool = Util.shuffle(ANIMALS);
-  if (!gmode) apool = apool.slice(0, ROUNDS);
+  if (!gmode) apool = apool.slice(0, aview ? VIEW_ROUNDS : ROUNDS);
   aidx = 0; ascore = 0; astreak = 0; amiss = 0;
   swap("animalScreen");
   $("agHud").classList.toggle("hidden", !gmode);
+  document.body.classList.toggle("view-mode", aview);
+  $("aViewRow").classList.toggle("hidden", !aview);
   updateAgHud();
   aShow();
 }
@@ -155,16 +172,18 @@ function updateAgHud() {
 function aShow() {
   abusy = false;
   const [emoji, name] = apool[aidx];
-  $("anum").textContent = gmode ? `だい ${aidx + 1} もん` : `だい ${aidx + 1} もん / ${ROUNDS} もん`;
+  $("anum").textContent = gmode ? `だい ${aidx + 1} もん` : `だい ${aidx + 1} もん / ${apool.length} もん`;
   silhouette(Util.emojiCanvas(emoji, 400), $("acv"));
   const wrongs = Util.shuffle(ANIMALS.filter(([, n]) => n !== name)).slice(0, 3).map(([, n]) => n);
   const opts = Util.shuffle([name, ...wrongs]);
   const box = $("achoices");
   box.innerHTML = "";
   opts.forEach((n, i) => {
-    const b = document.createElement("button");
-    b.className = `choice c${i}`;
+    /* みるモードは おせる ボタンではなく、ながめるだけの フレームに する */
+    const b = document.createElement(aview ? "div" : "button");
+    b.className = aview ? `choice frame c${i}` : `choice c${i}`;
     b.textContent = n;
+    if (aview) { box.appendChild(b); return; }
     b.onclick = () => {
       if (abusy) return;
       abusy = true;
@@ -197,7 +216,49 @@ function aShow() {
     };
     box.appendChild(b);
   });
+  if (aview) {
+    $("aAnswer").classList.add("hidden");
+    $("aRevealBtn").classList.remove("hidden");
+    $("aNextBtn").classList.add("hidden");
+  }
 }
+
+/* ---------- みるモード:「こたえを みる」で こたえを おおきく出す ---------- */
+$("aRevealBtn").onclick = () => {
+  if (abusy) return;
+  abusy = true;
+  const [emoji, name] = apool[aidx];
+  silhouette(Util.emojiCanvas(emoji, 400), $("acv"), false);   // 正体をみせる
+  document.querySelectorAll("#achoices .choice").forEach((c) => {
+    if (c.textContent === name) c.classList.add("correct"); else c.classList.add("dim");
+  });
+  const box = $("aAnswer");
+  box.innerHTML = "";
+  const label = document.createElement("span");
+  label.className = "answer-label";
+  label.textContent = "こたえは…";
+  const text = document.createElement("div");
+  text.textContent = `${emoji} ${name}`;
+  box.append(label, text);
+  box.classList.remove("hidden");
+  Sound.pon();
+  Ui.confetti(1500, 60);
+  $("aRevealBtn").classList.add("hidden");
+  $("aNextBtn").textContent = aidx + 1 < apool.length ? "つぎの かげ ▶" : "おしまい ▶";
+  $("aNextBtn").classList.remove("hidden");
+};
+
+$("aNextBtn").onclick = () => {
+  Sound.tap();
+  aidx++;
+  if (aidx < apool.length) return aShow();
+  document.body.classList.remove("view-mode");
+  $("aViewRow").classList.add("hidden");
+  swap("endScreen");
+  $("scoreText").textContent = `${apool.length}もん ぜんぶ みたよ!`;
+  Sound.fanfare();
+  Ui.confetti();
+};
 
 function clearGachi() {
   swap("endScreen");
@@ -220,6 +281,7 @@ let dpool = [], didx = 0, dcur = null;
 
 $("drawBtn").onclick = async () => {
   Sound.tap();
+  document.body.classList.remove("view-mode");
   const recs = await Store.ensureSamples();
   dpool = Util.shuffle(recs.filter((r) => r.cat === "char"));
   if (!dpool.length) { Ui.msg("キャラのえが ないよ", 1500, "#4dabf7"); return; }
@@ -250,7 +312,11 @@ $("revealBtn").onclick = () => {
 };
 $("nextBtn").onclick = () => { Sound.tap(); didx++; dShow(); };
 
-$("retryBtn").onclick = () => { swap("startScreen"); refreshLocks(); };
+$("retryBtn").onclick = () => {
+  document.body.classList.remove("view-mode");
+  swap("startScreen");
+  refreshLocks();
+};
 
 function swap(id) {
   for (const s of ["startScreen", "animalScreen", "drawScreen", "endScreen"])

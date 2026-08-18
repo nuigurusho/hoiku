@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>まちがいさがし</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=11">
+<link rel="stylesheet" href="../css/style.css?v=12">
 <style>
   .pair {
     display: flex;
@@ -25,6 +25,16 @@
   @media (max-width: 700px) {
     .pair canvas { width: 92vw; }
   }
+  /* みるモードは こたえを おおきく出すので、えを すこし ちいさくして ばしょを あける */
+  body.view-mode .pair canvas { width: min(40vw, 460px); }
+  @media (max-width: 700px) {
+    body.view-mode .pair canvas { width: 74vw; }
+  }
+  /* まちがいの かずを しめす「ただのフレーム」(1こなので よこはば いっぱいには しない) */
+  .choices.one { grid-template-columns: 1fr; max-width: 420px; margin: 12px auto; }
+  .play-hint { text-align: center; font-weight: bold; margin: 4px; }
+  /* みるモードは HUD が ないので、フローティングの「もどる」と かさならないように 下げる */
+  body.view-mode .play-hint { margin: 62px 8px 4px; }
 </style>
 </head>
 <body>
@@ -37,6 +47,9 @@
 <main>
   <div id="selectScreen" class="panel">
     <h2>あそびかたを えらんでね</h2>
+
+    <div class="mode-sec" data-tier="yuru">👀 みる<span class="tag">タッチしないで ながめるだけ・「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="row" data-tier="yuru"><button class="btn big yellow" data-mode="miru">みんなで かんがえる</button></div>
 
     <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげん・のんびり さがす</span></div>
     <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
@@ -52,17 +65,20 @@
   </div>
 
   <div id="playScreen" class="hidden">
-    <div class="hud">
+    <div class="hud" id="hud">
       <span id="found">みつけた: 0</span>
       <span id="left">のこり: ?</span>
       <span id="timeHud" class="hidden">⏰</span>
     </div>
-    <p style="text-align:center;font-weight:bold;margin:4px">みぎの えを タッチして まちがいを さがしてね!</p>
+    <p class="play-hint" id="playHint">みぎの えを タッチして まちがいを さがしてね!</p>
     <div class="pair">
       <canvas id="cvL"></canvas>
       <canvas id="cvR"></canvas>
     </div>
+    <div class="choices one hidden" id="countFrame"></div>
+    <div class="answer-big hidden" id="answerBig"></div>
     <div class="row">
+      <button class="btn yellow hidden" id="revealBtn">こたえを みる!</button>
       <button class="btn yellow" id="hintBtn">ヒント</button>
       <button class="btn gray" id="againBtn">えらびなおす</button>
     </div>
@@ -76,6 +92,7 @@ const $ = (id) => document.getElementById(id);
 const GAME = "diff";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
+  miru: { label: "みる", view: true },
   ren: { label: "れんしゅう" },
   g1: { label: "かんたん",   limit: 40, lv: 1 },
   g2: { label: "ふつう",     limit: 25, lv: 2 },
@@ -123,6 +140,7 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
 
 $("againBtn").onclick = () => {
   if (G) G.stop = true;
+  document.body.classList.remove("view-mode");
   $("playScreen").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
   refreshLocks();
@@ -173,6 +191,27 @@ async function startGame(rec, mode) {
   $("playScreen").classList.remove("hidden");
   $("timeHud").classList.toggle("hidden", !mode.limit);
   updateHud();
+
+  /* みるモード:タッチして さがすのではなく、ながめて「こたえを みる」だけ */
+  const view = !!mode.view;
+  document.body.classList.toggle("view-mode", view);
+  $("hud").classList.toggle("hidden", view);
+  $("countFrame").classList.toggle("hidden", !view);
+  $("answerBig").classList.add("hidden");
+  $("revealBtn").classList.toggle("hidden", !view);
+  $("playHint").textContent = view
+    ? "どこが ちがうかな? 2まいの えを みくらべてみよう!"
+    : "みぎの えを タッチして まちがいを さがしてね!";
+  if (view) {
+    $("hintBtn").classList.add("hidden");
+    $("countFrame").innerHTML = "";
+    const f = document.createElement("div");
+    f.className = "choice frame c1";
+    f.textContent = `まちがいは ${spots.length}こ あるよ`;
+    $("countFrame").appendChild(f);
+    cvR.onpointerdown = null;
+    return;
+  }
 
   // ガチンコ:せいげんじかんの カウントダウン
   if (mode.limit) {
@@ -231,7 +270,27 @@ function failGame() {
   for (const s of G.spots) if (!s.found) markSpot(s);
 }
 
-function markSpot(s) {
+/* ---------- みるモード:「こたえを みる」で こたえを おおきく出す ---------- */
+$("revealBtn").onclick = () => {
+  if (!G || G.done) return;
+  G.done = true;
+  G.spots.forEach((s, i) => markSpot(s, i + 1));
+  const box = $("answerBig");
+  box.innerHTML = "";
+  const label = document.createElement("span");
+  label.className = "answer-label";
+  label.textContent = "こたえは…";
+  const text = document.createElement("div");
+  text.textContent = `ここが ${G.spots.length}こ ちがったよ!`;
+  box.append(label, text);
+  box.classList.remove("hidden");
+  Sound.pon();
+  Ui.confetti(1500, 60);
+  $("revealBtn").classList.add("hidden");
+};
+
+/* まちがいの ばしょに まるを つける(みるモードでは ばんごうも 出す) */
+function markSpot(s, num) {
   for (const cv of [$("cvL"), $("cvR")]) {
     const ctx = cv.getContext("2d");
     ctx.strokeStyle = "#ff6b9d";
@@ -239,6 +298,25 @@ function markSpot(s) {
     ctx.beginPath();
     ctx.arc(s.x * G.W, s.y * G.H, s.r * G.W * 1.15, 0, 7);
     ctx.stroke();
+    if (num) {
+      const size = Math.max(22, G.W * 0.05);
+      ctx.save();
+      ctx.font = `bold ${size}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.lineWidth = Math.max(4, size * 0.22);
+      ctx.strokeStyle = "#fff";
+      ctx.fillStyle = "#ff6b9d";
+      // まるの うえに 出すと はみ出すときは、まるの したに 出す
+      const x = s.x * G.W;
+      const off = s.r * G.W * 1.15 + size * 0.7;
+      let y = s.y * G.H - off;
+      if (y - size * 0.6 < 0) y = s.y * G.H + off;
+      y = Util.clamp(y, size * 0.6, G.H - size * 0.6);
+      ctx.strokeText(num, x, y);
+      ctx.fillText(num, x, y);
+      ctx.restore();
+    }
   }
 }
 
