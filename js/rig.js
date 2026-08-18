@@ -162,6 +162,7 @@ class Puppet {
     this.jumpT = 0;                // ジャンプ演出(>0でエア)
     this.roll = 0;                 // からだ全体のかたむき(rad)。いぬかき・魚の ゆらゆら用
     this.kick = false;             // バタ足フォーム(あしのふりが こまかく はやくなる)
+    this.perched = false;          // とまりフォーム(ちょうちょが 花に とまって はねを たたむ)
   }
 
   /* ちょうちょは え1まいが「はね」で、ひろげると よこ2ばいに なる。
@@ -177,7 +178,7 @@ class Puppet {
   update(dt) {
     this.t += dt;
     if (this.walking) this.phase += dt * (this.kick ? 26 : 11);
-    this.flap += dt * (this.jumpT > 0 ? 24 : this.walking ? 14 : 9);
+    this.flap += dt * (this.perched ? 2.4 : this.jumpT > 0 ? 24 : this.walking ? 14 : 9);
     if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt);
   }
 
@@ -286,14 +287,25 @@ class Puppet {
     ctx.restore();
   }
 
-  /* --- ちょうちょ(1まいの はねを 左右はんてんして ひらひら) --- */
+  /* --- ちょうちょ(1まいの はねを 左右はんてんして ひらひら) ---
+     とんでいるとき … はねを 大きく ひらいたり とじたり
+     とまっているとき … はねを パタリと たたんだまま、ときどき 小さく ひらく */
   _drawButterfly(ctx, part, s) {
     const p = this.parts;
     if (!p.wing) { part(p.body, 0); return; }
     const wave = Math.sin(this.flap);
-    const open = 0.32 + 0.68 * (wave * 0.5 + 0.5);   // はねの ひらきぐあい(よこ幅)
-    const bob = wave * this.h * 0.035;               // はばたきに あわせた たてゆれ
-    const tilt = Math.sin(this.t * 1.4) * 0.09;      // ふわりと かたむく
+    let open, bob, tilt;
+    if (this.perched) {
+      const pulse = Math.max(0, wave);               // はんぶんの あいだは とじたまま
+      const burst = Math.max(0, Math.sin(this.t * 0.5));  // ひらくのは ときどき まとめて
+      open = 0.14 + 0.40 * pulse * pulse * burst;    // たたんだ → 小さく ひらく
+      bob = 0;                                       // はばたきの たてゆれは なし
+      tilt = Math.sin(this.t * 0.9) * 0.04;          // 花の うえで そよぐ ていど
+    } else {
+      open = 0.32 + 0.68 * (wave * 0.5 + 0.5);       // はねの ひらきぐあい(よこ幅)
+      bob = wave * this.h * 0.035;                   // はばたきに あわせた たてゆれ
+      tilt = Math.sin(this.t * 1.4) * 0.09;          // ふわりと かたむく
+    }
 
     ctx.translate(0, -bob / s);
     ctx.save();
