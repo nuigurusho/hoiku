@@ -185,18 +185,23 @@ function updateWalker(a, dt) {
    ひまわりも キャラも たて位置で 大きさが かわり(下ほど 大きい)、
    下の ものから あとで えがくので、人は 花の あいだを あるいて みえる。
    ちょうちょが 8わり(たりないときは おなじ子を 大きさちがいで)、
-   ふわふわも すこし まぜて、人は 1〜2人が ゆっくり とおりすぎる。 */
+   ふわふわも すこし まぜて、人は 1〜2人が ゆっくり とおりすぎる。
+   ちょうちょは ときどき ひまわりに とまって ひとやすみ する。 */
 const FL_SKY = 190;                 // そらと はたけの さかいめ
 const FL_FAR = FL_SKY + 30;         // いちばん おくの じめん
 const FL_NEAR = 716;                // いちばん てまえの じめん
 const FL_TOTAL = 13;                // 画面に だす キャラの かず
+
+/* かさねる じゅんばん用の たて位置。
+   花に とまっている ちょうちょは、その 花の すぐ てまえに えがく */
+function actorY(a) { return a.rest > 0 ? a.perch.y + 1 : a.puppet.y; }
 
 /* たて位置 → 大きさ。おく(上)は 小さく、てまえ(下)は 大きく */
 function flowerDepth(y) {
   return 0.26 + Util.clamp((y - FL_FAR) / (FL_NEAR - FL_FAR), 0, 1);
 }
 
-const flowers = [];                 // {x, y, img, seed, tilt} … yの じゅんに ならべる
+const flowers = [];                 // {x, y, sun, seed, tilt} … yの じゅんに ならべる
 let sunImgs = null;                 // ひまわりの え(3しゅるい・つかいまわす)
 
 /* ひまわり1本を えがいて キャンバスに しておく(まいフレーム 線を ひかない) */
@@ -239,19 +244,19 @@ function makeSunflower(petals, headR, stemH) {
     const an = i * 2.4, rr = headR * 0.62 * Math.sqrt((i + 1) / 10);
     g.beginPath(); g.arc(bx + Math.cos(an) * rr, hy + Math.sin(an) * rr, headR * 0.12, 0, 7); g.fill();
   }
-  return c;
+  return { c, headR, stemH };       // stemH = ねもとから はなの ちゅうしんまで
 }
 
 /* はたけに ひまわりを うえる(おくほど 小さく・たくさん) */
 function plantFlowers() {
-  if (!sunImgs) sunImgs = [makeSunflower(12, 15, 104), makeSunflower(14, 13, 122), makeSunflower(11, 17, 88)];
+  if (!sunImgs) sunImgs = [makeSunflower(12, 18, 104), makeSunflower(14, 16, 122), makeSunflower(11, 21, 88)];
   flowers.length = 0;
   for (let i = 0; i < 62; i++) {
     const t = Math.pow(Math.random(), 1.5);        // おくを 多めに(てまえは まばらに)
     const y = FL_FAR + t * (FL_NEAR - FL_FAR);
     flowers.push({
       x: Util.rand(-50, W + 50), y,
-      img: sunImgs[i % sunImgs.length],
+      sun: sunImgs[i % sunImgs.length],
       seed: Math.random() * 7,
       tilt: Util.rand(-0.09, 0.09),
     });
@@ -259,41 +264,94 @@ function plantFlowers() {
   flowers.sort((a, b) => a.y - b.y);
 }
 
+/* かぜで ゆれる かたむき(えがくときも とまるときも おなじ) */
+function flowerTilt(f) { return f.tilt + Math.sin(T * 1.2 + f.seed) * 0.045; }
+
+/* はなの ちゅうしん(ちょうちょが とまる ばしょ)。ねもとを 中心に かたむける */
+function flowerHead(f) {
+  const s = flowerDepth(f.y);
+  const rot = flowerTilt(f);
+  const len = f.sun.stemH * s;
+  return { x: f.x + Math.sin(rot) * len, y: f.y - Math.cos(rot) * len, s };
+}
+
 /* ちょうちょ・ふわふわ … 花の うえを ひらひら */
 function makeFlutter(c) {
   const y = Util.rand(FL_FAR - 30, FL_NEAR - 30);
   // 大きさは ばらばらに(ちょうちょは じどうで はんぶんに なる)
-  const hBase = c.kind === "fly" ? Util.rand(55, 112) : Util.rand(78, 126);
+  const hBase = c.kind === "fly" ? Util.rand(84, 168) : Util.rand(78, 126);
   const a = {
     puppet: new Puppet(c.parts, { x: Util.rand(0, W), y, h: hBase * flowerDepth(y), facing: 1 }),
     name: c.rec.name || "",
     voices: c.rec.voices || null,
-    hBase, wob: Math.random() * 6,
+    hBase, hCur: hBase * flowerDepth(y),
+    wob: Math.random() * 6,
     speed: Util.rand(38, 78),
-    tx: Util.rand(0, W), ty: Util.rand(FL_FAR - 30, FL_NEAR - 30),
+    perch: null,                    // とまっている(むかっている)ひまわり
+    rest: 0,                        // とまっている のこり時間
+    canPerch: c.kind === "fly",     // 花に とまるのは ちょうちょだけ
+    tx: 0, ty: 0,
     bubbleT: 0, airY: 0,
   };
+  flutterTarget(a);
   return a;
+}
+
+/* つぎに どこへ いくか。ちょうちょは はんぶんくらい ひまわりを めざす */
+function flutterTarget(a) {
+  a.speed = Util.rand(38, 78);
+  const pool = a.canPerch ? flowers.filter((f) => f.x > 30 && f.x < W - 30) : [];
+  if (pool.length && Math.random() < 0.5) {
+    a.perch = pool[Math.floor(Math.random() * pool.length)];
+    const head = flowerHead(a.perch);
+    a.tx = head.x;
+    a.ty = head.y;
+    return;
+  }
+  a.perch = null;
+  a.tx = Util.rand(-40, W + 40);
+  a.ty = Util.rand(FL_FAR - 30, FL_NEAR - 30);
+}
+
+/* とまっている ときの 足もとの たかさ(はなの まんなかに ちょこんと のせる) */
+function perchY(a) {
+  const head = flowerHead(a.perch);
+  return head.y - a.perch.sun.headR * head.s * 0.45 + a.puppet.lift;
 }
 
 function updateFlutter(a, dt) {
   const pp = a.puppet;
   a.wob += dt * 2.6;
-  const dx = a.tx - pp.x, dy = a.ty - pp.y;
-  const d = Math.hypot(dx, dy) || 1;
-  if (d < 20) {
-    a.tx = Util.rand(-40, W + 40);
-    a.ty = Util.rand(FL_FAR - 30, FL_NEAR - 30);
-    a.speed = Util.rand(38, 78);
+
+  if (a.rest > 0) {
+    /* ひまわりに とまって ひとやすみ。花が ゆれると いっしょに ゆれる */
+    a.rest -= dt;
+    pp.x = flowerHead(a.perch).x;
+    pp.y = perchY(a);
+    pp.walking = false;                            // はねは ゆっくり ひらいたり とじたり
+    if (a.rest <= 0) flutterTarget(a);
   } else {
-    pp.x += dx / d * a.speed * dt;
-    pp.y += dy / d * a.speed * 0.7 * dt;
-    pp.facing = dx >= 0 ? 1 : -1;
+    const goalY = a.perch ? perchY(a) : a.ty;
+    const dx = (a.perch ? flowerHead(a.perch).x : a.tx) - pp.x, dy = goalY - pp.y;
+    const d = Math.hypot(dx, dy) || 1;
+    if (d < 14) {
+      /* 花に ついたら しばらく とまる。そうでなければ つぎの ばしょへ */
+      if (a.perch) a.rest = Util.rand(2.5, 6.5);
+      else flutterTarget(a);
+    } else {
+      pp.x += dx / d * a.speed * dt;
+      pp.y += dy / d * a.speed * 0.8 * dt;
+      pp.facing = dx >= 0 ? 1 : -1;
+      pp.y += Math.sin(a.wob) * 16 * dt;           // ひらひら たてに ゆれる
+      pp.y = Util.clamp(pp.y, FL_FAR - 40, FL_NEAR - 10);
+    }
+    pp.walking = true;
   }
-  pp.y += Math.sin(a.wob) * 16 * dt;               // ひらひら たてに ゆれる
-  pp.y = Util.clamp(pp.y, FL_FAR - 40, FL_NEAR - 10);
-  pp.walking = true;
-  pp.h = a.hBase * flowerDepth(pp.y);
+
+  /* 大きさ … とまっている あいだは その ひまわりの おくゆきに あわせる */
+  const want = a.hBase * flowerDepth(a.rest > 0 ? a.perch.y : pp.y);
+  a.hCur += (want - a.hCur) * Math.min(1, dt * 4);
+  pp.h = a.hCur;
 }
 
 /* 人 … ときどき 立ちどまりながら、はたけを ゆっくり とおりすぎる */
@@ -948,6 +1006,7 @@ cv.addEventListener("pointerdown", (e) => {
       } else if (stage === "flower") {
         if (a.stroll) { a.vy = 460; }                    // 人は ぴょん
         else {                                           // ちょうちょは びっくりして とびのく
+          a.rest = 0; a.perch = null;
           a.tx = a.puppet.x + Util.rand(-200, 200);
           a.ty = Util.clamp(a.puppet.y - Util.rand(50, 150), FL_FAR - 30, FL_NEAR - 30);
           a.speed = Util.rand(90, 150);
@@ -1026,12 +1085,12 @@ function drawFlowerBack() {
 
 /* ひまわりを 1本 えがく(かぜで ゆれる) */
 function drawSunflower(f) {
-  const s = flowerDepth(f.y);
+  const img = f.sun.c;
   ctx.save();
   ctx.translate(f.x, f.y);
-  ctx.rotate(f.tilt + Math.sin(T * 1.2 + f.seed) * 0.045);
-  ctx.scale(s, s);
-  ctx.drawImage(f.img, -f.img.width / 2, -f.img.height);
+  ctx.rotate(flowerTilt(f));
+  ctx.scale(flowerDepth(f.y), flowerDepth(f.y));
+  ctx.drawImage(img, -img.width / 2, -img.height);
   ctx.restore();
 }
 
@@ -1039,7 +1098,7 @@ function drawSunflower(f) {
 function drawFlowerField(list) {
   let i = 0;
   for (const f of flowers) {
-    while (i < list.length && list[i].puppet.y <= f.y) {
+    while (i < list.length && actorY(list[i]) <= f.y) {
       const a = list[i++];
       a.puppet.draw(ctx, a.airY);
     }
@@ -1249,7 +1308,7 @@ function loop(now) {
   /* 奥のキャラから描く。おかの せかい・ひまわり ばたけは たて位置(下ほど てまえ)、
      ほかは 大きさ(小さいほど おく)で じゅんばんを きめる */
   const list = (stage === "land" || stage === "flower")
-    ? actors.slice().sort((x, y) => x.puppet.y - y.puppet.y)
+    ? actors.slice().sort((x, y) => actorY(x) - actorY(y))
     : actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
 
   if (stage === "water") {
