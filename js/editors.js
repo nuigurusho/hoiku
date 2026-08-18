@@ -25,6 +25,7 @@ document.body.insertAdjacentHTML("beforeend", `
     <h2>動き設定</h2>
     <p class="note">
       まず「動きのタイプ」を選んで、線をドラッグして合わせてください。<br>
+      🐕四つ足 は <b>あたまを左がわ</b> にして 横むきに描いてください。<br>
       🦋ちょうちょ は <b>はねを1まい</b> 描いた絵を、左右はんてんして ひらひら飛ばします。
     </p>
     <div class="rig-types" id="rigTypes">
