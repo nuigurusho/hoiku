@@ -240,6 +240,37 @@ canvas.stage {
 .panel h2 { margin-top: 0; font-size: 26px; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
 
+/* ---------- ぜんがめん ボタン(みぎうえに ちいさく) ---------- */
+.fs-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  background: rgba(255,255,255,.88);
+  border: 3px solid var(--cream-d);
+  border-radius: 50%;
+  box-shadow: 0 4px 0 var(--cream-d);
+  cursor: pointer;
+  transition: transform .08s, box-shadow .08s;
+}
+.fs-btn svg { width: 22px; height: 22px; display: block; }
+.fs-btn:active { transform: translateY(4px); box-shadow: none; }
+@media (hover: hover) {
+  .fs-btn:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
+}
+/* フローティング版(ゲームのページ):もどるボタンの はんたいがわ */
+.fs-btn.float {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 95;              /* キャラえらび がめんの うえにも のこす */
+}
+/* メニューでは せっていボタンと よこに ならべる */
+.settings-bar { gap: 10px; align-items: center; }
+
 /* ---------- キャラえらび せんよう がめん(あそびかたを えらんだ あとに でる) ---------- */
 .picker {
   position: fixed;

@@ -1240,6 +1240,56 @@ const Backup = {
   },
 };
 
+/* ---------------- Fullscreen(ぜんがめん ボタン) ----------------
+   みぎうえに ちいさく うかべる。ページを いどうすると ぜんがめんは
+   かいじょされるので、core.js を よむ ページ ぜんぶに つける。
+   ・.settings-bar が あるページ(メニュー)は その なかに ならべる
+   ・それ以外は みぎうえに フローティング
+   ・ぜんがめんが つかえない ブラウザ(iPhone の Safari など)では ボタンを ださない
+   <body data-fullscreen="off"> にすると そのページだけ ボタンなし。 */
+const Fullscreen = {
+  ICON_ON:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  ICON_OFF: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
+
+  supported() { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); },
+  isOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+
+  /* クリックした そのばで よぶこと(await をはさむと ブラウザに ことわられる) */
+  toggle() {
+    try {
+      if (this.isOn()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+      } else {
+        const el = document.documentElement;
+        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (req) req.call(el);
+      }
+    } catch (e) { /* ことわられても なにも おきないだけ */ }
+  },
+
+  init() {
+    if (!this.supported() || document.body.dataset.fullscreen === "off") return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "fs-btn";
+    const bar = document.querySelector(".settings-bar");
+    if (bar) bar.insertBefore(b, bar.firstChild);   // せっていボタンの ひだりに ならべる
+    else { b.classList.add("float"); document.body.appendChild(b); }
+
+    const paint = () => {
+      const on = this.isOn();
+      b.innerHTML = on ? this.ICON_OFF : this.ICON_ON;
+      b.title = on ? "ぜんがめんを やめる" : "ぜんがめんに する";
+      b.setAttribute("aria-label", b.title);
+    };
+    b.onclick = () => { Sound.tap(); this.toggle(); };
+    document.addEventListener("fullscreenchange", paint);
+    document.addEventListener("webkitfullscreenchange", paint);
+    paint();
+  },
+};
+
 /* ---------------- GameChrome(ゲーム中はヘッダーを消してフローティングもどるだけに) ----------------
    ・#playScreen / #quizScreen / #animalScreen / #drawScreen が表示されたら「ゲーム中」
    ・<body data-chrome="game"> のページ(ずっとゲーム画面のもの)は最初からゲーム中 */
@@ -1269,8 +1319,9 @@ const GameChrome = {
     update();
   },
 };
+function initChrome() { GameChrome.init(); Fullscreen.init(); }
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => GameChrome.init());
+  document.addEventListener("DOMContentLoaded", initChrome);
 } else {
-  GameChrome.init();
+  initChrome();
 }
