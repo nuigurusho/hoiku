@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきのたび</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=9">
+<link rel="stylesheet" href="../css/style.css?v=10">
 </head>
 <body>
 <header class="bar">
@@ -19,8 +19,7 @@
     <div class="panel">
       <h2>あそびかたを えらんでね</h2>
 
-      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">みるだけ・じかんむせいげんで ⭐10こ あつめて ゴール(1〜2さいから)</span></div>
-      <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="auto">みるだけ(オート)</button></div>
+      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげんで ⭐10こ あつめて ゴール(1〜2さいから)</span></div>
       <div class="row"><button class="btn big green" data-mode="ren">れんしゅう</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・のこりタイムランキング・クリアで つぎが とけるよ</span></div>
@@ -55,15 +54,14 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=9"></script>
-<script src="../js/rig.js?v=9"></script>
+<script src="../js/core.js?v=10"></script>
+<script src="../js/rig.js?v=10"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const GAME = "adventure";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  auto: { label: "みるだけ", auto: true },
   ren:  { label: "れんしゅう" },
   g1: { label: "かんたん",   time: 90, lv: 1 },
   g2: { label: "ふつう",     time: 60, lv: 2 },
@@ -180,7 +178,6 @@ async function startGame(mode) {
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
-  $("touchpad").classList.toggle("hidden", !!mode.auto);  // オートはボタン不要
   $("clearRow").classList.add("hidden");
   $("starHud").textContent = "⭐ 0 / 10";
   $("timeHud").classList.toggle("hidden", !mode.time);
@@ -204,20 +201,10 @@ async function startGame(mode) {
 
     /* --- 入力 --- */
     let left, right, jump;
-    if (g.mode.auto) {
-      // オートプレイ:みぎへ すすみ、たかい ⭐の てまえで ジャンプ
-      right = true; left = false; jump = false;
-      for (const s of g.stars) {
-        if (s.got) continue;
-        const dx = s.x - g.px;
-        if (dx > 30 && dx < 120 && s.y < GROUND - 150 && g.grounded) { jump = true; break; }
-      }
-    } else {
-      const pad = Pad.read();
-      left = pad.left || touch.left;
-      right = pad.right || touch.right;
-      jump = pad.a || pad.up || touch.a;
-    }
+    const pad = Pad.read();
+    left = pad.left || touch.left;
+    right = pad.right || touch.right;
+    jump = pad.a || pad.up || touch.a;
     const SPEED = 330;
     let vx = 0;
     if (left) { vx = -SPEED; puppet.facing = -1; }
@@ -261,7 +248,6 @@ async function startGame(mode) {
         Ui.msg("クリア!🎉", 2500);
       }
       $("clearRow").classList.remove("hidden");
-      if (g.mode.auto) setTimeout(() => { if (g && !g.stop && g.mode.auto) startGame(g.mode); }, 3000);
     }
 
     /* --- 描画 --- */

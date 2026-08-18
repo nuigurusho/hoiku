@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきパズル</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=9">
+<link rel="stylesheet" href="../css/style.css?v=10">
 </head>
 <body>
 <header class="bar">
@@ -26,8 +26,7 @@
         <button class="btn big orange" data-shape="classic">パズル</button>
       </div>
 
-      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">みるだけ・じかんむせいげん(1〜2さいから)</span></div>
-      <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="demo">みるだけ(オート)</button></div>
+      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげん(1〜2さいから)</span></div>
       <div class="row" id="countRow">
         <button class="btn big blue"   data-mode="ren4">4</button>
         <button class="btn big green"  data-mode="ren6">6</button>
@@ -44,7 +43,7 @@
         <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30ピース・180びょう</span></button>
       </div>
       <div class="rank" id="rankView"></div>
-      <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます(小さい子は「みるだけ(オート)」か 4 がおすすめ)</p>
+      <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます(小さい子は 4 がおすすめ)</p>
     </div>
   </div>
 
@@ -56,7 +55,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=9"></script>
+<script src="../js/core.js?v=10"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -64,7 +63,6 @@ const GRID = { 4: [2, 2], 6: [3, 2], 9: [3, 3], 12: [4, 3], 20: [5, 4], 30: [6, 
 const GAME = "puzzle";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  demo:  { label: "みるだけ", count: 6, demo: true },
   ren4:  { label: "ゆるふわ", count: 4 },
   ren6:  { label: "ゆるふわ", count: 6 },
   ren9:  { label: "ゆるふわ", count: 9 },
@@ -265,13 +263,8 @@ async function startGame(rec, mode) {
   $("timeHud").classList.toggle("hidden", !mode.limit);
   render();
 
-  if (mode.demo) {
-    cv.onpointerdown = cv.onpointermove = cv.onpointerup = null;  // みるだけ(そうさなし)
-    runDemo();
-  } else {
-    bindPointer();
-    if (mode.limit) startTimer();
-  }
+  bindPointer();
+  if (mode.limit) startTimer();
 }
 
 /* ガチンコ:せいげんじかんの カウントダウン */
@@ -292,43 +285,6 @@ function startTimer() {
     }
     requestAnimationFrame(tick);
   })(last);
-}
-
-/* 🌈 みるだけ(オート):ピースが じどうで はまっていくデモ */
-function runDemo() {
-  const g = game;
-  const queue = Util.shuffle(g.pieces.slice());
-  let i = 0;
-  const step = () => {
-    if (!g || g.stop) return;
-    if (i >= queue.length) {
-      g.done = true;
-      Sound.fanfare();
-      Ui.confetti();
-      Ui.msg("かんせい!", 2200);
-      setTimeout(() => { if (g && !g.stop && g.mode.demo) startGame(selected, g.mode); }, 2800);
-      return;
-    }
-    const pc = queue[i];
-    const from = { x: pc.x, y: pc.y };
-    const t0 = performance.now();
-    const DUR = 420;
-    (function fly(now) {
-      if (!g || g.stop) return;
-      const k = Math.min(1, (now - t0) / DUR);
-      const e = 1 - (1 - k) * (1 - k);   // ease-out
-      pc.x = from.x + (pc.tx - from.x) * e;
-      pc.y = from.y + (pc.ty - from.y) * e;
-      render();
-      if (k < 1) { requestAnimationFrame(fly); return; }
-      pc.x = pc.tx; pc.y = pc.ty; pc.locked = true;
-      Sound.pop();
-      render();
-      i++;
-      setTimeout(step, 260);
-    })(t0);
-  };
-  setTimeout(step, 500);
 }
 
 function updateProgress() {

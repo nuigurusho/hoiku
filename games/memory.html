@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>カードあわせ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=9">
+<link rel="stylesheet" href="../css/style.css?v=10">
 </head>
 <body>
 <header class="bar">
@@ -18,8 +18,7 @@
   <div id="startScreen" class="panel">
     <h2>おなじ えを 2まい みつけてね!</h2>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">みるだけ・じぶんの ペースで(1〜2さいから)</span></div>
-    <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="demo">みるだけ(オート)</button></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じぶんの ペースで(1〜2さいから)</span></div>
     <div class="row">
       <button class="btn big blue"   data-mode="ren4">やさしい(4くみ)</button>
       <button class="btn big green"  data-mode="ren6">ふつう(6くみ)</button>
@@ -42,7 +41,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=9"></script>
+<script src="../js/core.js?v=10"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -50,7 +49,6 @@ const EXTRA = ["🍎", "🚌", "🐸", "🌻", "🍙", "🐠", "🎈", "🚀", "
 const GAME = "memory";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  demo: { label: "みるだけ", pairs: 6, demo: true },
   ren4: { label: "ゆるふわ", pairs: 4 },
   ren6: { label: "ゆるふわ", pairs: 6 },
   ren8: { label: "ゆるふわ", pairs: 8 },
@@ -111,7 +109,7 @@ async function start(mode) {
     el.innerHTML = `
       <div class="face front">❓</div>
       <div class="face backface"><img src="${cardDef.src}"></div>`;
-    if (!mode.demo) el.onclick = () => flip(el, cardDef);
+    el.onclick = () => flip(el, cardDef);
     grid.appendChild(el);
     G.cards.push({ el, card: cardDef });
   });
@@ -120,47 +118,12 @@ async function start(mode) {
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
   updateHud();
-  if (mode.demo) runDemo();
 }
 
 function updateHud() {
   $("pairHud").textContent = `みつけた: ${G.matched} / ${G.pairs}`;
-  if (G.mode.demo) $("tryHud").textContent = "みてるだけで OK";
-  else if (G.mode.limit) $("tryHud").textContent = `めくれる: ${G.tries} / ${G.mode.limit}かい`;
+  if (G.mode.limit) $("tryHud").textContent = `めくれる: ${G.tries} / ${G.mode.limit}かい`;
   else $("tryHud").textContent = `めくった: ${G.tries}かい`;
-}
-
-/* 🌈 みるだけ(オート):じどうで そろっていくデモ */
-function runDemo() {
-  const groups = {};
-  for (const c of G.cards) (groups[c.card.key] = groups[c.card.key] || []).push(c);
-  const order = Util.shuffle(Object.keys(groups));
-  let i = 0;
-  const step = () => {
-    if (!G || G.stop) return;
-    if (i >= order.length) {
-      Sound.fanfare();
-      Ui.confetti();
-      Ui.msg("そろったね!🎉", 2000);
-      setTimeout(() => { if (G && !G.stop && G.mode.demo) start(G.mode); }, 2600);  // くりかえし
-      return;
-    }
-    const [a, b] = groups[order[i]];
-    a.el.classList.add("flipped");
-    b.el.classList.add("flipped");
-    Sound.tap();
-    setTimeout(() => {
-      if (!G || G.stop) return;
-      a.el.classList.add("matched");
-      b.el.classList.add("matched");
-      Sound.good();
-      G.matched++;
-      updateHud();
-      i++;
-      setTimeout(step, 650);
-    }, 750);
-  };
-  setTimeout(step, 700);
 }
 
 function flip(el, card) {
