@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="うんどうかい">
+  <!-- うんどうかい:紅白まくと トロフィー の ボタンの え -->
+  <g stroke="#5a4632" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- こうはくまく -->
+    <g stroke="none">
+      <rect x="10" y="16" width="220" height="34" rx="6" fill="#fff"/>
+      <rect x="10" y="16" width="36" height="34" fill="#ff8fab"/>
+      <rect x="82" y="16" width="36" height="34" fill="#ff8fab"/>
+      <rect x="154" y="16" width="36" height="34" fill="#ff8fab"/>
+      <rect x="226" y="16" width="4" height="34" fill="#ff8fab"/>
+    </g>
+    <rect x="10" y="16" width="220" height="34" rx="6" fill="none"/>
+    <g stroke="none" fill="#ffd43b">
+      <circle cx="26" cy="52" r="12"/><circle cx="56" cy="52" r="12"/><circle cx="86" cy="52" r="12"/>
+      <circle cx="116" cy="52" r="12"/><circle cx="146" cy="52" r="12"/><circle cx="176" cy="52" r="12"/>
+      <circle cx="206" cy="52" r="12"/><circle cx="230" cy="52" r="12"/>
+    </g>
+
+    <!-- かげ -->
+    <ellipse cx="120" cy="212" rx="60" ry="12" fill="#efe3d2" stroke="none"/>
+
+    <!-- とっての わ -->
+    <path d="M74 96 C 40 96, 38 138, 72 142" fill="none" stroke-width="10"/>
+    <path d="M166 96 C 200 96, 202 138, 168 142" fill="none" stroke-width="10"/>
+
+    <!-- トロフィーの カップ -->
+    <path d="M72 84 h96 v22 c0 34 -20 56 -48 56 s-48 -22 -48 -56 z" fill="#ffd43b"/>
+    <rect x="64" y="72" width="112" height="22" rx="11" fill="#ffe066"/>
+    <!-- かお -->
+    <g stroke="none">
+      <circle cx="102" cy="116" r="7" fill="#5a4632"/>
+      <circle cx="138" cy="116" r="7" fill="#5a4632"/>
+      <ellipse cx="86" cy="128" rx="9" ry="6" fill="#ffb3c9" opacity=".9"/>
+      <ellipse cx="154" cy="128" rx="9" ry="6" fill="#ffb3c9" opacity=".9"/>
+    </g>
+    <path d="M106 130 q14 16 28 0" fill="none" stroke-width="6"/>
+
+    <!-- あし と だい -->
+    <rect x="108" y="160" width="24" height="20" rx="6" fill="#ffd43b"/>
+    <rect x="84" y="178" width="72" height="16" rx="8" fill="#ffe066"/>
+    <rect x="70" y="192" width="100" height="18" rx="9" fill="#ffd43b"/>
+
+    <!-- キラキラ -->
+    <g stroke="#ffd43b" stroke-width="7">
+      <path d="M40 160 v18"/><path d="M31 169 h18"/>
+      <path d="M202 158 v16"/><path d="M194 166 h16"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="たまいれ">
+  <!-- たまいれ:かごに 玉が とんでいく ボタンの え -->
+  <g stroke="#5a4632" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- とんでいく 玉の スピードせん -->
+    <g stroke="#ffb3c9" stroke-width="8">
+      <path d="M22 92 h26"/>
+      <path d="M16 116 h20"/>
+    </g>
+    <g stroke="#9ed0ff" stroke-width="8">
+      <path d="M28 134 h22"/>
+    </g>
+
+    <!-- ゆか の かげ -->
+    <ellipse cx="126" cy="212" rx="66" ry="13" fill="#efe3d2" stroke="none"/>
+
+    <!-- ポール -->
+    <rect x="118" y="96" width="16" height="106" rx="7" fill="#ffd43b"/>
+
+    <!-- かご(うしろの ふち) -->
+    <ellipse cx="126" cy="86" rx="62" ry="15" fill="#d9b382"/>
+    <!-- かごの 中の 玉 -->
+    <circle cx="102" cy="80" r="15" fill="#ff6b9d" stroke-width="6"/>
+    <circle cx="132" cy="76" r="15" fill="#ff8fab" stroke-width="6"/>
+    <circle cx="152" cy="84" r="13" fill="#ff6b9d" stroke-width="6"/>
+    <!-- かご 本体 -->
+    <path d="M66 88 h120 l-16 62 a44 20 0 0 1 -88 0 z" fill="#f0d5a8"/>
+    <!-- あみめ -->
+    <g stroke="#c9a06a" stroke-width="4">
+      <path d="M88 92 l6 62"/>
+      <path d="M112 92 l2 66"/>
+      <path d="M140 92 l-2 66"/>
+      <path d="M164 92 l-6 62"/>
+      <path d="M70 110 h112"/>
+      <path d="M75 132 h102"/>
+    </g>
+    <!-- かごの かお -->
+    <g stroke="none">
+      <circle cx="106" cy="116" r="6.5" fill="#5a4632"/>
+      <circle cx="146" cy="116" r="6.5" fill="#5a4632"/>
+      <ellipse cx="90" cy="128" rx="9" ry="6" fill="#ffb3c9" opacity=".85"/>
+      <ellipse cx="162" cy="128" rx="9" ry="6" fill="#ffb3c9" opacity=".85"/>
+    </g>
+    <path d="M112 130 q14 14 28 0" fill="none" stroke="#5a4632" stroke-width="6"/>
+
+    <!-- かごの 口(てまえの ふち) -->
+    <ellipse cx="126" cy="88" rx="62" ry="15" fill="none"/>
+
+    <!-- とんでいる 玉 -->
+    <circle cx="60" cy="100" r="19" fill="#ff6b9d"/>
+    <circle cx="53" cy="93" r="6" fill="#fff" stroke="none"/>
+    <circle cx="52" cy="146" r="15" fill="#4dabf7"/>
+    <circle cx="47" cy="141" r="5" fill="#fff" stroke="none"/>
+  </g>
+</svg>
