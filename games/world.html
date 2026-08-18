@@ -33,18 +33,25 @@
 </main>
 
 <script src="../js/core.js?v=13"></script>
-<script src="../js/rig.js?v=11"></script>
+<script src="../js/rig.js?v=12"></script>
 <script>
 "use strict";
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
 const W = 1280, H = 720;
-const GROUND = 660;     // おかの せかいの じめん
+const GROUND = 700;     // おかの せかいの じめん(いちばん てまえ)
+const GROUND_FAR = 560; // おかの せかいの じめん(いちばん おく)
 const SURFACE = 250;    // みずの せかいの 水面
+
+/* おかの せかいの おくゆき。てまえ(下)ほど 大きく みえる。
+   ジャンプは airY(えがくときの うきあがり)なので、大きさは かわらない */
+function depthScale(y) {
+  return 0.78 + 0.34 * Util.clamp((y - GROUND_FAR) / (GROUND - GROUND_FAR), 0, 1);
+}
 
 const HINTS = {
   land:  "とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!",
-  water: "みんなで せなか およぎ。タッチすると バタ足で すすむよ!",
+  water: "みんなで いぬかき。タッチすると ぱしゃぱしゃ すすむよ!",
   house: "ごはん・おふろ・おしゃべり・おひるね。みんなの くらしを のぞいてみよう!",
 };
 
@@ -92,6 +99,8 @@ function build() {
   for (const sp of SPOTS) sp.by = null;
   const copies = chars.length < 3 ? 2 : 1;   // キャラが すくないときは 2体ずつ
   for (const c of chars) {
+    /* ちょうちょは そとの子。いえの なかには でてこない */
+    if (stage === "house" && c.kind === "fly") continue;
     for (let i = 0; i < copies; i++) {
       actors.push(stage === "water" ? makeSwimmer(c) : stage === "house" ? makeResident(c) : makeWalker(c));
     }
@@ -103,19 +112,22 @@ function makeWalker(c) {
   // ふわふわ(float)・ちょうちょ(butterfly)は地面ではなく画面の中段に うかせて配置する
   const isBtfly = c.kind === "fly";
   const isFloat = c.kind === "float" || isBtfly;
+  const hBase = Util.rand(120, 190);
+  const y = isFloat ? Util.rand(280, 430) : Util.rand(GROUND_FAR, GROUND);
   return {
     puppet: new Puppet(c.parts, {
       x: Util.rand(100, 1180),
-      y: isFloat ? Util.rand(280, 430) : GROUND,
-      h: Util.rand(120, 190),
+      y,
+      h: isFloat ? hBase : hBase * depthScale(y),
       facing: Math.random() < 0.5 ? 1 : -1,
     }),
     name: c.rec.name || "",
     voices: c.rec.voices || null,
     float: isFloat,
     flutter: isBtfly,
+    hBase,
     target: Util.rand(100, 1180),
-    targetY: Util.rand(160, 480),
+    targetY: isFloat ? Util.rand(160, 480) : Util.rand(GROUND_FAR, GROUND),
     wob: Math.random() * 6,
     pause: Util.rand(0, 2),
     bubbleT: 0,
@@ -147,24 +159,34 @@ function updateWalker(a, dt) {
     if (Math.abs(d) < 12) {
       a.pause = a.flutter ? Util.rand(0.2, 1) : Util.rand(0.6, 3);
       a.target = Util.rand(80, 1200);
-      a.targetY = Util.rand(160, 480);
+      a.targetY = a.float ? Util.rand(160, 480) : Util.rand(GROUND_FAR, GROUND);
       if (!a.flutter && Math.random() < 0.25) { a.vy = 430; Sound.jump(); }
     } else {
       const sp = 60 + pp.h * 0.35;
       pp.x += Math.sign(d) * sp * dt;
       pp.facing = Math.sign(d) || 1;
       pp.walking = true;
+      /* じめんの 子は おくゆき(たて)にも すこしずつ うごく */
+      if (!a.float) {
+        const dy = a.targetY - pp.y;
+        pp.y += Math.sign(dy) * Math.min(Math.abs(dy), sp * 0.3 * dt);
+      }
     }
   }
+  /* てまえ(下)ほど 大きく。ジャンプ中(airY)でも pp.y は かわらないので おくゆきは そのまま */
+  if (!a.float) pp.h = a.hBase * depthScale(pp.y);
 }
 
 /* ---------------- みずの せかい ----------------
-   back  … にんげんタイプは あおむけ(背泳ぎ)。ときどき バタ足で すすむ
+   dog   … にんげんタイプは いぬかき。からだを おこしたまま、
+           したはんぶんを 水に つけて ぱしゃぱしゃ かいて すすむ
    fish  … ふわふわ(float)は さかなっぽく、もぐって ゆらゆら・ときどき ダッシュ
    fly   … ちょうちょは 水面の うえを とぶ
    みんな 画面の そとへ 出ていき、しばらくすると また 入ってくる。 */
+const SINK = 0.36;              // いぬかき:からだの どれだけが 水に つかるか
+
 function makeSwimmer(c) {
-  const swim = c.kind === "fly" ? "fly" : c.kind === "float" ? "fish" : "back";
+  const swim = c.kind === "fly" ? "fly" : c.kind === "float" ? "fish" : "dog";
   const depth = Math.random();                    // 0=おく(小さい) 1=てまえ(大きい)
   // 水面では おかの せかいより ずっと 小さく およぐ
   const h = swim === "fly" ? Util.rand(64, 92)
@@ -183,7 +205,7 @@ function makeSwimmer(c) {
     bubbleT: 0, airY: 0, vy: 0,
   };
   setLane(a);
-  a.puppet.kick = swim === "back";                // あしは バタ足フォーム
+  a.puppet.kick = swim === "dog";                 // てあしを こまかく はやく うごかす
   return a;
 }
 
@@ -226,23 +248,28 @@ function updateSwimmer(a, dt) {
     return;
   }
 
-  if (a.swim === "back") {
-    /* ときどき バタ足(kickT>0 のあいだ)。おわったら nextKick びょう すべって すすむ */
+  if (a.swim === "dog") {
+    /* いぬかき。ときどき つよく かいて(kickT>0)ぐっと すすみ、
+       おわったら nextKick びょう ゆっくり かきながら ういている */
     a.kickT -= dt;
     if (a.kickT <= -a.nextKick) {
       a.kickT = Util.rand(0.6, 1.5);
       a.nextKick = Util.rand(1.2, 3.4);
-      splash(pp.x - a.dir * pp.h * 0.42, a.lineY, 4, -a.dir);
+      splash(pp.x + a.dir * pp.w * 0.42, a.lineY, 4, a.dir);
     }
     const kicking = a.kickT > 0;
-    pp.walking = kicking;                        // バタ足のときだけ あしが うごく
+    pp.walking = true;                           // ずっと ぱしゃぱしゃ かいている
     const want = a.base * (kicking ? 2.2 : 0.5);
     a.speed += (want - a.speed) * Math.min(1, dt * 2.4);
     pp.x += a.dir * a.speed * dt;
-    pp.roll = a.dir * Math.PI / 2;               // あおむけ(すすむ ほうへ 頭)
-    a.wob += dt * (kicking ? 5.5 : 2.4);
-    pp.y = a.lineY + pp.h / 2 + Math.sin(a.wob) * 4;
-    if (kicking && Math.random() < dt * 14) splash(pp.x - a.dir * pp.h * 0.45, a.lineY, 1, -a.dir);
+    pp.facing = a.dir;
+    a.wob += dt * (kicking ? 7 : 3.4);
+    /* すすむ ほうへ すこし まえかがみ + かくたびに からだが ゆれる */
+    pp.roll = a.dir * (kicking ? 0.15 : 0.09) + Math.sin(a.wob * 2) * 0.05;
+    /* からだを おこしたまま、したはんぶんを 水に しずめる */
+    pp.y = a.lineY + pp.h * SINK + Math.sin(a.wob) * 5;
+    /* まえで ぱしゃぱしゃ みずを かく */
+    if (Math.random() < dt * (kicking ? 16 : 5)) splash(pp.x + a.dir * pp.w * 0.4, a.lineY, 1, a.dir);
 
   } else if (a.swim === "fish") {
     /* すーっと すすんで、ときどき ぴゅっと ダッシュ・むきを かえる */
@@ -282,7 +309,7 @@ function updateSwimmer(a, dt) {
    じゅうにん(にんげんタイプ)は
      ごはん・おふろ・おしゃべり(2人)・おひるね・ぶらぶら
    を じゅんばんに して、かいだんで 1かいと2かいを いききする。
-   ちょうちょは いえの なかを とびまわる ペット。 */
+   ちょうちょは そとの子なので、ここには でてこない。 */
 const HX = 56, HW = 1168, HY = 96;      // いえの ひだり・はば・てんじょう
 const F2 = 380, F1 = 660;               // 2かい・1かいの ゆか(足もと)
 const ST = { lo: 1150, hi: 985 };       // かいだん(1かいがわ・2かいがわ の はし)
@@ -305,21 +332,18 @@ const SPOTS = [
 const DUR = { eat: [9, 16], bath: [10, 20], chat: [10, 22], sleep: [12, 26], idle: [2, 6] };
 
 function makeResident(c) {
-  const pet = c.kind === "fly";
-  const a = {
+  return {
     puppet: new Puppet(c.parts, {
       x: Util.rand(120, 900),
-      y: pet ? Util.rand(HY + 80, F1 - 60) : F1,
-      h: pet ? Util.rand(66, 92) : Util.rand(118, 148),
+      y: F1,
+      h: Util.rand(118, 148),
       facing: 1,
     }),
     name: c.rec.name || "",
     voices: c.rec.voices || null,
-    pet, fl: 1, act: "idle", spot: null, timer: Util.rand(0.3, 2.5),
+    fl: 1, act: "idle", spot: null, timer: Util.rand(0.3, 2.5),
     climb: -1, wob: Math.random() * 6, bubbleT: 0, airY: 0,
-    px: Util.rand(150, 1100), py: Util.rand(HY + 70, F1 - 60),
   };
-  return a;
 }
 
 /* つぎに なにを するか きめる */
@@ -373,20 +397,6 @@ function arriveSpot(a) {
 function updateHouse(a, dt) {
   const pp = a.puppet;
   a.wob += dt;
-
-  /* ちょうちょ … いえの なかを ひらひら とびまわる */
-  if (a.pet) {
-    const dx = a.px - pp.x, dy = a.py - pp.y;
-    const d = Math.hypot(dx, dy) || 1;
-    if (d < 16) { a.px = Util.rand(130, 1150); a.py = Util.rand(HY + 70, F1 - 40); }
-    else {
-      pp.x += dx / d * 95 * dt;
-      pp.y += dy / d * 95 * dt;
-      pp.facing = dx >= 0 ? 1 : -1;
-    }
-    pp.walking = true;
-    return;
-  }
 
   if (a.act === "go") {
     /* かいだんを のぼりおり */
@@ -657,7 +667,6 @@ function drawHouseFx() {
   const turn = Math.floor(T / 2.2) % 2;
 
   for (const a of actors) {
-    if (a.pet) continue;
     const pp = a.puppet;
     if (a.act === "sleep") {
       /* Zzz */
@@ -829,33 +838,52 @@ function drawBubs() {
   ctx.restore();
 }
 
-/* およいでいる子の まわりの あわ(からだの したに しく) */
+/* いぬかきの子の まわりに ひろがる みず(からだの うしろに しく) */
+function foamR(pp) { return Math.max(pp.w * 0.55, pp.h * 0.3); }
+
 function drawFoamBack(a) {
   const pp = a.puppet;
+  const r = foamR(pp);
   ctx.save();
   ctx.globalAlpha = 0.4; ctx.fillStyle = "#fff";
   ctx.beginPath();
-  ctx.ellipse(pp.x, a.lineY + Math.sin(a.wob) * 3, pp.h * 0.58, pp.w * 0.44, 0, 0, 7);
+  ctx.ellipse(pp.x, a.lineY + Math.sin(a.wob) * 3, r * 1.35, r * 0.46, 0, 0, 7);
   ctx.fill();
   ctx.restore();
 }
 
-/* からだに かかる みずと、すすんできた あと */
+/* 水に つかった したはんぶんを かくして、みずぎわの あわと すすんだ あとを えがく */
 function drawFoamFront(a) {
   const pp = a.puppet;
   const y = a.lineY + Math.sin(a.wob) * 3;
-  const len = pp.h * 0.5;
+  const sink = pp.h * SINK;
+  const r = foamR(pp);
   ctx.save();
-  ctx.strokeStyle = "#fff"; ctx.lineCap = "round";
-  /* からだの したがわに かかる みずの ライン */
-  ctx.globalAlpha = 0.5; ctx.lineWidth = 3;
+  /* 水中の ぶんは みずいろで かくす(ふちは ぼかして 水に とけこませる) */
+  const cy = y + sink * 0.5, rx = r * 1.1, ry = sink * 0.78;
+  const g = ctx.createRadialGradient(pp.x, cy, 1, pp.x, cy, Math.max(rx, ry));
+  g.addColorStop(0, "rgba(126,199,236,.72)");
+  g.addColorStop(0.72, "rgba(126,199,236,.6)");
+  g.addColorStop(1, "rgba(126,199,236,0)");
+  ctx.save();
+  ctx.translate(pp.x, cy);
+  ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
+  ctx.translate(-pp.x, -cy);
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.ellipse(pp.x, y, len, pp.w * 0.34, 0, 0.15 * Math.PI, 0.85 * Math.PI);
-  ctx.stroke();
+  ctx.arc(pp.x, cy, Math.max(rx, ry), 0, 7);
+  ctx.fill();
+  ctx.restore();
+  /* みずぎわの しろい あわ */
+  ctx.globalAlpha = 0.5; ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.ellipse(pp.x, y, r * 0.9, r * 0.24, 0, 0, 7);
+  ctx.fill();
   /* すすんできた あと(うしろに のびる すじ) */
+  ctx.strokeStyle = "#fff"; ctx.lineCap = "round";
   ctx.globalAlpha = 0.32; ctx.lineWidth = 5;
   for (let i = 0; i < 3; i++) {
-    const from = len * 1.1 + i * 26 + a.speed * 0.12;
+    const from = r * 1.2 + i * 26 + a.speed * 0.12;
     ctx.beginPath();
     ctx.moveTo(pp.x - a.dir * from, y + Math.sin(T * 4 + i) * 3);
     ctx.lineTo(pp.x - a.dir * (from + 16), y + Math.sin(T * 4 + i + 1) * 3);
@@ -920,8 +948,11 @@ function loop(now) {
 
   /* --- 描画 --- */
   ctx.clearRect(0, 0, W, H);
-  /* 奥のキャラ(小さい)から描く */
-  const list = actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
+  /* 奥のキャラから描く。おかの せかいは たて位置(下ほど てまえ)、
+     ほかは 大きさ(小さいほど おく)で じゅんばんを きめる */
+  const list = stage === "land"
+    ? actors.slice().sort((x, y) => x.puppet.y - y.puppet.y)
+    : actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
 
   if (stage === "water") {
     drawWaterBack();
@@ -930,7 +961,7 @@ function loop(now) {
     drawVeil();
     drawSurface();
     for (const a of list) {
-      if (a.swim !== "back" || a.gone) continue;
+      if (a.swim !== "dog" || a.gone) continue;
       drawFoamBack(a);
       a.puppet.draw(ctx);
       drawFoamFront(a);

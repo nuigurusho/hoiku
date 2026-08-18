@@ -9,6 +9,7 @@
      biped(にほんあし) … くび/こし/まんなか で 頭・体・左あし・右あし
      skirt(スカート)   … くび/こし で 頭・体・スカート(下半身は割らない)
      quad(よつあし)     … おなか/まんなか で 体(頭こみ)・まえあし・うしろあし
+                            え は「ひだりが あたま」で かく(よこむきの どうぶつ)
      float(ふわふわ)    … 分割なし。ぷかぷか うかんで うごく
      butterfly(ちょうちょ)… かいた え1まいを 「みぎの はね」として つかい、
                             左右はんてんした はねと あわせて ひらひら とばす
@@ -34,6 +35,21 @@ const Rig = {
     const OV = Math.max(4, Math.round(H * 0.015)); // つなぎ目かくし用ののりしろ
     const type = this.TYPES.includes(rig.type) ? rig.type : "biped";
     const val = (v, def) => (v == null ? def : v);
+
+    /* よつあしの え は「ひだりが あたま」で かく。ほかのタイプと おなじ
+       「そのままの むき = みぎむき(facing:1)」に そろえるため、ここで 左右はんてんする。
+       まんなか線も いっしょに はんてんするので、まえあし/うしろあし は
+       いつも「あたまがわ = まえあし」に なる。 */
+    if (type === "quad") {
+      const m = Util.makeCanvas(W, H);
+      const mctx = m.getContext("2d");
+      mctx.translate(W, 0);
+      mctx.scale(-1, 1);
+      mctx.drawImage(canvas, 0, 0);
+      canvas = m;
+      rig = { ...rig, centerX: 1 - Util.clamp(val(rig.centerX, 0.5), 0.1, 0.9) };
+    }
+
     const cx = Math.round(Util.clamp(val(rig.centerX, 0.5), 0.1, 0.9) * W);
 
     const cut = (sx, sy, sw, sh) => {
@@ -135,7 +151,7 @@ class Puppet {
     this.parts = parts;
     this.x = opts.x || 0;          // 足もと中心のX
     this.y = opts.y || 0;          // 足もと(地面)のY
-    this.h = opts.h || 160;        // 表示上の高さpx
+    this.h = opts.h || 160;        // 表示上の高さpx(ちょうちょは じどうで はんぶん)
     this.facing = opts.facing || 1;
     this.vx = 0;
     this.vy = 0;
@@ -144,9 +160,14 @@ class Puppet {
     this.t = Math.random() * 6;
     this.flap = Math.random() * 6;   // はばたき(ちょうちょ)
     this.jumpT = 0;                // ジャンプ演出(>0でエア)
-    this.roll = 0;                 // からだ全体のかたむき(rad)。背泳ぎ・魚の ゆらゆら用
+    this.roll = 0;                 // からだ全体のかたむき(rad)。いぬかき・魚の ゆらゆら用
     this.kick = false;             // バタ足フォーム(あしのふりが こまかく はやくなる)
   }
+
+  /* ちょうちょは え1まいが「はね」で、ひろげると よこ2ばいに なる。
+     ほかの子と ならんだとき でかすぎるので、いつも はんぶんの 大きさで えがく */
+  set h(v) { this._h = v * (this.parts.type === "butterfly" ? 0.5 : 1); }
+  get h() { return this._h; }
 
   get scale() { return this.h / this.parts.H; }
   get w() { return this.parts.W * this.scale; }
