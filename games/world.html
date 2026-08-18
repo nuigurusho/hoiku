@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>みんなの せかい</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=7">
+<link rel="stylesheet" href="../css/style.css?v=8">
+<style>
+  .stages { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
+  .stages .btn { opacity: .55; }
+  .stages .btn.active { opacity: 1; outline: 3px solid #212529; transform: translateY(1px); }
+</style>
 </head>
 <body data-chrome="game">
 <header class="bar">
@@ -15,69 +20,276 @@
 </header>
 
 <main>
-  <p style="text-align:center;font-weight:bold;margin:6px">
+  <div class="stages" id="stages">
+    <button class="btn green active" data-stage="land">🏞️ おかの せかい</button>
+    <button class="btn blue" data-stage="water">🌊 みずの せかい</button>
+  </div>
+  <p style="text-align:center;font-weight:bold;margin:6px" id="hint">
     とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!
   </p>
   <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
 </main>
 
-<script src="../js/core.js?v=7"></script>
-<script src="../js/rig.js?v=7"></script>
+<script src="../js/core.js?v=8"></script>
+<script src="../js/rig.js?v=8"></script>
 <script>
 "use strict";
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
-const GROUND = 660;
+const W = 1280, H = 720;
+const GROUND = 660;     // おかの せかいの じめん
+const SURFACE = 250;    // みずの せかいの 水面
 
-const actors = [];   // {puppet, target, pause, bubble, bubbleT, airY, vy}
+const HINTS = {
+  land:  "とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!",
+  water: "みんなで せなか およぎ。タッチすると バタ足で すすむよ!",
+};
+
+let stage = "land";
 let bgImg = null;
+let T = 0;                 // ぜんたいの じかん(なみ・あわ の アニメ用)
+let onStage = 0;           // いま 画面に いる にんずう
+const chars = [];          // {rec, parts, kind}
+const actors = [];
+const drops = [];          // しぶき
+const rings = [];          // 水面の わ
+const bubbles = [];        // 水面の きらきら
+const bubs = [];           // さかなが はく あわ
 
+/* ---------------- よみこみ ---------------- */
 async function init() {
   const recs = await Store.ensureSamples();
   const bgs = recs.filter((r) => r.cat === "bg");
   if (bgs.length) bgImg = await Util.loadImage(bgs[0].dataURL);
 
-  const chars = recs.filter((r) => r.cat === "char");
-  for (const rec of chars) {
+  for (const rec of recs.filter((r) => r.cat === "char")) {
     const parts = await Rig.load(rec);
-    // ふわふわ(float)・ちょうちょ(butterfly)は地面ではなく画面の中段に うかせて配置する
-    const isBtfly = parts.type === "butterfly";
-    const isFloat = parts.type === "float" || isBtfly;
-    // 同じ絵でも2体まで出すとにぎやか(キャラが少ないとき)
-    const copies = chars.length < 3 ? 2 : 1;
-    for (let i = 0; i < copies; i++) {
-      actors.push({
-        puppet: new Puppet(parts, {
-          x: Util.rand(100, 1180),
-          y: isFloat ? Util.rand(280, 430) : GROUND,
-          h: Util.rand(120, 190),
-          facing: Math.random() < 0.5 ? 1 : -1,
-        }),
-        name: rec.name || "",
-        voices: rec.voices || null,
-        float: isFloat,
-        flutter: isBtfly,
-        target: Util.rand(100, 1180),
-        targetY: Util.rand(160, 480),
-        wob: Math.random() * 6,
-        pause: Util.rand(0, 2),
-        bubbleT: 0,
-        airY: 0, vy: 0,
-      });
-    }
+    const kind = parts.type === "butterfly" ? "fly" : parts.type === "float" ? "float" : "walk";
+    chars.push({ rec, parts, kind });
   }
+  for (let i = 0; i < 30; i++) {   // 水面の きらきら
+    bubbles.push({ x: Util.rand(0, W), y: Util.rand(SURFACE + 20, H - 10), r: Util.rand(3, 8), sp: Util.rand(6, 26) });
+  }
+  build();
   requestAnimationFrame(loop);
 }
 init();
 
+/* ステージに あわせて キャラを ならべなおす */
+function build() {
+  actors.length = 0; drops.length = 0; rings.length = 0; bubs.length = 0;
+  const copies = chars.length < 3 ? 2 : 1;   // キャラが すくないときは 2体ずつ
+  for (const c of chars) {
+    for (let i = 0; i < copies; i++) actors.push(stage === "water" ? makeSwimmer(c) : makeWalker(c));
+  }
+}
+
+/* ---------------- おかの せかい ---------------- */
+function makeWalker(c) {
+  // ふわふわ(float)・ちょうちょ(butterfly)は地面ではなく画面の中段に うかせて配置する
+  const isBtfly = c.kind === "fly";
+  const isFloat = c.kind === "float" || isBtfly;
+  return {
+    puppet: new Puppet(c.parts, {
+      x: Util.rand(100, 1180),
+      y: isFloat ? Util.rand(280, 430) : GROUND,
+      h: Util.rand(120, 190),
+      facing: Math.random() < 0.5 ? 1 : -1,
+    }),
+    name: c.rec.name || "",
+    voices: c.rec.voices || null,
+    float: isFloat,
+    flutter: isBtfly,
+    target: Util.rand(100, 1180),
+    targetY: Util.rand(160, 480),
+    wob: Math.random() * 6,
+    pause: Util.rand(0, 2),
+    bubbleT: 0,
+    airY: 0, vy: 0,
+  };
+}
+
+function updateWalker(a, dt) {
+  const pp = a.puppet;
+  /* ジャンプ(タッチされたとき) */
+  if (a.airY > 0 || a.vy > 0) {
+    a.airY += a.vy * dt;
+    a.vy -= 1900 * dt;
+    if (a.airY <= 0) { a.airY = 0; a.vy = 0; }
+  }
+  /* ちょうちょは たてにも ひらひら うごく */
+  if (a.flutter) {
+    a.wob += dt * 2.4;
+    const goal = a.targetY + Math.sin(a.wob) * 26;
+    const dy = goal - pp.y;
+    pp.y += Math.sign(dy) * Math.min(Math.abs(dy), 90 * dt);
+  }
+  /* おさんぽAI */
+  if (a.pause > 0) {
+    a.pause -= dt;
+    pp.walking = false;
+  } else {
+    const d = a.target - pp.x;
+    if (Math.abs(d) < 12) {
+      a.pause = a.flutter ? Util.rand(0.2, 1) : Util.rand(0.6, 3);
+      a.target = Util.rand(80, 1200);
+      a.targetY = Util.rand(160, 480);
+      if (!a.flutter && Math.random() < 0.25) { a.vy = 430; Sound.jump(); }
+    } else {
+      const sp = 60 + pp.h * 0.35;
+      pp.x += Math.sign(d) * sp * dt;
+      pp.facing = Math.sign(d) || 1;
+      pp.walking = true;
+    }
+  }
+}
+
+/* ---------------- みずの せかい ----------------
+   back  … にんげんタイプは あおむけ(背泳ぎ)。ときどき バタ足で すすむ
+   fish  … ふわふわ(float)は さかなっぽく、もぐって ゆらゆら・ときどき ダッシュ
+   fly   … ちょうちょは 水面の うえを とぶ
+   みんな 画面の そとへ 出ていき、しばらくすると また 入ってくる。 */
+function makeSwimmer(c) {
+  const swim = c.kind === "fly" ? "fly" : c.kind === "float" ? "fish" : "back";
+  const depth = Math.random();                    // 0=おく(小さい) 1=てまえ(大きい)
+  // 水面では おかの せかいより ずっと 小さく およぐ
+  const h = swim === "fly" ? Util.rand(64, 92)
+    : swim === "fish" ? Util.rand(50, 82)
+      : Math.round(70 + depth * 48);
+  const a = {
+    puppet: new Puppet(c.parts, { x: Util.rand(0, W), y: 0, h, facing: 1 }),
+    name: c.rec.name || "",
+    voices: c.rec.voices || null,
+    swim, depth,
+    dir: Math.random() < 0.5 ? 1 : -1,
+    lineY: 0, base: 0, speed: 0,
+    kickT: -Util.rand(0.2, 2.5), nextKick: Util.rand(1, 3),
+    wob: Math.random() * 6,
+    gone: false, wait: 0,
+    bubbleT: 0, airY: 0, vy: 0,
+  };
+  setLane(a);
+  a.puppet.kick = swim === "back";                // あしは バタ足フォーム
+  return a;
+}
+
+/* およぐ ふかさ(たて位置)と はやさを きめる */
+function setLane(a) {
+  if (a.swim === "fly") { a.lineY = Util.rand(150, SURFACE + 20); a.base = Util.rand(70, 120); }
+  else if (a.swim === "fish") { a.lineY = Util.rand(SURFACE + 80, H - 70); a.base = Util.rand(70, 120); }
+  else {
+    // てまえ(下)ほど 大きく、おく(上)ほど 小さく およぐ
+    a.depth = Math.random();
+    a.puppet.h = Math.round(70 + a.depth * 48);
+    a.lineY = SURFACE + 26 + a.depth * (H - SURFACE - 110);
+    a.base = Util.rand(34, 56);
+  }
+}
+
+/* 画面の はしの そと(ぎりぎり)。ここより そとに 出たら「画面外」 */
+function edgeOf(pp) { return Math.max(pp.w, pp.h) * 0.7 + 20; }
+
+/* 画面の そとから また 入ってくる */
+function respawn(a) {
+  setLane(a);
+  a.dir = Math.random() < 0.5 ? 1 : -1;
+  // 判定ラインちょうどに おいて、つぎの フレームから 中へ すすむ
+  a.puppet.x = a.dir > 0 ? -edgeOf(a.puppet) : W + edgeOf(a.puppet);
+  a.speed = a.base;
+  a.gone = false;
+}
+
+function updateSwimmer(a, dt) {
+  const pp = a.puppet;
+  const edge = edgeOf(pp);
+
+  /* 画面の そとへ 出たら しばらく おやすみ → また どこかの はしから 入ってくる。
+     ただし プールが さびしく ならないよう、へっていたら すぐ もどってくる */
+  if (pp.x < -edge || pp.x > W + edge) {
+    if (!a.gone) { a.gone = true; a.wait = Util.rand(0.4, 2.6); }
+    a.wait -= dt * (onStage < actors.length * 0.6 ? 4 : 1);
+    if (a.wait <= 0) respawn(a);
+    return;
+  }
+
+  if (a.swim === "back") {
+    /* ときどき バタ足(kickT>0 のあいだ)。おわったら nextKick びょう すべって すすむ */
+    a.kickT -= dt;
+    if (a.kickT <= -a.nextKick) {
+      a.kickT = Util.rand(0.6, 1.5);
+      a.nextKick = Util.rand(1.2, 3.4);
+      splash(pp.x - a.dir * pp.h * 0.42, a.lineY, 4, -a.dir);
+    }
+    const kicking = a.kickT > 0;
+    pp.walking = kicking;                        // バタ足のときだけ あしが うごく
+    const want = a.base * (kicking ? 2.2 : 0.5);
+    a.speed += (want - a.speed) * Math.min(1, dt * 2.4);
+    pp.x += a.dir * a.speed * dt;
+    pp.roll = a.dir * Math.PI / 2;               // あおむけ(すすむ ほうへ 頭)
+    a.wob += dt * (kicking ? 5.5 : 2.4);
+    pp.y = a.lineY + pp.h / 2 + Math.sin(a.wob) * 4;
+    if (kicking && Math.random() < dt * 14) splash(pp.x - a.dir * pp.h * 0.45, a.lineY, 1, -a.dir);
+
+  } else if (a.swim === "fish") {
+    /* すーっと すすんで、ときどき ぴゅっと ダッシュ・むきを かえる */
+    a.kickT -= dt;
+    if (a.kickT <= -a.nextKick) {
+      a.kickT = Util.rand(0.4, 1.1);
+      a.nextKick = Util.rand(0.8, 2.6);
+      if (Math.random() < 0.35) a.dir *= -1;
+      a.lineY = Util.clamp(a.lineY + Util.rand(-110, 110), SURFACE + 60, H - 60);
+    }
+    const dash = a.kickT > 0;
+    a.wob += dt * (dash ? 8 : 3.4);
+    const want = a.base * (dash ? 2.4 : 0.45);
+    a.speed += (want - a.speed) * Math.min(1, dt * 3);
+    pp.x += a.dir * a.speed * dt;
+    pp.facing = a.dir;
+    // すすむ ほうへ すこし かたむけ、からだを くねらせる
+    pp.roll = a.dir * 0.16 + Math.sin(a.wob) * (dash ? 0.17 : 0.1);
+    if (Math.random() < dt * (dash ? 14 : 4)) {
+      bubs.push({ x: pp.x - a.dir * pp.w * 0.4, y: pp.y - pp.h * 0.6, r: Util.rand(2, 5), t: 0, life: Util.rand(0.8, 1.6) });
+    }
+    const goalY = a.lineY + pp.h / 2 + Math.sin(a.wob * 0.5) * 12;
+    pp.y += (goalY - pp.y) * Math.min(1, dt * 2.4);
+
+  } else {  /* fly … 水面の うえを とぶ */
+    a.wob += dt * 2.2;
+    pp.walking = true;
+    pp.facing = a.dir;
+    pp.x += a.dir * a.base * dt;
+    pp.y = a.lineY + Math.sin(a.wob) * 26;
+  }
+}
+
+/* ---------------- しぶき ---------------- */
+function splash(x, y, n, dir) {
+  for (let i = 0; i < n; i++) {
+    drops.push({
+      x, y,
+      vx: Util.rand(-70, 70) + (dir || 0) * 70,
+      vy: Util.rand(-210, -70),
+      t: 0, life: Util.rand(0.4, 0.9), r: Util.rand(2, 5),
+    });
+  }
+  if (n > 2) rings.push({ x, y, t: 0, life: 0.8, r: 10 });
+}
+
+/* ---------------- タッチ ---------------- */
 cv.addEventListener("pointerdown", (e) => {
   const p = Util.canvasPos(cv, e);
   for (let i = actors.length - 1; i >= 0; i--) {
     const a = actors[i];
+    if (a.gone) continue;
     const b = a.puppet.bbox(a.airY);
     if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
-      a.vy = 520;
       a.bubbleT = 1.6;
+      if (stage === "water") {
+        a.kickT = 1.4;                                   // バタ足で ぴゅーっと すすむ
+        splash(a.puppet.x, a.swim === "fly" ? a.puppet.y : a.lineY, 12, a.dir);
+      } else {
+        a.vy = 520;
+      }
       // 登録ずみの こえ(よろこび・あいさつ・おどろき)からランダム再生。なければ従来の効果音
       if (!Sound.playVoice(a.voices, ["joy", "greet", "ouch"])) Sound.pop();
       return;
@@ -85,71 +297,210 @@ cv.addEventListener("pointerdown", (e) => {
   }
 });
 
+/* ---------------- ステージ きりかえ ---------------- */
+document.getElementById("stages").querySelectorAll("button").forEach((b) => {
+  b.onclick = () => {
+    if (stage === b.dataset.stage) return;
+    Sound.tap();
+    stage = b.dataset.stage;
+    document.getElementById("stages").querySelectorAll("button")
+      .forEach((x) => x.classList.toggle("active", x.dataset.stage === stage));
+    document.getElementById("hint").textContent = HINTS[stage];
+    build();
+  };
+});
+
+/* ---------------- えがく ---------------- */
+function drawLandBack() {
+  if (bgImg) ctx.drawImage(bgImg, 0, 0, W, H);
+  else { ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, W, H); }
+  ctx.fillStyle = "rgba(116,184,85,.9)";
+  ctx.fillRect(0, GROUND + 6, W, H - GROUND);
+}
+
+function drawWaterBack() {
+  /* そら … はいけいの えの うわがわを つかう */
+  if (bgImg) ctx.drawImage(bgImg, 0, 0, bgImg.width, Math.round(bgImg.height * 0.5), 0, 0, W, SURFACE + 8);
+  else {
+    const sky = ctx.createLinearGradient(0, 0, 0, SURFACE);
+    sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#e7f5ff");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, SURFACE);
+  }
+  /* 水面 … おくが うすく、てまえが こい(ななめ上から 見たプール) */
+  const g = ctx.createLinearGradient(0, SURFACE, 0, H);
+  g.addColorStop(0, "#c5e8ff"); g.addColorStop(0.35, "#74c0fc"); g.addColorStop(1, "#3b8fd6");
+  ctx.fillStyle = g; ctx.fillRect(0, SURFACE, W, H - SURFACE);
+
+  /* 水面ぜんたいの なみ */
+  ctx.save();
+  ctx.strokeStyle = "#fff"; ctx.lineCap = "round";
+  for (let k = 0; k < 9; k++) {
+    const y = SURFACE + 24 + k * 52;
+    ctx.globalAlpha = 0.1 + k * 0.02;
+    ctx.lineWidth = 2 + k * 0.4;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 24) {
+      const yy = y + Math.sin(x / (90 + k * 12) + T * (0.9 + k * 0.12) + k) * (3 + k * 0.5);
+      x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+  /* きらきら */
+  ctx.globalAlpha = 0.75; ctx.fillStyle = "#fff";
+  for (const b of bubbles) {
+    const x = (b.x + T * b.sp) % (W + 60) - 30;
+    const r = b.r * (0.6 + 0.4 * Math.sin(T * 3 + b.y));
+    ctx.beginPath();
+    ctx.ellipse(x, b.y + Math.sin(T * 1.4 + b.x / 120) * 3, r * 1.8, r * 0.5, 0, 0, 7);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* 水の中を すこし かすませる(ふわふわ=さかな が もぐって見える) */
+function drawVeil() {
+  const g = ctx.createLinearGradient(0, SURFACE, 0, H);
+  g.addColorStop(0, "rgba(150,215,255,.22)");
+  g.addColorStop(1, "rgba(59,143,214,.28)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, SURFACE, W, H - SURFACE);
+}
+
+/* 水面の きわ(おくがわ)の しろい あわ */
+function drawSurface() {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,.8)";
+  ctx.beginPath();
+  ctx.moveTo(0, SURFACE + 14);
+  for (let x = 0; x <= W; x += 20) ctx.lineTo(x, SURFACE + Math.sin(x / 90 + T * 1.6) * 5);
+  ctx.lineTo(W, SURFACE + 14);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/* さかなが はいた あわ */
+function drawBubs() {
+  ctx.save();
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  for (const b of bubs) {
+    ctx.globalAlpha = Math.max(0, 1 - b.t / b.life) * 0.7;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/* およいでいる子の まわりの あわ(からだの したに しく) */
+function drawFoamBack(a) {
+  const pp = a.puppet;
+  ctx.save();
+  ctx.globalAlpha = 0.4; ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.ellipse(pp.x, a.lineY + Math.sin(a.wob) * 3, pp.h * 0.58, pp.w * 0.44, 0, 0, 7);
+  ctx.fill();
+  ctx.restore();
+}
+
+/* からだに かかる みずと、すすんできた あと */
+function drawFoamFront(a) {
+  const pp = a.puppet;
+  const y = a.lineY + Math.sin(a.wob) * 3;
+  const len = pp.h * 0.5;
+  ctx.save();
+  ctx.strokeStyle = "#fff"; ctx.lineCap = "round";
+  /* からだの したがわに かかる みずの ライン */
+  ctx.globalAlpha = 0.5; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(pp.x, y, len, pp.w * 0.34, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+  ctx.stroke();
+  /* すすんできた あと(うしろに のびる すじ) */
+  ctx.globalAlpha = 0.32; ctx.lineWidth = 5;
+  for (let i = 0; i < 3; i++) {
+    const from = len * 1.1 + i * 26 + a.speed * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(pp.x - a.dir * from, y + Math.sin(T * 4 + i) * 3);
+    ctx.lineTo(pp.x - a.dir * (from + 16), y + Math.sin(T * 4 + i + 1) * 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawDrops() {
+  ctx.save();
+  ctx.fillStyle = "#fff";
+  for (const d of drops) {
+    ctx.globalAlpha = Math.max(0, 1 - d.t / d.life) * 0.9;
+    ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 7); ctx.fill();
+  }
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+  for (const r of rings) {
+    ctx.globalAlpha = Math.max(0, 1 - r.t / r.life) * 0.7;
+    ctx.beginPath();
+    ctx.ellipse(r.x, r.y, r.r + r.t * 130, (r.r + r.t * 130) * 0.3, 0, 0, 7);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawName(a) {
+  if (a.bubbleT <= 0 || !a.name || a.gone) return;
+  const b = a.puppet.bbox(a.airY);
+  ctx.font = "bold 26px sans-serif";
+  const tw = ctx.measureText(a.name).width;
+  const bx = a.puppet.x - tw / 2 - 14, by = b.y - 52;
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.beginPath();
+  ctx.roundRect(bx, by, tw + 28, 42, 20);
+  ctx.fill();
+  ctx.fillStyle = "#4a3f35";
+  ctx.fillText(a.name, bx + 14, by + 30);
+}
+
+/* ---------------- ループ ---------------- */
 let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.04, (now - last) / 1000); last = now;
+  T += dt;
 
+  onStage = actors.reduce((n, a) => n + (a.gone ? 0 : 1), 0);
   for (const a of actors) {
-    const pp = a.puppet;
-    /* ジャンプ(タッチされたとき) */
-    if (a.airY > 0 || a.vy > 0) {
-      a.airY += a.vy * dt;
-      a.vy -= 1900 * dt;
-      if (a.airY <= 0) { a.airY = 0; a.vy = 0; }
-    }
-    /* ちょうちょは たてにも ひらひら うごく */
-    if (a.flutter) {
-      a.wob += dt * 2.4;
-      const goal = a.targetY + Math.sin(a.wob) * 26;
-      const dy = goal - pp.y;
-      pp.y += Math.sign(dy) * Math.min(Math.abs(dy), 90 * dt);
-    }
-    /* おさんぽAI */
-    if (a.pause > 0) {
-      a.pause -= dt;
-      pp.walking = false;
-    } else {
-      const d = a.target - pp.x;
-      if (Math.abs(d) < 12) {
-        a.pause = a.flutter ? Util.rand(0.2, 1) : Util.rand(0.6, 3);
-        a.target = Util.rand(80, 1200);
-        a.targetY = Util.rand(160, 480);
-        if (!a.flutter && Math.random() < 0.25) { a.vy = 430; Sound.jump(); }
-      } else {
-        const sp = 60 + pp.h * 0.35;
-        pp.x += Math.sign(d) * sp * dt;
-        pp.facing = Math.sign(d) || 1;
-        pp.walking = true;
-      }
-    }
+    stage === "water" ? updateSwimmer(a, dt) : updateWalker(a, dt);
     if (a.bubbleT > 0) a.bubbleT -= dt;
-    pp.update(dt);
+    a.puppet.update(dt);
+  }
+  if (stage === "water") {
+    for (const d of drops) { d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 520 * dt; }
+    for (let i = drops.length - 1; i >= 0; i--) if (drops[i].t > drops[i].life) drops.splice(i, 1);
+    for (const r of rings) r.t += dt;
+    for (let i = rings.length - 1; i >= 0; i--) if (rings[i].t > rings[i].life) rings.splice(i, 1);
+    for (const b of bubs) { b.t += dt; b.y -= 40 * dt; b.x += Math.sin(b.t * 5) * 12 * dt; }
+    for (let i = bubs.length - 1; i >= 0; i--) if (bubs[i].t > bubs[i].life) bubs.splice(i, 1);
   }
 
   /* --- 描画 --- */
-  ctx.clearRect(0, 0, 1280, 720);
-  if (bgImg) ctx.drawImage(bgImg, 0, 0, 1280, 720);
-  else { ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, 1280, 720); }
-  ctx.fillStyle = "rgba(116,184,85,.9)";
-  ctx.fillRect(0, GROUND + 6, 1280, 720 - GROUND);
-
+  ctx.clearRect(0, 0, W, H);
   /* 奥のキャラ(小さい)から描く */
-  const sorted = actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
-  for (const a of sorted) {
-    a.puppet.draw(ctx, a.airY);
-    if (a.bubbleT > 0 && a.name) {
-      const b = a.puppet.bbox(a.airY);
-      ctx.font = "bold 26px sans-serif";
-      const tw = ctx.measureText(a.name).width;
-      const bx = a.puppet.x - tw / 2 - 14, by = b.y - 52;
-      ctx.fillStyle = "rgba(255,255,255,.92)";
-      ctx.beginPath();
-      ctx.roundRect(bx, by, tw + 28, 42, 20);
-      ctx.fill();
-      ctx.fillStyle = "#4a3f35";
-      ctx.fillText(a.name, bx + 14, by + 30);
+  const list = actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
+
+  if (stage === "water") {
+    drawWaterBack();
+    for (const a of list) if (a.swim === "fish" && !a.gone) a.puppet.draw(ctx);
+    drawBubs();
+    drawVeil();
+    drawSurface();
+    for (const a of list) {
+      if (a.swim !== "back" || a.gone) continue;
+      drawFoamBack(a);
+      a.puppet.draw(ctx);
+      drawFoamFront(a);
     }
+    for (const a of list) if (a.swim === "fly" && !a.gone) a.puppet.draw(ctx);
+    drawDrops();
+  } else {
+    drawLandBack();
+    for (const a of list) a.puppet.draw(ctx, a.airY);
   }
+  for (const a of list) drawName(a);
+
   requestAnimationFrame(loop);
 }
 </script>

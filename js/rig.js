@@ -144,6 +144,8 @@ class Puppet {
     this.t = Math.random() * 6;
     this.flap = Math.random() * 6;   // はばたき(ちょうちょ)
     this.jumpT = 0;                // ジャンプ演出(>0でエア)
+    this.roll = 0;                 // からだ全体のかたむき(rad)。背泳ぎ・魚の ゆらゆら用
+    this.kick = false;             // バタ足フォーム(あしのふりが こまかく はやくなる)
   }
 
   get scale() { return this.h / this.parts.H; }
@@ -153,7 +155,7 @@ class Puppet {
 
   update(dt) {
     this.t += dt;
-    if (this.walking) this.phase += dt * 11;
+    if (this.walking) this.phase += dt * (this.kick ? 26 : 11);
     this.flap += dt * (this.jumpT > 0 ? 24 : this.walking ? 14 : 9);
     if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt);
   }
@@ -168,6 +170,11 @@ class Puppet {
 
     ctx.save();
     ctx.translate(this.x, this.y - airY - hopLift - this.lift);
+    if (this.roll) {                       // からだの まんなかを 中心に かたむける
+      ctx.translate(0, -this.h / 2);
+      ctx.rotate(this.roll);
+      ctx.translate(0, this.h / 2);
+    }
     ctx.scale(s * this.facing, s);
     ctx.translate(-p.cx, -p.H);
 
@@ -193,9 +200,11 @@ class Puppet {
   /* --- にほんあし(現行動作) --- */
   _drawBiped(ctx, part, s, airY) {
     const p = this.parts;
-    const walkBob = this.walking ? Math.abs(Math.sin(this.phase)) * this.h * 0.035 : Math.sin(this.t * 2.2) * this.h * 0.012;
-    const swing = this.walking ? Math.sin(this.phase) * 0.5 : 0;
-    const rock = this.walking ? Math.sin(this.phase) * 0.06 : Math.sin(this.t * 2.2) * 0.02;
+    const walkBob = this.kick ? 0
+      : this.walking ? Math.abs(Math.sin(this.phase)) * this.h * 0.035 : Math.sin(this.t * 2.2) * this.h * 0.012;
+    const swing = this.walking ? Math.sin(this.phase) * (this.kick ? 0.22 : 0.5) : 0;
+    const rock = this.kick ? 0
+      : this.walking ? Math.sin(this.phase) * 0.06 : Math.sin(this.t * 2.2) * 0.02;
     const inAir = airY > 0.5 || this.jumpT > 0;
     const legPose = inAir ? 0.35 : swing;
 
@@ -210,9 +219,10 @@ class Puppet {
   _drawSkirt(ctx, part, s) {
     const p = this.parts;
     // こし中心のふりこ(±6°ていど)
-    const swing = this.walking ? Math.sin(this.phase) * 0.11 : Math.sin(this.t * 1.6) * 0.05;
-    // 小さくぴょこぴょこ弾む
-    const bob = this.walking ? Math.abs(Math.sin(this.phase)) * this.h * 0.05 : Math.sin(this.t * 2.0) * this.h * 0.012;
+    const swing = this.walking ? Math.sin(this.phase) * (this.kick ? 0.06 : 0.11) : Math.sin(this.t * 1.6) * 0.05;
+    // 小さくぴょこぴょこ弾む(バタ足のときは はねない)
+    const bob = this.kick ? 0
+      : this.walking ? Math.abs(Math.sin(this.phase)) * this.h * 0.05 : Math.sin(this.t * 2.0) * this.h * 0.012;
     const rock = this.walking ? Math.sin(this.phase) * 0.03 : Math.sin(this.t * 2.0) * 0.015;
 
     ctx.translate(0, -bob / s);
@@ -225,9 +235,9 @@ class Puppet {
   _drawQuad(ctx, part, s, airY) {
     const p = this.parts;
     const inAir = airY > 0.5 || this.jumpT > 0;
-    const swing = this.walking ? Math.sin(this.phase) * 0.45 : Math.sin(this.t * 2.0) * 0.08;
+    const swing = this.walking ? Math.sin(this.phase) * (this.kick ? 0.2 : 0.45) : Math.sin(this.t * 2.0) * 0.08;
     const pose = inAir ? 0.3 : swing;
-    const bob = this.walking ? Math.abs(Math.sin(this.phase * 2)) * this.h * 0.02 : 0;
+    const bob = this.kick ? 0 : this.walking ? Math.abs(Math.sin(this.phase * 2)) * this.h * 0.02 : 0;
     const bodyRock = this.walking ? Math.sin(this.phase) * 0.02 : Math.sin(this.t * 1.8) * 0.01;
 
     ctx.translate(0, -bob / s);
@@ -280,13 +290,12 @@ class Puppet {
     ctx.restore();
   }
 
-  /* あたり判定用のざっくり矩形(足もと基準) */
+  /* あたり判定用のざっくり矩形(足もと基準・かたむきこみ) */
   bbox(airY = 0) {
-    return {
-      x: this.x - this.w / 2,
-      y: this.y - airY - this.lift - this.h,
-      w: this.w,
-      h: this.h,
-    };
+    const cy = this.y - airY - this.lift - this.h / 2;   // からだの まんなか
+    const c = Math.abs(Math.cos(this.roll)), sn = Math.abs(Math.sin(this.roll));
+    const w = this.w * c + this.h * sn;
+    const h = this.h * c + this.w * sn;
+    return { x: this.x - w / 2, y: cy - h / 2, w, h };
   }
 }
