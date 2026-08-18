@@ -23,17 +23,21 @@ document.body.insertAdjacentHTML("beforeend", `
 <div class="modal hidden" id="rigModal">
   <div class="panel">
     <h2>動き設定</h2>
-    <p class="note">まず「動きのタイプ」を選んで、線をドラッグして合わせてください。</p>
+    <p class="note">
+      まず「動きのタイプ」を選んで、線をドラッグして合わせてください。<br>
+      🦋ちょうちょ は <b>はねを1まい</b> 描いた絵を、左右はんてんして ひらひら飛ばします。
+    </p>
     <div class="rig-types" id="rigTypes">
       <button class="btn purple" data-type="biped">🧍二本足</button>
       <button class="btn pink" data-type="skirt">👗スカート</button>
       <button class="btn orange" data-type="quad">🐕四つ足</button>
       <button class="btn blue" data-type="float">👻ふわふわ</button>
+      <button class="btn yellow" data-type="butterfly">🦋ちょうちょ</button>
     </div>
     <div class="rig-flex">
       <canvas id="rigCanvas" class="edit-canvas" width="340" height="440"></canvas>
       <div>
-        <p style="margin:0 0 6px"><b>歩きプレビュー</b></p>
+        <p style="margin:0 0 6px"><b id="rigPvLabel">歩きプレビュー</b></p>
         <canvas id="rigPreview" width="220" height="280" style="background:#e7f5ff;border-radius:12px"></canvas>
       </div>
     </div>
@@ -356,7 +360,17 @@ $("rigTypes").querySelectorAll("button").forEach((b) => {
 function rebuildParts() {
   rigEd.parts = Rig.makeParts(rigEd.trimmed, rigEd.rig, rigEd.rec.name);
   const pv = $("rigPreview");
-  rigEd.puppet = new Puppet(rigEd.parts, { x: pv.width / 2, y: pv.height - 16, h: pv.height - 60 });
+  const fly = rigEd.parts.type === "butterfly";
+  $("rigPvLabel").textContent = fly ? "とびかたプレビュー" : "歩きプレビュー";
+  // ちょうちょは よこに ひろがるので、はばが はみでない 高さに あわせて うかせる
+  const h = fly
+    ? Math.min(pv.height - 110, (pv.width - 40) * rigEd.parts.H / rigEd.parts.W)
+    : pv.height - 60;
+  rigEd.puppet = new Puppet(rigEd.parts, {
+    x: pv.width / 2,
+    y: fly ? pv.height * 0.62 : pv.height - 16,
+    h,
+  });
   rigEd.puppet.walking = true;
 }
 
@@ -390,6 +404,17 @@ function drawRig() {
   } else if (t === "quad") {
     hLine("#f59f00", r.bellyY, "おなか");
     vLine("#ff6b9d", r.centerX, r.bellyY, "中央");
+  } else if (t === "butterfly") {
+    const x = Math.max(2, (r.hingeX || 0) * W);
+    ctx.strokeStyle = "#f76707"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, Hc); ctx.stroke();
+    ctx.font = "bold 15px sans-serif";
+    const label = (txt, tx, ty) => {          // 絵の上でも 読めるように 白ふちどり
+      ctx.lineWidth = 4; ctx.strokeStyle = "#fff"; ctx.strokeText(txt, tx, ty);
+      ctx.fillStyle = "#f76707"; ctx.fillText(txt, tx, ty);
+    };
+    label("はねのつけね", x + 6, Hc - 8);
+    label("この線の右がわを 左右はんてんします", 6, 20);
   } else { // float
     ctx.fillStyle = "#868e96"; ctx.font = "bold 15px sans-serif";
     ctx.fillText("線なし(そのまま動きます)", 10, 24);
@@ -404,7 +429,9 @@ function animPreview() {
     if ($("rigModal").classList.contains("hidden")) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     ctx.clearRect(0, 0, pv.width, pv.height);
-    ctx.fillStyle = "#96d06c"; ctx.fillRect(0, pv.height - 16, pv.width, 16);
+    if (rigEd.parts.type !== "butterfly") {
+      ctx.fillStyle = "#96d06c"; ctx.fillRect(0, pv.height - 16, pv.width, 16);
+    }
     rigEd.puppet.update(dt);
     rigEd.puppet.draw(ctx);
     rigEd.raf = requestAnimationFrame(loop);
@@ -426,6 +453,8 @@ function animPreview() {
     } else if (ty === "quad") {
       cands.push(["bellyY", Math.abs(p.y - r.bellyY * cv.height)]);
       cands.push(["centerX", Math.abs(p.x - r.centerX * cv.width)]);
+    } else if (ty === "butterfly") {
+      cands.push(["hingeX", Math.abs(p.x - r.hingeX * cv.width)]);
     }
     const f = cands.filter(([, d]) => d < t).sort((a, b) => a[1] - b[1]);
     return f.length ? f[0][0] : null;
@@ -437,7 +466,8 @@ function animPreview() {
   cv.addEventListener("pointermove", (e) => {
     if (!rigEd.drag) return;
     const p = Util.canvasPos(cv, e);
-    if (rigEd.drag === "centerX") rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
+    if (rigEd.drag === "hingeX") rigEd.rig.hingeX = Util.clamp(p.x / cv.width, 0, 0.6);
+    else if (rigEd.drag === "centerX") rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
     else if (rigEd.drag === "bellyY") rigEd.rig.bellyY = Util.clamp(p.y / cv.height, 0.2, 0.85);
     else rigEd.rig[rigEd.drag] = Util.clamp(p.y / cv.height, 0.1, 0.92);
     if ((rigEd.drag === "neckY" || rigEd.drag === "hipY") && rigEd.rig.hipY < rigEd.rig.neckY + 0.08) {

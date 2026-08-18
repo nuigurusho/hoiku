@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>みんなの せかい</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=6">
+<link rel="stylesheet" href="../css/style.css?v=7">
 </head>
 <body data-chrome="game">
 <header class="bar">
@@ -21,8 +21,8 @@
   <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
 </main>
 
-<script src="../js/core.js?v=6"></script>
-<script src="../js/rig.js?v=6"></script>
+<script src="../js/core.js?v=7"></script>
+<script src="../js/rig.js?v=7"></script>
 <script>
 "use strict";
 const cv = document.getElementById("cv");
@@ -40,8 +40,9 @@ async function init() {
   const chars = recs.filter((r) => r.cat === "char");
   for (const rec of chars) {
     const parts = await Rig.load(rec);
-    // ふわふわ(float)は地面ではなく画面の中段に うかせて配置する
-    const isFloat = parts.type === "float";
+    // ふわふわ(float)・ちょうちょ(butterfly)は地面ではなく画面の中段に うかせて配置する
+    const isBtfly = parts.type === "butterfly";
+    const isFloat = parts.type === "float" || isBtfly;
     // 同じ絵でも2体まで出すとにぎやか(キャラが少ないとき)
     const copies = chars.length < 3 ? 2 : 1;
     for (let i = 0; i < copies; i++) {
@@ -55,7 +56,10 @@ async function init() {
         name: rec.name || "",
         voices: rec.voices || null,
         float: isFloat,
+        flutter: isBtfly,
         target: Util.rand(100, 1180),
+        targetY: Util.rand(160, 480),
+        wob: Math.random() * 6,
         pause: Util.rand(0, 2),
         bubbleT: 0,
         airY: 0, vy: 0,
@@ -93,6 +97,13 @@ function loop(now) {
       a.vy -= 1900 * dt;
       if (a.airY <= 0) { a.airY = 0; a.vy = 0; }
     }
+    /* ちょうちょは たてにも ひらひら うごく */
+    if (a.flutter) {
+      a.wob += dt * 2.4;
+      const goal = a.targetY + Math.sin(a.wob) * 26;
+      const dy = goal - pp.y;
+      pp.y += Math.sign(dy) * Math.min(Math.abs(dy), 90 * dt);
+    }
     /* おさんぽAI */
     if (a.pause > 0) {
       a.pause -= dt;
@@ -100,9 +111,10 @@ function loop(now) {
     } else {
       const d = a.target - pp.x;
       if (Math.abs(d) < 12) {
-        a.pause = Util.rand(0.6, 3);
+        a.pause = a.flutter ? Util.rand(0.2, 1) : Util.rand(0.6, 3);
         a.target = Util.rand(80, 1200);
-        if (Math.random() < 0.25) { a.vy = 430; Sound.jump(); }
+        a.targetY = Util.rand(160, 480);
+        if (!a.flutter && Math.random() < 0.25) { a.vy = 430; Sound.jump(); }
       } else {
         const sp = 60 + pp.h * 0.35;
         pp.x += Math.sign(d) * sp * dt;

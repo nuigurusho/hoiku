@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>取り込み・設定</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <header class="bar">
@@ -62,9 +62,9 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=6"></script>
-<script src="js/rig.js?v=6"></script>
-<script src="js/editors.js?v=6"></script>
+<script src="js/core.js?v=7"></script>
+<script src="js/rig.js?v=7"></script>
+<script src="js/editors.js?v=7"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -102,6 +102,7 @@ function row(r) {
   const d = document.createElement("div");
   d.className = "admin-row";
   d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(名前なし)"}</span>`;
+  Ui.thumbFix(d.querySelector("img"), r);
   const mk = (label, cls, fn) => {
     const b = document.createElement("button");
     b.className = "btn " + cls;

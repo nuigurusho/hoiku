@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>つくる</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <header class="bar">
@@ -73,9 +73,9 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=6"></script>
-<script src="js/rig.js?v=6"></script>
-<script src="js/editors.js?v=6"></script>
+<script src="js/core.js?v=7"></script>
+<script src="js/rig.js?v=7"></script>
+<script src="js/editors.js?v=7"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -107,6 +107,7 @@ function row(r, L) {
   const d = document.createElement("div");
   d.className = "admin-row";
   d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(名前なし)"}</span>`;
+  Ui.thumbFix(d.querySelector("img"), r);
   const mk = (label, cls, fn) => {
     const b = document.createElement("button");
     b.className = "btn " + cls;
@@ -175,6 +176,8 @@ $("charInfo").onclick = () => {
     <ul class="info-list">
       <li>走る・跳ぶゲームで <b>手足を動かして歩く</b> 絵です</li>
       <li>ふやしたら <b>うごきせってい</b> で 首・腰・中央の3本線を絵に合わせてください</li>
+      <li>🦋<b>ちょうちょ</b> は べつのつくりかた … <b>はねを1まいだけ</b>(からだは左はしに半分)描くと、
+          左右はんてんした はねと あわせて ひらひら飛びます</li>
       <li>合わせると 隣のプレビューで歩き出します。それでOKです</li>
       <li><b>こえ</b> で よろこび・あいさつ・おどろき・しっぱい を録音できます(1つ10秒まで)</li>
     </ul>

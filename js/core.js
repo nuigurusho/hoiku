@@ -194,6 +194,24 @@ const Util = {
     return out;
   },
 
+  /* ちょうちょ(はねを1まいだけ かいた え)を 左右そろえた すがたに する。
+     いちらん・キャラえらびの サムネで つかう。 */
+  async symCanvas(rec) {
+    const img = await this.loadImage(rec.dataURL);
+    const t = this.trimCanvas(this.keyImage(img));
+    const hx = (rec.rig && rec.rig.hingeX) || 0;
+    const hinge = Math.min(t.width - 1, Math.round(this.clamp(hx, 0, 0.6) * t.width));
+    const wingW = Math.max(1, t.width - hinge);
+    const c = this.makeCanvas(wingW * 2, t.height);
+    const ctx = c.getContext("2d");
+    ctx.drawImage(t, hinge, 0, wingW, t.height, wingW, 0, wingW, t.height);
+    ctx.save();
+    ctx.translate(wingW, 0); ctx.scale(-1, 1);
+    ctx.drawImage(t, hinge, 0, wingW, t.height, 0, 0, wingW, t.height);
+    ctx.restore();
+    return c;
+  },
+
   /* 絵文字を大きくキャンバスに描く */
   emojiCanvas(emoji, size = 200) {
     const c = Util.makeCanvas(size, size);
@@ -541,6 +559,54 @@ const Samples = {
              rig: { type: "float" } };
   },
 
+  /* キャラ6: ちょうちょ(type:'butterfly' / はねを1まいだけ かいた え) */
+  charButterfly() {
+    const c = Util.makeCanvas(380, 470);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 380, 470);
+    ctx.lineWidth = 9; ctx.lineCap = "round"; ctx.lineJoin = "round";
+
+    /* はねの つけね(左はし x=0)に からだの はんぶんを おく。
+       この え1まいが 左右はんてん されて 1ぴきの ちょうちょに なる。 */
+    ctx.strokeStyle = "#e8590c"; ctx.fillStyle = "#ffa94d";
+    ctx.beginPath();                                      // うえの はね
+    ctx.moveTo(22, 150);
+    ctx.bezierCurveTo(110, 40, 330, 45, 332, 155);
+    ctx.bezierCurveTo(334, 235, 150, 252, 22, 245);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffc078";
+    ctx.beginPath();                                      // したの はね
+    ctx.moveTo(22, 258);
+    ctx.bezierCurveTo(150, 258, 278, 306, 254, 378);
+    ctx.bezierCurveTo(232, 434, 96, 412, 22, 356);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = "#fff3bf";                            // はねの もよう
+    ctx.beginPath(); ctx.arc(168, 128, 30, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(258, 178, 18, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(128, 330, 22, 0, 7); ctx.fill(); ctx.stroke();
+
+    ctx.strokeStyle = "#5f3dc4"; ctx.fillStyle = "#7950f2";
+    ctx.beginPath();                                      // からだ(はんぶん)
+    ctx.ellipse(0, 262, 32, 152, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath();                                      // あたま(はんぶん)
+    ctx.arc(0, 104, 38, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#5f3dc4"; ctx.lineWidth = 7;
+    ctx.beginPath();                                      // しょっかく
+    ctx.moveTo(14, 74);
+    ctx.quadraticCurveTo(72, 26, 104, 40);
+    ctx.stroke();
+    ctx.fillStyle = "#5f3dc4";
+    ctx.beginPath(); ctx.arc(106, 40, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff";                               // め
+    ctx.beginPath(); ctx.arc(20, 100, 13, 0, 7); ctx.fill();
+    ctx.fillStyle = "#343a40";
+    ctx.beginPath(); ctx.arc(23, 100, 7, 0, 7); ctx.fill();
+
+    return { name: "ちょうちょ", cat: "char", dataURL: c.toDataURL("image/png"),
+             rig: { type: "butterfly", hingeX: 0 } };
+  },
+
   /* 背景: おそらとおやま */
   bgA() {
     const c = Util.makeCanvas(1280, 720);
@@ -709,6 +775,7 @@ const Samples = {
 
   makeAll() {
     return [this.charA(), this.charB(), this.charC(), this.charSkirt(), this.charFloat(),
+            this.charButterfly(),
             this.bgA(), this.picA(), this.picB(), this.fukuFace()];
   },
 };
@@ -867,9 +934,18 @@ const Ui = {
       const d = document.createElement("div");
       d.className = "thumb" + (r.id === selectedId ? " selected" : "");
       d.innerHTML = `<img src="${r.dataURL}" alt=""><div class="name">${r.name || ""}</div>`;
+      Ui.thumbFix(d.querySelector("img"), r);
       d.onclick = () => { Sound.tap(); onPick(r, d); };
       el.appendChild(d);
     }
+  },
+
+  /* ちょうちょは はねを1まい かいた えなので、サムネだけ 左右そろえて みせる */
+  thumbFix(imgEl, rec) {
+    if (!imgEl || !rec || !rec.rig || rec.rig.type !== "butterfly") return;
+    Util.symCanvas(rec)
+      .then((c) => { imgEl.src = c.toDataURL("image/png"); })
+      .catch(() => {});
   },
 };
 

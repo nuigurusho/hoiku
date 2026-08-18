@@ -10,13 +10,15 @@
      skirt(スカート)   … くび/こし で 頭・体・スカート(下半身は割らない)
      quad(よつあし)     … おなか/まんなか で 体(頭こみ)・まえあし・うしろあし
      float(ふわふわ)    … 分割なし。ぷかぷか うかんで うごく
+     butterfly(ちょうちょ)… かいた え1まいを 「みぎの はね」として つかい、
+                            左右はんてんした はねと あわせて ひらひら とばす
    ※ type 未設定の ふるいレコードは biped として あつかう(後方互換)。
    ============================================================ */
 "use strict";
 
 const Rig = {
-  TYPES: ["biped", "skirt", "quad", "float"],
-  DEFAULT: { type: "biped", neckY: 0.42, hipY: 0.7, centerX: 0.5, bellyY: 0.55 },
+  TYPES: ["biped", "skirt", "quad", "float", "butterfly"],
+  DEFAULT: { type: "biped", neckY: 0.42, hipY: 0.7, centerX: 0.5, bellyY: 0.55, hingeX: 0 },
 
   /* レコード → 分割パーツ一式 */
   async load(rec) {
@@ -80,6 +82,40 @@ const Rig = {
       };
     }
 
+    if (type === "butterfly") {
+      /* かいた え の「つけね線(hingeX)より みぎがわ」を はね1まいとして つかい、
+         それを 左右はんてん して もういっぽうの はねを つくる。 */
+      const rawHinge = Math.min(W - 1, Math.round(Util.clamp(val(rig.hingeX, 0), 0, 0.6) * W));
+      /* トリムの よはく(とうめいな たて列)は つめる。まんなかで すきまなく くっつくように */
+      const hinge = (() => {
+        const g = canvas.getContext("2d");
+        const w = W - rawHinge;
+        const d = g.getImageData(rawHinge, 0, w, H).data;
+        for (let x = 0; x < w; x++)
+          for (let y = 0; y < H; y++)
+            if (d[(y * w + x) * 4 + 3] > 20) return rawHinge + x;
+        return rawHinge;
+      })();
+      const wingW = Math.max(1, W - hinge);
+      const wing = cut(hinge, 0, wingW, H);
+      const sym = Util.makeCanvas(wingW * 2, H);          // 左右そろえた ちょうちょ全体
+      const sctx = sym.getContext("2d");
+      sctx.drawImage(wing.c, wingW, 0);                   // みぎばね(そのまま)
+      sctx.save();
+      sctx.translate(wingW, 0); sctx.scale(-1, 1);
+      sctx.drawImage(wing.c, 0, 0);                       // ひだりばね(左右はんてん)
+      sctx.restore();
+      const hh = Math.max(1, Math.round(H * 0.4));
+      const headC = Util.makeCanvas(wingW * 2, hh);       // mole 用の「あたま」= 上40%
+      headC.getContext("2d").drawImage(sym, 0, 0, wingW * 2, hh, 0, 0, wingW * 2, hh);
+      return {
+        ...base, W: wingW * 2, cx: wingW, full: sym, wingW,
+        wing: { c: wing.c, ox: wingW, oy: 0, pivot: { x: wingW, y: H } },
+        head: { c: headC, ox: 0, oy: 0, pivot: { x: wingW, y: hh } },
+        body: { c: sym, ox: 0, oy: 0, pivot: { x: wingW, y: H } },
+      };
+    }
+
     /* biped(にほんあし・現行動作 / 後方互換) */
     const neckY = Math.round(Util.clamp(val(rig.neckY, 0.42), 0.1, 0.9) * H);
     const hipY  = Math.round(Util.clamp(val(rig.hipY, 0.7), val(rig.neckY, 0.42) + 0.05, 0.95) * H);
@@ -106,15 +142,19 @@ class Puppet {
     this.walking = false;
     this.phase = Math.random() * 6;
     this.t = Math.random() * 6;
+    this.flap = Math.random() * 6;   // はばたき(ちょうちょ)
     this.jumpT = 0;                // ジャンプ演出(>0でエア)
   }
 
   get scale() { return this.h / this.parts.H; }
   get w() { return this.parts.W * this.scale; }
+  /* ちょうちょは 地面に つかず、すこし うかんで とぶ */
+  get lift() { return this.parts.type === "butterfly" ? this.h * 0.35 : 0; }
 
   update(dt) {
     this.t += dt;
     if (this.walking) this.phase += dt * 11;
+    this.flap += dt * (this.jumpT > 0 ? 24 : this.walking ? 14 : 9);
     if (this.jumpT > 0) this.jumpT = Math.max(0, this.jumpT - dt);
   }
 
@@ -127,7 +167,7 @@ class Puppet {
     const hopLift = this.jumpT > 0 ? Math.sin((1 - this.jumpT / 0.45) * Math.PI) * this.h * 0.28 : 0;
 
     ctx.save();
-    ctx.translate(this.x, this.y - airY - hopLift);
+    ctx.translate(this.x, this.y - airY - hopLift - this.lift);
     ctx.scale(s * this.facing, s);
     ctx.translate(-p.cx, -p.H);
 
@@ -144,6 +184,7 @@ class Puppet {
       case "skirt": this._drawSkirt(ctx, part, s, airY); break;
       case "quad":  this._drawQuad(ctx, part, s, airY); break;
       case "float": this._drawFloat(ctx, part, s, airY); break;
+      case "butterfly": this._drawButterfly(ctx, part, s, airY); break;
       default:      this._drawBiped(ctx, part, s, airY);
     }
     ctx.restore();
@@ -214,11 +255,36 @@ class Puppet {
     ctx.restore();
   }
 
+  /* --- ちょうちょ(1まいの はねを 左右はんてんして ひらひら) --- */
+  _drawButterfly(ctx, part, s) {
+    const p = this.parts;
+    if (!p.wing) { part(p.body, 0); return; }
+    const wave = Math.sin(this.flap);
+    const open = 0.32 + 0.68 * (wave * 0.5 + 0.5);   // はねの ひらきぐあい(よこ幅)
+    const bob = wave * this.h * 0.035;               // はばたきに あわせた たてゆれ
+    const tilt = Math.sin(this.t * 1.4) * 0.09;      // ふわりと かたむく
+
+    ctx.translate(0, -bob / s);
+    ctx.save();
+    ctx.translate(p.cx, p.H * 0.5);
+    ctx.rotate(tilt);
+    ctx.translate(-p.cx, -p.H * 0.5);
+    for (const dir of [-1, 1]) {          // おくの はね → てまえの はね の じゅんに
+      ctx.save();
+      ctx.globalAlpha = dir < 0 ? 0.92 : 1;
+      ctx.translate(p.cx, 0);
+      ctx.scale(dir * open, 1);
+      ctx.drawImage(p.wing.c, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   /* あたり判定用のざっくり矩形(足もと基準) */
   bbox(airY = 0) {
     return {
       x: this.x - this.w / 2,
-      y: this.y - airY - this.h,
+      y: this.y - airY - this.lift - this.h,
       w: this.w,
       h: this.h,
     };

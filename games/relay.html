@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>リレー</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=6">
+<link rel="stylesheet" href="../css/style.css?v=7">
 <style>
   /* ===== リレー専用スタイル(1ファイル完結) ===== */
 
@@ -206,8 +206,8 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=6"></script>
-<script src="../js/rig.js?v=6"></script>
+<script src="../js/core.js?v=7"></script>
+<script src="../js/rig.js?v=7"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -275,6 +275,7 @@ function renderGallery() {
     const d = document.createElement("div");
     d.className = "thumb" + (selectedIds.has(r.id) ? " selected" : "");
     d.innerHTML = `<img src="${r.dataURL}" alt=""><div class="name">${r.name || ""}</div>`;
+    Ui.thumbFix(d.querySelector("img"), r);
     d.onclick = () => {
       Sound.tap();
       selectedIds.has(r.id) ? selectedIds.delete(r.id) : selectedIds.add(r.id);
@@ -354,6 +355,7 @@ async function revealTeams() {
     d.className = "rl-mem";
     d.innerHTML = `<span class="rl-ord${anchor ? " an" : ""}">${anchor ? "⭐" : ""}${legs.join("・")}</span>` +
       `<img src="${mem.rec.dataURL}" alt=""><div class="nm">${mem.name}</div>`;
+    Ui.thumbFix(d.querySelector("img"), mem.rec);
     box.appendChild(d);
     Sound.pon();
     await sleep(180);
