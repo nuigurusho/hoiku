@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>たまいれ</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../css/style.css?v=11">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="../index.html">← もどる</a>
+  <h1><img class="bar-icon" src="../assets/buttons/tamaire.svg" alt=""> たまいれ</h1>
+  <div class="spacer"></div>
+</header>
+
+<main>
+  <!-- 1. キャラえらび -->
+  <div id="selectScreen">
+    <div class="panel">
+      <h2>たまいれを する キャラを えらんでね<br><span style="font-size:18px;font-weight:normal;color:#8a7a68">(タッチで えらぶ / はずす)</span></h2>
+      <div class="gallery" id="gallery"></div>
+      <p class="note" id="selNote" style="font-size:17px;font-weight:bold;min-height:22px"></p>
+      <div class="row"><button class="btn big pink" id="decideBtn">けってい!</button></div>
+      <p class="note">えらんだ みんなが 2チームに わかれて、左右の かごに じどうで 玉を 入れるよ。みているだけでOK!</p>
+    </div>
+  </div>
+
+  <!-- 2. チーム発表 -->
+  <div id="teamScreen" class="hidden">
+    <h2 style="text-align:center;margin:10px 0 4px;font-size:clamp(22px,5vw,32px)">🎪 チームわけ!</h2>
+    <div class="mt-teams">
+      <div class="mt-teamcol red"><h3>🔴 あかチーム</h3><div class="mt-members" id="redMembers"></div></div>
+      <div class="mt-vs">VS</div>
+      <div class="mt-teamcol blue"><h3>🔵 あおチーム</h3><div class="mt-members" id="blueMembers"></div></div>
+    </div>
+    <div class="row">
+      <button class="btn big yellow" id="redoBtn">やりなおす</button>
+      <button class="btn big green"  id="startBtn">スタート!</button>
+    </div>
+    <p class="note" style="text-align:center">ひだり=あかチーム、みぎ=あおチームの かごに 入れるよ</p>
+  </div>
+
+  <!-- 3. しあい(ぜんじどう)+ 4. けっか -->
+  <div id="playScreen" class="hidden">
+    <div class="mt-hud">
+      <span class="mt-red"  id="hudRed">🔴 あかチーム 0こ</span>
+      <span class="mt-mid"  id="hudMid">たまいれ</span>
+      <span class="mt-blue" id="hudBlue">🔵 あおチーム 0こ</span>
+    </div>
+    <div class="mt-stage">
+      <canvas id="cv" class="stage" width="1280" height="720"></canvas>
+      <div class="mt-banner hidden" id="banner"></div>
+      <div class="mt-over clear hidden" id="winOver">
+        <div class="mt-card" id="winCard">
+          <div class="ttl" id="winTitle">かち!</div>
+          <div class="sub" id="winSub"></div>
+        </div>
+        <div class="row">
+          <button class="btn big pink"   id="rematchBtn">もういっかい!</button>
+          <button class="btn big yellow" id="reteamBtn">チームわけから やりなおす</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/core.js?v=11"></script>
+<script src="../js/rig.js?v=11"></script>
+<script src="../js/meet.js?v=11"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const cv = $("cv");
+const NAMES = { red: "あかチーム", blue: "あおチーム" };
+
+const SCREENS = ["selectScreen", "teamScreen", "playScreen"];
+function show(id) { for (const s of SCREENS) $(s).classList.toggle("hidden", s !== id); }
+
+const ui = Meet.ui({ banner: $("banner"), hudRed: $("hudRed"), hudBlue: $("hudBlue"), hudMid: $("hudMid") });
+
+let allChars = [];
+const selectedIds = new Set();
+let roster = [];                 // [{rec,name,voices}]
+let teams = { red: [], blue: [] };
+let actors = null;               // パペット化した メンバー(チームわけごとに つくりなおす)
+let teamGen = 0;
+
+/* ============================================================
+   1. キャラえらび
+   ============================================================ */
+async function initSelect() {
+  const recs = await Store.ensureSamples();
+  allChars = recs.filter((r) => r.cat === "char");
+  allChars.forEach((r) => selectedIds.add(r.id));    // さいしょは ぜんいん
+  renderGallery();
+}
+function renderGallery() {
+  const el = $("gallery");
+  el.innerHTML = "";
+  for (const r of allChars) {
+    const d = document.createElement("div");
+    d.className = "thumb" + (selectedIds.has(r.id) ? " selected" : "");
+    d.innerHTML = `<img src="${r.dataURL}" alt=""><div class="name">${r.name || ""}</div>`;
+    Ui.thumbFix(d.querySelector("img"), r);
+    d.onclick = () => {
+      Sound.tap();
+      selectedIds.has(r.id) ? selectedIds.delete(r.id) : selectedIds.add(r.id);
+      renderGallery();
+    };
+    el.appendChild(d);
+  }
+  refreshDecide();
+}
+function refreshDecide() {
+  const n = selectedIds.size;
+  const btn = $("decideBtn"), note = $("selNote");
+  if (n < 2) {
+    btn.disabled = true;
+    note.textContent = `あと ${2 - n}にん えらんでね(2にん いじょうで はじめられるよ)`;
+    note.style.color = "#d6336c";
+  } else {
+    btn.disabled = false;
+    note.textContent = `${n}にんで たいせん!`;
+    note.style.color = "#2f9e44";
+  }
+}
+
+$("decideBtn").onclick = () => {
+  if (selectedIds.size < 2) { Sound.bad(); return; }
+  Sound.pon();
+  roster = allChars
+    .filter((r) => selectedIds.has(r.id))
+    .map((r) => ({ rec: r, name: r.name || "", voices: r.voices || null }));
+  splitTeams();
+  goTeamReveal();
+};
+
+/* ============================================================
+   2. チームわけ・チーム発表
+   ============================================================ */
+function splitTeams() {
+  const sh = Util.shuffle(roster);
+  const half = Math.ceil(sh.length / 2);     // 奇数なら あかが 1人 おおい
+  teams.red = sh.slice(0, half);
+  teams.blue = sh.slice(half);
+  actors = null;                             // メンバーが かわったので つくりなおす
+}
+function goTeamReveal() { show("teamScreen"); revealTeams(); }
+
+async function revealTeams() {
+  const gen = ++teamGen;
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  $("redMembers").innerHTML = "";
+  $("blueMembers").innerHTML = "";
+  $("startBtn").disabled = true;
+  $("redoBtn").disabled = true;
+
+  const order = [];
+  const maxLen = Math.max(teams.red.length, teams.blue.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (teams.red[i])  order.push(["red", teams.red[i]]);
+    if (teams.blue[i]) order.push(["blue", teams.blue[i]]);
+  }
+
+  await sleep(300);
+  for (const [team, mem] of order) {
+    if (gen !== teamGen) return;
+    Meet.drumroll();
+    await sleep(340);
+    if (gen !== teamGen) return;
+    const box = $(team === "red" ? "redMembers" : "blueMembers");
+    const d = document.createElement("div");
+    d.className = "mt-mem";
+    d.innerHTML = `<img src="${mem.rec.dataURL}" alt=""><div class="nm">${mem.name}</div>`;
+    Ui.thumbFix(d.querySelector("img"), mem.rec);
+    box.appendChild(d);
+    Sound.pon();
+    await sleep(170);
+  }
+  if (gen !== teamGen) return;
+  $("startBtn").disabled = false;
+  $("redoBtn").disabled = false;
+  Ui.msg("よういは いい?", 1200, "#2f9e44");
+}
+
+$("redoBtn").onclick = () => { Sound.tap(); splitTeams(); revealTeams(); };
+$("startBtn").onclick = () => {
+  if ($("startBtn").disabled) return;
+  teamGen++;
+  Sound.pon();
+  startMatch();
+};
+
+/* ============================================================
+   3. しあい(meet.js の たまいれエンジン)
+   ============================================================ */
+async function startMatch() {
+  Meet.stop();
+  show("playScreen");
+  $("banner").classList.add("hidden");
+  $("winOver").classList.add("hidden");
+  if (!actors) actors = await Meet.actors(teams);
+
+  const res = await Meet.run({ key: "tamaire", cv, actors, names: NAMES, ui });
+  if (!res) return;                          // とちゅうで とめられた
+  showResult(res);
+}
+
+/* ============================================================
+   4. けっか はっぴょう
+   ============================================================ */
+function showResult(res) {
+  $("banner").classList.add("hidden");
+  const win = res.win;
+  const members = win ? actors[win].slice() : actors.red.concat(actors.blue);
+  Meet.celebrate({ cv, members, teamKey: win });
+
+  const card = $("winCard"), title = $("winTitle");
+  card.className = "mt-card" + (win ? " " + win : "");
+  title.className = "ttl" + (win ? " " + win : "");
+  title.textContent = win ? `${Meet.MARK[win]} ${NAMES[win]}の かち!` : "ひきわけ!";
+  $("winSub").textContent = `${Meet.MARK.red} ${res.score.red}こ  -  ${Meet.MARK.blue} ${res.score.blue}こ`;
+  $("winOver").classList.remove("hidden");
+  Ui.confetti();
+}
+
+$("rematchBtn").onclick = () => { Sound.pon(); startMatch(); };
+$("reteamBtn").onclick = () => {
+  Sound.tap();
+  Meet.stop();
+  splitTeams();
+  goTeamReveal();
+};
+
+/* ---- 起動 ---- */
+show("selectScreen");
+initSelect();
+</script>
+</body>
+</html>

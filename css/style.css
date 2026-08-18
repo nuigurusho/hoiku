@@ -607,3 +607,243 @@ body.ingame header.bar { display: none; }
 }
 .back-float:active { transform: translateY(5px); box-shadow: none; }
 body.ingame .back-float { display: block; }
+
+/* ============================================================
+   うんどうかい・たまいれ 共通(js/meet.js が つかう ぶひん)
+   ============================================================ */
+
+/* ---------- チームの HUD(のこり人数・とくてん) ---------- */
+.mt-hud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: bold;
+  font-size: clamp(17px, 3.4vw, 26px);
+  margin: 6px 0 8px;
+  flex-wrap: wrap;
+}
+.mt-hud span {
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 18px;
+  box-shadow: 0 3px 0 rgba(150,110,70,.16);
+  white-space: nowrap;
+}
+.mt-hud .mt-red  { color: var(--pink-d); }
+.mt-hud .mt-blue { color: var(--blue-d); }
+.mt-hud .mt-mid  { background: none; box-shadow: none; color: #8a7a68; padding: 0 2px; }
+.mt-hud span:empty { display: none; }
+
+/* ---------- ステージ(canvas + うえに かさねる もの) ---------- */
+.mt-stage { position: relative; max-width: 1000px; margin: 0 auto; }
+
+/* ---------- じっきょうテロップ(下の おび) ---------- */
+.mt-banner {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 40;
+  text-align: center;
+  font-weight: bold;
+  font-size: clamp(15px, 3.2vw, 28px);
+  line-height: 1.2;
+  color: #fff;
+  background: linear-gradient(to top, rgba(18,12,6,.86), rgba(18,12,6,.62));
+  padding: 9px 16px 11px;
+  border-top: 5px solid var(--yellow);
+  pointer-events: none;
+  animation: mt-banner-in .22s ease-out both;
+}
+.mt-banner.red  { border-top-color: var(--pink); }
+.mt-banner.blue { border-top-color: var(--blue); }
+.mt-banner .mt-nm { font-weight: 800; }
+.mt-banner .mt-nm.red  { color: #ff9ec7; }
+.mt-banner .mt-nm.blue { color: #74c0fc; }
+@keyframes mt-banner-in { from { transform: translateY(100%); opacity: 0; } }
+
+/* ---------- canvas に かさねる カード(きょうぎ名・けっか) ---------- */
+.mt-over {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  text-align: center;
+  background: rgba(40,25,10,.35);
+  animation: mt-over-in .25s ease-out both;
+}
+@keyframes mt-over-in { from { opacity: 0; } }
+/* うしろの おいわいアニメを 見せたい ときは くらくしない(カードは 上、ボタンは 下) */
+.mt-over.clear { background: none; justify-content: space-between; }
+.mt-card {
+  background: rgba(255,255,255,.95);
+  border-radius: 26px;
+  border: 5px solid var(--cream-d);
+  box-shadow: 0 8px 0 rgba(150,110,70,.22);
+  padding: 18px 30px 22px;
+  max-width: 92%;
+}
+.mt-card.red  { border-color: var(--pink); box-shadow: 0 8px 0 var(--pink-d); }
+.mt-card.blue { border-color: var(--blue); box-shadow: 0 8px 0 var(--blue-d); }
+.mt-card .no { font-size: clamp(15px, 3vw, 21px); color: #8a7a68; font-weight: bold; }
+.mt-card .ttl { font-size: clamp(26px, 6.5vw, 52px); font-weight: bold; margin: 2px 0; }
+.mt-card .ttl.red  { color: var(--pink-d); }
+.mt-card .ttl.blue { color: var(--blue-d); }
+.mt-card .sub { font-size: clamp(15px, 3.2vw, 22px); color: #6a5c4c; font-weight: bold; }
+.mt-card img.ico { width: clamp(70px, 16vw, 116px); height: auto; display: block; margin: 0 auto; }
+
+/* ---------- チーム発表・チームわけ ---------- */
+.mt-teams {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+  max-width: 980px;
+  margin: 10px auto;
+  flex-wrap: nowrap;
+}
+.mt-teamcol {
+  flex: 1 1 0;
+  min-width: 0;
+  background: #fff;
+  border-radius: 22px;
+  border: 5px solid var(--cream-d);
+  box-shadow: 0 6px 0 var(--cream-d);
+  padding: 10px 8px 14px;
+}
+.mt-teamcol.red  { border-color: var(--pink); box-shadow: 0 6px 0 var(--pink-d); background: #fff0f6; }
+.mt-teamcol.blue { border-color: var(--blue); box-shadow: 0 6px 0 var(--blue-d); background: #e7f5ff; }
+.mt-teamcol h3 { margin: 4px 0 8px; font-size: clamp(20px, 4.5vw, 30px); }
+.mt-teamcol.red  h3 { color: var(--pink-d); }
+.mt-teamcol.blue h3 { color: var(--blue-d); }
+.mt-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
+  gap: 8px;
+  min-height: 90px;
+  align-content: start;
+}
+.mt-mem { text-align: center; animation: mt-pop .4s cubic-bezier(.2,1.6,.4,1) both; }
+.mt-mem img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 12px;
+  border: 3px solid #eee2d0;
+}
+.mt-mem .nm { font-size: 13px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-vs { align-self: center; font-size: clamp(24px, 6vw, 46px); font-weight: bold; color: #a99; flex: 0 0 auto; }
+@keyframes mt-pop { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
+
+/* チーム名の にゅうりょく(じゆうに かえられる) */
+.mt-teamname {
+  font-family: inherit;
+  font-size: clamp(18px, 4vw, 26px);
+  font-weight: bold;
+  text-align: center;
+  width: 100%;
+  border: 3px dashed var(--cream-d);
+  border-radius: 14px;
+  background: #fff;
+  padding: 6px 8px;
+  margin: 2px 0 8px;
+  color: var(--ink);
+}
+.mt-teamcol.red  .mt-teamname { color: var(--pink-d); border-color: #ffc2d8; }
+.mt-teamcol.blue .mt-teamname { color: var(--blue-d); border-color: #b8dcff; }
+.mt-teamname:focus { outline: 3px solid var(--yellow); border-style: solid; }
+
+/* ---------- オン・オフの トグル(きょうぎえらび) ---------- */
+.mt-rows { max-width: 620px; margin: 10px auto; display: flex; flex-direction: column; gap: 10px; }
+.mt-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 3px solid #eee2d0;
+  border-radius: 16px;
+  padding: 8px 14px;
+  text-align: left;
+}
+.mt-row img.ico { width: 54px; height: 54px; object-fit: contain; flex: 0 0 auto; }
+.mt-row .txt { flex: 1; min-width: 0; }
+.mt-row .txt b { display: block; font-size: 19px; color: var(--ink); }
+.mt-row .txt span { display: block; font-size: 12.5px; color: #8a7a68; }
+.mt-toggle {
+  flex: 0 0 auto;
+  width: 68px; height: 38px;
+  border-radius: 999px;
+  border: none;
+  background: #d9cfc0;
+  position: relative;
+  cursor: pointer;
+  transition: background .15s;
+  padding: 0;
+}
+.mt-toggle .knob {
+  position: absolute; top: 4px; left: 4px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2);
+  transition: left .15s;
+}
+.mt-toggle.on { background: var(--green); }
+.mt-toggle.on .knob { left: 34px; }
+.mt-row.off { opacity: .5; }
+
+/* ---------- とくてんばん ---------- */
+.mt-score {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 720px;
+  margin: 8px auto;
+  font-weight: bold;
+}
+.mt-score .side {
+  flex: 1 1 0;
+  min-width: 0;
+  background: #fff;
+  border-radius: 18px;
+  border: 4px solid var(--cream-d);
+  box-shadow: 0 5px 0 var(--cream-d);
+  padding: 6px 10px 8px;
+}
+.mt-score .side.red  { border-color: var(--pink); box-shadow: 0 5px 0 var(--pink-d); color: var(--pink-d); }
+.mt-score .side.blue { border-color: var(--blue); box-shadow: 0 5px 0 var(--blue-d); color: var(--blue-d); }
+.mt-score .side .nm { font-size: clamp(14px, 3vw, 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-score .side .pt { font-size: clamp(24px, 6vw, 40px); line-height: 1.1; }
+.mt-score .side .pt small { font-size: .45em; }
+.mt-score .mid { align-self: center; color: #a99; font-size: clamp(16px, 4vw, 26px); }
+
+/* ---------- きょうぎの けっか一覧(さいごの はっぴょう) ---------- */
+.mt-list { max-width: 620px; margin: 8px auto; font-size: 16px; }
+.mt-list .li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.9);
+  border-radius: 14px;
+  padding: 6px 14px;
+  margin: 6px 0;
+}
+.mt-list .li .ev { flex: 0 0 auto; font-weight: bold; }
+.mt-list .li .sc { flex: 1; color: #8a7a68; font-size: 14px; }
+.mt-list .li .wn { font-weight: bold; }
+.mt-list .li .wn.red  { color: var(--pink-d); }
+.mt-list .li .wn.blue { color: var(--blue-d); }
+
+@media (max-width: 560px) {
+  /* スマホ縦:ゲーム中は ヘッダーが「← もどる」フローティングになるので
+     HUDが かぶらないよう 上に すきまを あける */
+  .mt-hud { margin-top: 50px; }
+  .mt-teams { gap: 6px; }
+  .mt-teamcol { padding: 8px 6px 10px; }
+}
