@@ -48,7 +48,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=12"></script>
+<script src="../js/core.js?v=13"></script>
 <script src="../js/rig.js?v=11"></script>
 <script>
 "use strict";
@@ -344,13 +344,17 @@ function draw() {
     sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#e7f5ff");
     ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
   }
+  BgFx.clouds(ctx, performance.now() / 1000, 1280, [
+    { x: 150, y: 90, size: 96, speed: 2.1, alpha: 0.17 },
+    { x: 820, y: 150, size: 66, speed: 1.4, alpha: 0.13 },
+  ]);
 
   const n = g.racers.length;
   const laneH = 620 / n;
   g.racers.forEach((r, i) => {
     const laneY = 80 + laneH * (i + 1);
     // コース
-    ctx.fillStyle = i % 2 ? "rgba(150,208,108,.82)" : "rgba(169,221,126,.82)";
+    ctx.fillStyle = i % 2 ? "rgba(164,208,132,.38)" : "rgba(189,220,160,.34)";
     ctx.fillRect(0, laneY - laneH + 24, 1280, laneH - 8);
     // ゴールライン
     ctx.fillStyle = "#fff";

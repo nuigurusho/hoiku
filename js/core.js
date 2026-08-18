@@ -1475,6 +1475,29 @@ const Entry = {
   },
 };
 
+/* ---------------- BgFx(主役をじゃましない背景の小さな動き) ---------------- */
+const BgFx = {
+  cloud(ctx, x, y, size, alpha = 0.2) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.ellipse(x, y, size * 0.55, size * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x - size * 0.22, y - size * 0.08, size * 0.24, size * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + size * 0.12, y - size * 0.13, size * 0.3, size * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  },
+
+  clouds(ctx, seconds, width, items) {
+    for (const item of items) {
+      const margin = item.size;
+      const x = ((item.x + seconds * item.speed + margin) % (width + margin * 2)) - margin;
+      this.cloud(ctx, x, item.y, item.size, item.alpha);
+    }
+  },
+};
+
 /* ---------------- Fullscreen(ぜんがめん ボタン) ----------------
    みぎうえに ちいさく うかべる。ページを いどうすると ぜんがめんは
    かいじょされるので、core.js を よむ ページ ぜんぶに つける。

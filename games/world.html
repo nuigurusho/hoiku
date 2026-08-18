@@ -32,7 +32,7 @@
   <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
 </main>
 
-<script src="../js/core.js?v=12"></script>
+<script src="../js/core.js?v=13"></script>
 <script src="../js/rig.js?v=11"></script>
 <script>
 "use strict";
@@ -746,8 +746,10 @@ document.getElementById("stages").querySelectorAll("button").forEach((b) => {
 function drawLandBack() {
   if (stageBgs.land) ctx.drawImage(stageBgs.land, 0, 0, W, H);
   else { ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, W, H); }
-  ctx.fillStyle = "rgba(116,184,85,.9)";
-  ctx.fillRect(0, GROUND + 6, W, H - GROUND);
+  BgFx.clouds(ctx, T, W, [
+    { x: 110, y: 92, size: 105, speed: 2.4, alpha: 0.18 },
+    { x: 760, y: 155, size: 72, speed: 1.6, alpha: 0.14 },
+  ]);
 }
 
 function drawWaterBack() {
@@ -760,6 +762,11 @@ function drawWaterBack() {
     g.addColorStop(0, "#c5e8ff"); g.addColorStop(1, "#3b8fd6");
     ctx.fillStyle = g; ctx.fillRect(0, SURFACE, W, H - SURFACE);
   }
+
+  BgFx.clouds(ctx, T, W, [
+    { x: 210, y: 72, size: 82, speed: 1.8, alpha: 0.15 },
+    { x: 920, y: 118, size: 58, speed: 1.2, alpha: 0.12 },
+  ]);
 
   /* 水面ぜんたいの なみ */
   ctx.save();
