@@ -16,11 +16,10 @@
 
 <main>
   <div id="startScreen" class="panel">
-    <h2>あそびかたを えらんでね</h2>
+    <h2>どの かおで あそぶ?</h2>
 
     <div class="mode-sec">🌈 ゆるふわ<span class="tag">かちまけなし・すきなだけ あそべる</span></div>
-    <div class="row"><button class="btn big green" id="basicBtn">きほんのかお で あそぶ</button></div>
-    <div class="row"><button class="btn big pink" id="picBtn">とりこんだ えで あそぶ</button></div>
+    <div class="gallery" id="faceGallery"></div>
     <p class="note" id="picNote"></p>
 
     <p class="note">「とりこみ・せってい」で 顔の絵を とりこんで「ふくわらいパーツ」を せっていすると、みんなの おえかきで あそべます</p>
@@ -105,6 +104,73 @@ function buildBasicParts() {
   ];
 }
 
+/* サムネイル用:buildBasicParts と おなじ ならびの ただしい いち(FACE中心からの ずれ) */
+const BASIC_HOME = [
+  [-80, -25], [80, -25],
+  [-82, -95], [82, -95],
+  [0, 40],
+  [0, 125],
+];
+
+/* ---- きほんのかお(みみ / かお本体)を FACE座標で えがく ---- */
+function paintBasicEars(c) {
+  c.lineWidth = 8;
+  c.lineCap = "round";
+  c.strokeStyle = "#c8871e";
+  c.fillStyle = "#ffe0b3";
+  for (const s of [-1, 1]) {
+    c.beginPath();
+    c.arc(FACE.x + s * FACE.r * 0.98, FACE.y - 20, 44, 0, 7);
+    c.fill(); c.stroke();
+  }
+}
+function paintBasicFace(c, cheeks) {
+  c.lineWidth = 8;
+  c.lineCap = "round";
+  c.strokeStyle = "#c8871e";
+  c.fillStyle = "#ffe0b3";
+  c.beginPath();
+  c.ellipse(FACE.x, FACE.y, FACE.r, FACE.r * 1.06, 0, 0, 7);
+  c.fill(); c.stroke();
+  // かみのけ
+  c.strokeStyle = "#7f5539";
+  for (let i = -3; i <= 3; i++) {
+    c.beginPath();
+    c.moveTo(FACE.x + i * 30, FACE.y - FACE.r * 1.02);
+    c.quadraticCurveTo(FACE.x + i * 34, FACE.y - FACE.r * 1.3, FACE.x + i * 42, FACE.y - FACE.r * 1.22);
+    c.stroke();
+  }
+  if (cheeks) {
+    c.fillStyle = "rgba(255,135,135,.55)";
+    c.beginPath(); c.arc(FACE.x - 120, FACE.y + 70, 34, 0, 7); c.fill();
+    c.beginPath(); c.arc(FACE.x + 120, FACE.y + 70, 34, 0, 7); c.fill();
+  }
+}
+
+/* ---- きほんのかおの サムネイル(かおえらびの ボタン用)---- */
+let basicThumb = null;
+function basicThumbURL() {
+  if (basicThumb) return basicThumb;
+  const S = 420, HALF = 300;
+  const c = Util.makeCanvas(S, S);
+  const cx = c.getContext("2d");
+  cx.fillStyle = "#fff";      // ほかの サムネイルと おなじ しろ地に そろえる
+  cx.fillRect(0, 0, S, S);
+  cx.save();
+  cx.translate(S / 2, S / 2);
+  cx.scale((S / 2) / HALF, (S / 2) / HALF);
+  cx.translate(-FACE.x, -FACE.y);
+  paintBasicEars(cx);
+  paintBasicFace(cx, false);
+  buildBasicParts().forEach((p, i) => {
+    const h = BASIC_HOME[i] || [0, 0];
+    cx.drawImage(p.cv, FACE.x + h[0] - p.cv.width / 2, FACE.y + h[1] - p.cv.height / 2);
+  });
+  cx.restore();
+  basicThumb = c.toDataURL("image/png");
+  return basicThumb;
+}
+
 /* ---- キャンバスを倍率つきで作りなおす ---- */
 function scaleCanvas(src, s) {
   const w = Math.max(1, Math.round(src.width * s));
@@ -184,7 +250,6 @@ function beginPlay() {
 }
 
 function startBasic() {
-  Sound.tap();
   mode = "basic";
   faceBase = null; sampleImg = null;
   parts = buildBasicParts();
@@ -192,7 +257,6 @@ function startBasic() {
 }
 
 async function startPic(rec) {
-  Sound.tap();
   mode = "pic";
   sampleImg = await Util.loadImage(rec.dataURL);
   parts = await buildPicParts(rec);
@@ -200,25 +264,28 @@ async function startPic(rec) {
   beginPlay();
 }
 
-/* ---- せんたく画面 ---- */
+/* ---- かおえらび(きほんのかおも とりこんだ かおも おなじ ならびで えらぶ)---- */
+const BASIC_ID = "__basic__";
 let faces = [];
+
 async function initSelect() {
   const recs = await Store.ensureSamples();
   faces = recs.filter((r) => r.fukuParts && r.fukuParts.length);
-  if (!faces.length) {
-    $("picBtn").disabled = true;
-    $("picNote").textContent = "「ふくわらいパーツ」を せっていした 絵が まだ ないよ";
-  }
+  renderFaces();
+}
+
+function renderFaces() {
+  const basic = { id: BASIC_ID, name: "きほんの かお", dataURL: basicThumbURL() };
+  Ui.renderGallery($("faceGallery"), [basic].concat(faces), (r) => {
+    if (r.id === BASIC_ID) startBasic();
+    else startPic(r);
+  });
+  $("picNote").textContent = faces.length
+    ? "かおを タッチすると はじまるよ"
+    : "「ふくわらいパーツ」を せっていした 絵は まだ ないよ。きほんの かおで あそべるよ!";
 }
 initSelect();
 
-$("basicBtn").onclick = startBasic;
-/* あそびかたを えらんだ あとに、かおえらび せんようがめんへ */
-$("picBtn").onclick = async () => {
-  Sound.tap();
-  const rec = await Picker.one({ title: "どの かおで あそぶ?", records: faces });
-  if (rec) startPic(rec);
-};
 $("againBtn").onclick = () => {
   Sound.tap();
   $("playScreen").classList.add("hidden");
@@ -278,37 +345,11 @@ let last = performance.now();
   ctx.lineCap = "round";
 
   // きほんのかおは みみを いつも見せる(めかくし中もめじるしに)
-  if (mode === "basic") {
-    ctx.strokeStyle = "#c8871e";
-    ctx.fillStyle = "#ffe0b3";
-    for (const s of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(FACE.x + s * FACE.r * 0.98, FACE.y - 20, 44, 0, 7);
-      ctx.fill(); ctx.stroke();
-    }
-  }
+  if (mode === "basic") paintBasicEars(ctx);
 
   if (!blind) {
     if (mode === "basic") {
-      ctx.strokeStyle = "#c8871e";
-      ctx.fillStyle = "#ffe0b3";
-      ctx.beginPath();
-      ctx.ellipse(FACE.x, FACE.y, FACE.r, FACE.r * 1.06, 0, 0, 7);
-      ctx.fill(); ctx.stroke();
-      // かみのけ
-      ctx.strokeStyle = "#7f5539";
-      for (let i = -3; i <= 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(FACE.x + i * 30, FACE.y - FACE.r * 1.02);
-        ctx.quadraticCurveTo(FACE.x + i * 34, FACE.y - FACE.r * 1.3, FACE.x + i * 42, FACE.y - FACE.r * 1.22);
-        ctx.stroke();
-      }
-      // ほっぺ(かんせいのとき)
-      if (wiggle > 0) {
-        ctx.fillStyle = "rgba(255,135,135,.55)";
-        ctx.beginPath(); ctx.arc(FACE.x - 120, FACE.y + 70, 34, 0, 7); ctx.fill();
-        ctx.beginPath(); ctx.arc(FACE.x + 120, FACE.y + 70, 34, 0, 7); ctx.fill();
-      }
+      paintBasicFace(ctx, wiggle > 0);   // ほっぺは かんせいのとき だけ
     } else if (faceBase) {
       // とりこんだ絵の「パーツが抜けたかお」
       ctx.drawImage(faceBase, FACE.x - faceBase.width / 2, FACE.y - faceBase.height / 2);
