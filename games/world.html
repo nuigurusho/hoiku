@@ -24,7 +24,7 @@
   <div class="stages" id="stages">
     <button class="btn green active" data-stage="land" aria-label="おかの せかい"><img src="../assets/stages/world-land.png" alt=""></button>
     <button class="btn blue" data-stage="water" aria-label="みずの せかい"><img src="../assets/stages/world-water.png" alt=""></button>
-    <button class="btn orange" data-stage="house" aria-label="いえの なか"><img src="../assets/stages/world-house.png" alt=""></button>
+    <button class="btn orange" data-stage="house" aria-label="いえの なか"><img src="../assets/stages/world-house.png?v=3" alt=""></button>
   </div>
   <p style="text-align:center;font-weight:bold;margin:6px" id="hint">
     とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!
@@ -66,7 +66,7 @@ async function init() {
   const [land, water, house] = await Promise.all([
     Util.loadImage("../assets/backgrounds/world-land.jpg"),
     Util.loadImage("../assets/backgrounds/world-water.jpg"),
-    Util.loadImage("../assets/backgrounds/world-house.jpg"),
+    Util.loadImage("../assets/backgrounds/world-house.jpg?v=2"),
   ]);
   stageBgs.land = land; stageBgs.water = water; stageBgs.house = house;
   /* とりこんだ背景があるときは、おかのせかいだけその絵を使う */
@@ -462,7 +462,7 @@ function drawLamp(x, y) {
 }
 
 function drawHouseBack() {
-  /* おえかき背景の上に、あそび場所とかぐをかさねる */
+  /* いえ本体は背景画像、動きに関係する家具だけを手前にかさねる */
   if (stageBgs.house) ctx.drawImage(stageBgs.house, 0, 0, W, H);
   else {
     const sky = ctx.createLinearGradient(0, 0, 0, H);
@@ -472,10 +472,12 @@ function drawHouseBack() {
   }
 
   ctx.save();
-  ctx.globalAlpha = stageBgs.house ? 0.84 : 1;
+  ctx.globalAlpha = 1;
 
   ctx.lineWidth = 6; ctx.lineJoin = "round"; ctx.lineCap = "round";
 
+  /* 背景画像がないときだけ、従来のいえ本体をえがく */
+  if (!stageBgs.house) {
   /* やね */
   ctx.beginPath();
   ctx.moveTo(HX - 40, HY + 4); ctx.lineTo(HX + 160, HY - 62);
@@ -530,6 +532,7 @@ function drawHouseBack() {
   ctx.beginPath(); ctx.arc(1164, F1 - 74, 6, 0, 7); ctx.fill();
   drawLamp(250, HY + 8); drawLamp(700, HY + 8);
   drawLamp(430, F2 + 16); drawLamp(780, F2 + 16);
+  }
 
   /* --- かぐ(キャラの うしろ) --- */
   ctx.lineWidth = 6;
