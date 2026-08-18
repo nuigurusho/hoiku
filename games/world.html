@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>みんなの せかい</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=8">
+<link rel="stylesheet" href="../css/style.css?v=9">
 <style>
   .stages { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
   .stages .btn { opacity: .55; }
@@ -23,6 +23,7 @@
   <div class="stages" id="stages">
     <button class="btn green active" data-stage="land">🏞️ おかの せかい</button>
     <button class="btn blue" data-stage="water">🌊 みずの せかい</button>
+    <button class="btn orange" data-stage="house">🏠 いえの なか</button>
   </div>
   <p style="text-align:center;font-weight:bold;margin:6px" id="hint">
     とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!
@@ -30,8 +31,8 @@
   <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
 </main>
 
-<script src="../js/core.js?v=8"></script>
-<script src="../js/rig.js?v=8"></script>
+<script src="../js/core.js?v=9"></script>
+<script src="../js/rig.js?v=9"></script>
 <script>
 "use strict";
 const cv = document.getElementById("cv");
@@ -43,6 +44,7 @@ const SURFACE = 250;    // みずの せかいの 水面
 const HINTS = {
   land:  "とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!",
   water: "みんなで せなか およぎ。タッチすると バタ足で すすむよ!",
+  house: "ごはん・おふろ・おしゃべり・おひるね。みんなの くらしを のぞいてみよう!",
 };
 
 let stage = "land";
@@ -78,9 +80,12 @@ init();
 /* ステージに あわせて キャラを ならべなおす */
 function build() {
   actors.length = 0; drops.length = 0; rings.length = 0; bubs.length = 0;
+  for (const sp of SPOTS) sp.by = null;
   const copies = chars.length < 3 ? 2 : 1;   // キャラが すくないときは 2体ずつ
   for (const c of chars) {
-    for (let i = 0; i < copies; i++) actors.push(stage === "water" ? makeSwimmer(c) : makeWalker(c));
+    for (let i = 0; i < copies; i++) {
+      actors.push(stage === "water" ? makeSwimmer(c) : stage === "house" ? makeResident(c) : makeWalker(c));
+    }
   }
 }
 
@@ -262,6 +267,418 @@ function updateSwimmer(a, dt) {
   }
 }
 
+/* ---------------- いえの なか(2かいだての だんめんず) ----------------
+   1かい … だいどころ+しょくたく / リビング / げんかん・かいだん
+   2かい … おふろ / しんしつ / かいだんの うえ
+   じゅうにん(にんげんタイプ)は
+     ごはん・おふろ・おしゃべり(2人)・おひるね・ぶらぶら
+   を じゅんばんに して、かいだんで 1かいと2かいを いききする。
+   ちょうちょは いえの なかを とびまわる ペット。 */
+const HX = 56, HW = 1168, HY = 96;      // いえの ひだり・はば・てんじょう
+const F2 = 380, F1 = 660;               // 2かい・1かいの ゆか(足もと)
+const ST = { lo: 1150, hi: 985 };       // かいだん(1かいがわ・2かいがわ の はし)
+const WALK1 = [92, 1180], WALK2 = [92, 960];
+const TUB = { x: 118, w: 272, top: F2 - 108 };            // おふろ
+const TABLE = { x: 292, w: 252, top: F1 - 78 };           // しょくたく
+const SOFA = { x: 636, w: 286, top: F1 - 62 };            // ソファ
+const FUTON = [{ x: 590, head: -1 }, { x: 822, head: 1 }]; // ふとん(まんなかのx)
+
+const SPOTS = [
+  { kind: "eat",   fl: 1, x: 322, face: 1 },
+  { kind: "eat",   fl: 1, x: 418, face: 1 },
+  { kind: "eat",   fl: 1, x: 514, face: -1 },
+  { kind: "bath",  fl: 2, x: 254, face: 1 },
+  { kind: "chat",  fl: 1, x: 700, face: 1,  pair: 0 },
+  { kind: "chat",  fl: 1, x: 858, face: -1, pair: 1 },
+  { kind: "sleep", fl: 2, x: FUTON[0].x, face: 1, head: FUTON[0].head },
+  { kind: "sleep", fl: 2, x: FUTON[1].x, face: 1, head: FUTON[1].head },
+];
+const DUR = { eat: [9, 16], bath: [10, 20], chat: [10, 22], sleep: [12, 26], idle: [2, 6] };
+
+function makeResident(c) {
+  const pet = c.kind === "fly";
+  const a = {
+    puppet: new Puppet(c.parts, {
+      x: Util.rand(120, 900),
+      y: pet ? Util.rand(HY + 80, F1 - 60) : F1,
+      h: pet ? Util.rand(66, 92) : Util.rand(118, 148),
+      facing: 1,
+    }),
+    name: c.rec.name || "",
+    voices: c.rec.voices || null,
+    pet, fl: 1, act: "idle", spot: null, timer: Util.rand(0.3, 2.5),
+    climb: -1, wob: Math.random() * 6, bubbleT: 0, airY: 0,
+    px: Util.rand(150, 1100), py: Util.rand(HY + 70, F1 - 60),
+  };
+  return a;
+}
+
+/* つぎに なにを するか きめる */
+function chooseAct(a) {
+  a.puppet.roll = 0;
+  if (Math.random() < 0.2) {                       // ぶらぶら する
+    const fl = Math.random() < 0.5 ? 1 : 2;
+    const r = fl === 1 ? WALK1 : WALK2;
+    a.spot = { kind: "idle", fl, x: Util.rand(r[0], r[1]), face: 1, temp: true };
+    a.act = "go";
+    return;
+  }
+  const free = SPOTS.filter((s) => !s.by);
+  if (!free.length) { a.act = "idle"; a.timer = Util.rand(1, 3); return; }
+  // おしゃべりは あいてが すわっていたら ゆうせん
+  const waiting = free.filter((s) => s.kind === "chat" &&
+    SPOTS.some((o) => o.kind === "chat" && o !== s && o.by));
+  let list = waiting.length && Math.random() < 0.75 ? waiting : free;
+  // おふろは 1つだけなので すこし えらばれやすく しておく
+  const weighted = [];
+  for (const sp of list) for (let i = 0; i < (sp.kind === "bath" ? 3 : 1); i++) weighted.push(sp);
+  list = weighted;
+  const s = list[Math.floor(Math.random() * list.length)];
+  s.by = a;
+  a.spot = s;
+  a.act = "go";
+}
+
+function releaseSpot(a) {
+  if (a.spot && !a.spot.temp && a.spot.by === a) a.spot.by = null;
+  a.spot = null;
+}
+
+/* 目的地に ついた */
+function arriveSpot(a) {
+  const s = a.spot, pp = a.puppet;
+  a.act = s.kind;
+  const d = DUR[s.kind] || DUR.idle;
+  a.timer = Util.rand(d[0], d[1]);
+  pp.x = s.x;
+  pp.walking = false;
+  pp.facing = s.face || 1;
+  pp.y = a.fl === 1 ? F1 : F2;
+  pp.roll = 0;
+  if (s.kind === "sleep") {                        // ふとんに よこに なる
+    pp.roll = s.head * Math.PI / 2;
+    pp.y = F2 - 22 + pp.h / 2;
+  }
+}
+
+function updateHouse(a, dt) {
+  const pp = a.puppet;
+  a.wob += dt;
+
+  /* ちょうちょ … いえの なかを ひらひら とびまわる */
+  if (a.pet) {
+    const dx = a.px - pp.x, dy = a.py - pp.y;
+    const d = Math.hypot(dx, dy) || 1;
+    if (d < 16) { a.px = Util.rand(130, 1150); a.py = Util.rand(HY + 70, F1 - 40); }
+    else {
+      pp.x += dx / d * 95 * dt;
+      pp.y += dy / d * 95 * dt;
+      pp.facing = dx >= 0 ? 1 : -1;
+    }
+    pp.walking = true;
+    return;
+  }
+
+  if (a.act === "go") {
+    /* かいだんを のぼりおり */
+    if (a.climb >= 0) {
+      a.climb += dt / 2.8;
+      const t = Math.min(1, a.climb);
+      const up = a.spot.fl === 2;
+      const fx = up ? ST.lo : ST.hi, tx = up ? ST.hi : ST.lo;
+      const fy = up ? F1 : F2, ty = up ? F2 : F1;
+      pp.x = fx + (tx - fx) * t;
+      pp.y = fy + (ty - fy) * t;
+      pp.facing = tx > fx ? 1 : -1;
+      pp.walking = true;
+      if (t >= 1) { a.fl = a.spot.fl; a.climb = -1; }
+      return;
+    }
+    /* かいが ちがえば まず かいだんへ */
+    const goalX = a.spot.fl !== a.fl ? (a.fl === 1 ? ST.lo : ST.hi) : a.spot.x;
+    const d = goalX - pp.x;
+    pp.y = a.fl === 1 ? F1 : F2;
+    if (Math.abs(d) < 9) {
+      if (a.spot.fl !== a.fl) a.climb = 0;
+      else arriveSpot(a);
+    } else {
+      const sp = 70 + pp.h * 0.35;
+      pp.x += Math.sign(d) * Math.min(Math.abs(d), sp * dt);
+      pp.facing = Math.sign(d);
+      pp.walking = true;
+    }
+    return;
+  }
+
+  /* なにかを している */
+  pp.walking = false;
+  switch (a.act) {
+    case "eat":  pp.roll = Math.sin(a.wob * 5.5) * 0.05; break;   // もぐもぐ
+    case "bath": pp.roll = Math.sin(a.wob * 1.5) * 0.04; break;   // ゆらゆら
+    case "chat": pp.roll = Math.sin(a.wob * 3.2) * 0.035; break;
+    case "sleep": break;                                          // すやすや
+    default: pp.roll = 0;
+  }
+  a.timer -= dt;
+  if (a.timer <= 0) { releaseSpot(a); chooseAct(a); }
+}
+
+/* ---- いえを えがく ---- */
+function fillBox(x, y, w, h, fill, stroke, r) {
+  ctx.beginPath();
+  r ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h);
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
+}
+
+function drawWindow(x, y, w, h) {
+  fillBox(x, y, w, h, "#cfeaff", "#7f6a52", 8);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h);
+  ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2);
+  ctx.stroke();
+  ctx.lineWidth = 6;
+}
+
+function drawLamp(x, y) {
+  ctx.strokeStyle = "#8d7b68"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 26); ctx.stroke();
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(x - 26, y + 54); ctx.lineTo(x - 12, y + 26);
+  ctx.lineTo(x + 12, y + 26); ctx.lineTo(x + 26, y + 54);
+  ctx.closePath();
+  ctx.fillStyle = "#ffe8a3"; ctx.fill(); ctx.strokeStyle = "#e6a817"; ctx.stroke();
+}
+
+function drawHouseBack() {
+  /* そと */
+  if (bgImg) ctx.drawImage(bgImg, 0, 0, W, H);
+  else {
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#a5d8ff"); sky.addColorStop(1, "#e7f5ff");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  }
+  ctx.fillStyle = "#8ac96b"; ctx.fillRect(0, F1 + 18, W, H - F1 - 18);
+
+  ctx.lineWidth = 6; ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+  /* やね */
+  ctx.beginPath();
+  ctx.moveTo(HX - 40, HY + 4); ctx.lineTo(HX + 160, HY - 62);
+  ctx.lineTo(HX + HW - 160, HY - 62); ctx.lineTo(HX + HW + 40, HY + 4);
+  ctx.closePath();
+  ctx.fillStyle = "#ffa8a8"; ctx.fill(); ctx.strokeStyle = "#e03131"; ctx.stroke();
+
+  /* いえの がわ */
+  fillBox(HX, HY, HW, F1 + 18 - HY, "#ffe8cc", "#e8590c", 10);
+
+  /* へやの かべがみ */
+  fillBox(HX + 8, HY + 8, 432 - HX, F2 - HY - 8, "#d5f0f7");            // おふろ
+  fillBox(448, HY + 8, 967 - 448, F2 - HY - 8, "#ffe9f1");              // しんしつ
+  fillBox(983, HY + 8, HX + HW - 8 - 983, F1 - HY - 8, "#f1f3f5");      // かいだん
+  fillBox(HX + 8, F2 + 16, 592 - HX, F1 - F2 - 16, "#fff6dd");          // だいどころ
+  fillBox(608, F2 + 16, 932 - 608, F1 - F2 - 16, "#eaf7e2");            // リビング
+
+  /* おふろの タイル */
+  ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 3;
+  for (let x = HX + 8; x < 432; x += 44) { ctx.beginPath(); ctx.moveTo(x, HY + 8); ctx.lineTo(x, F2); ctx.stroke(); }
+  for (let y = HY + 8; y < F2; y += 44) { ctx.beginPath(); ctx.moveTo(HX + 8, y); ctx.lineTo(432, y); ctx.stroke(); }
+  ctx.lineWidth = 6;
+
+  /* なかの かべ(下が とおれる ドアぐち) */
+  ctx.fillStyle = "#f0ddc2"; ctx.strokeStyle = "#e8b784";
+  fillBox(432, HY + 8, 16, F2 - HY - 8 - 150, null, null);   ctx.fill();
+  fillBox(967, HY + 8, 16, F2 - HY - 8 - 150, null, null);   ctx.fill();
+  fillBox(592, F2 + 16, 16, F1 - F2 - 16 - 150, null, null); ctx.fill();
+  fillBox(932, F2 + 16, 16, F1 - F2 - 16 - 150, null, null); ctx.fill();
+
+  /* ゆか */
+  fillBox(HX + 8, F2, 975 - HX - 8, 16, "#d9a066", "#a5682a", 4);   // 2かい(かいだんの ぶんは あけておく)
+  fillBox(HX + 8, F1, HW - 16, 18, "#d9a066", "#a5682a", 4);        // 1かい
+
+  /* かいだん */
+  ctx.fillStyle = "#e0b183"; ctx.strokeStyle = "#a5682a"; ctx.lineWidth = 4;
+  for (let i = 0; i < 8; i++) {
+    const x = ST.lo - i * ((ST.lo - ST.hi) / 8), y = F1 - i * ((F1 - F2) / 8);
+    fillBox(x - 24, y - 10, 30, 12, "#e0b183", "#a5682a", 3);
+  }
+  ctx.strokeStyle = "#a5682a"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(ST.lo + 4, F1 - 78); ctx.lineTo(ST.hi - 6, F2 - 78); ctx.stroke();
+  ctx.lineWidth = 6;
+
+  /* まど・あかり */
+  drawWindow(120, HY + 44, 96, 76);        // おふろ
+  drawWindow(700, HY + 44, 120, 84);       // しんしつ
+  drawWindow(672, F2 + 60, 120, 84);       // リビング
+  drawWindow(1040, HY + 50, 96, 76);       // 2かいホール
+  fillBox(1150, F1 - 150, 66, 150, "#e0b183", "#a5682a", 8);   // げんかんの ドア
+  ctx.fillStyle = "#ffd43b";
+  ctx.beginPath(); ctx.arc(1164, F1 - 74, 6, 0, 7); ctx.fill();
+  drawLamp(250, HY + 8); drawLamp(700, HY + 8);
+  drawLamp(430, F2 + 16); drawLamp(780, F2 + 16);
+
+  /* --- かぐ(キャラの うしろ) --- */
+  ctx.lineWidth = 6;
+  /* おふろの おゆ */
+  fillBox(TUB.x + 8, TUB.top + 10, TUB.w - 16, F1 - F1 + (F2 - TUB.top) - 18, "#8ee0f5");
+  /* シャワー */
+  ctx.strokeStyle = "#adb5bd"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(TUB.x + TUB.w - 26, TUB.top - 96); ctx.lineTo(TUB.x + TUB.w - 26, TUB.top - 40); ctx.stroke();
+  fillBox(TUB.x + TUB.w - 44, TUB.top - 108, 36, 16, "#ced4da", "#868e96", 6);
+  ctx.lineWidth = 6;
+
+  /* ふとん */
+  for (const f of FUTON) {
+    fillBox(f.x - 104, F2 - 26, 208, 26, "#fff0f6", "#f2a8c6", 10);
+    fillBox(f.x + f.head * 78 - 22, F2 - 40, 44, 22, "#fff", "#f2a8c6", 8);   // まくら
+  }
+
+  /* だいどころ(れいぞうこ・ながしだい) */
+  fillBox(96, F1 - 200, 84, 200, "#e7f5ff", "#74a5c9", 10);
+  ctx.strokeStyle = "#74a5c9"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(96, F1 - 128); ctx.lineTo(180, F1 - 128); ctx.stroke();
+  ctx.lineWidth = 6;
+  fillBox(196, F1 - 96, 92, 96, "#ffd8a8", "#c98a3c", 8);
+  fillBox(208, F1 - 104, 68, 16, "#ced4da", "#868e96", 6);
+
+  /* テーブルの あし */
+  fillBox(TABLE.x + 16, TABLE.top, 16, F1 - TABLE.top, "#c98a3c");
+  fillBox(TABLE.x + TABLE.w - 32, TABLE.top, 16, F1 - TABLE.top, "#c98a3c");
+
+  /* リビング(ソファの せもたれ・かべの え・かんようしょくぶつ) */
+  fillBox(SOFA.x, SOFA.top - 48, SOFA.w, 54, "#a8d5a2", "#5e9c62", 14);
+  fillBox(860, F2 + 44, 62, 48, "#ffe8a3", "#e6a817", 6);
+  ctx.fillStyle = "#4c9a4c";
+  for (const [px, py] of [[631, F1 - 52], [617, F1 - 74], [647, F1 - 72]]) {
+    ctx.beginPath(); ctx.ellipse(px, py, 13, 22, 0, 0, 7); ctx.fill();
+  }
+  fillBox(614, F1 - 34, 34, 34, "#e0b183", "#a5682a", 6);
+}
+
+function drawHouseFront() {
+  ctx.lineWidth = 6; ctx.lineJoin = "round";
+  /* おふろの まえがわ + おゆの めん */
+  fillBox(TUB.x, TUB.top + 26, TUB.w, F2 - TUB.top - 26, "#cfeff7", "#79b8c9", 16);
+  ctx.save();
+  ctx.globalAlpha = 0.85; ctx.strokeStyle = "#fff"; ctx.lineWidth = 4;
+  ctx.beginPath();
+  for (let x = TUB.x + 8; x <= TUB.x + TUB.w - 8; x += 16) {
+    const y = TUB.top + 26 + Math.sin(x / 26 + T * 2.2) * 3;
+    x === TUB.x + 8 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  /* あわ */
+  ctx.globalAlpha = 0.9; ctx.fillStyle = "#fff";
+  for (let i = 0; i < 7; i++) {
+    const x = TUB.x + 26 + i * 36 + Math.sin(T * 1.3 + i) * 6;
+    const y = TUB.top + 26 + Math.sin(T * 2 + i * 2) * 5;
+    ctx.beginPath(); ctx.arc(x, y, 8 + (i % 3) * 3, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  ctx.lineWidth = 6;
+
+  /* しょくたく */
+  fillBox(TABLE.x, TABLE.top, TABLE.w, 20, "#e0b183", "#a5682a", 8);
+  for (let i = 0; i < 3; i++) {                                  // おさら
+    const x = TABLE.x + 46 + i * 84;
+    fillBox(x - 26, TABLE.top - 16, 52, 18, "#fff", "#c9a227", 8);
+    ctx.fillStyle = "#ffd43b";
+    ctx.beginPath(); ctx.ellipse(x, TABLE.top - 10, 16, 7, 0, 0, 7); ctx.fill();
+  }
+
+  /* ソファ */
+  fillBox(SOFA.x, SOFA.top, SOFA.w, F1 - SOFA.top, "#8fca8b", "#5e9c62", 16);
+  fillBox(SOFA.x - 10, SOFA.top - 16, 30, F1 - SOFA.top + 16, "#a8d5a2", "#5e9c62", 12);
+  fillBox(SOFA.x + SOFA.w - 20, SOFA.top - 16, 30, F1 - SOFA.top + 16, "#a8d5a2", "#5e9c62", 12);
+}
+
+/* かけぶとん(ねている子の からだに かける) */
+function drawBlanket(a) {
+  const pp = a.puppet, head = a.spot.head;
+  const x0 = pp.x - head * 4;                  // あたまがわは あけておく
+  const x1 = pp.x - head * (pp.h * 0.55 + 10);
+  ctx.lineWidth = 5;
+  fillBox(Math.min(x0, x1), F2 - 40, Math.abs(x1 - x0), 40, "#ffc9de", "#e2789f", 12);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(Math.min(x0, x1) + 8, F2 - 30); ctx.lineTo(Math.max(x0, x1) - 8, F2 - 30);
+  ctx.stroke();
+  ctx.lineWidth = 6;
+}
+
+/* ゆげ・Zzz・ふきだし など */
+function drawHouseFx() {
+  /* おふろの ゆげ */
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = 7; ctx.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    const x = TUB.x + 70 + i * 78;
+    ctx.beginPath();
+    for (let k = 0; k <= 5; k++) {
+      const y = TUB.top - 6 - k * 18;
+      const xx = x + Math.sin(T * 1.6 + k * 0.9 + i) * 12;
+      k === 0 ? ctx.moveTo(xx, y) : ctx.lineTo(xx, y);
+    }
+    ctx.stroke();
+  }
+  /* ごはんの ゆげ */
+  for (let i = 0; i < 3; i++) {
+    const x = TABLE.x + 46 + i * 84;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    for (let k = 0; k <= 3; k++) {
+      const y = TABLE.top - 22 - k * 14;
+      const xx = x + Math.sin(T * 2.2 + k + i) * 8;
+      k === 0 ? ctx.moveTo(xx, y) : ctx.lineTo(xx, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const chatOn = SPOTS.filter((s) => s.kind === "chat" && s.by).length === 2;
+  const turn = Math.floor(T / 2.2) % 2;
+
+  for (const a of actors) {
+    if (a.pet) continue;
+    const pp = a.puppet;
+    if (a.act === "sleep") {
+      /* Zzz */
+      ctx.save();
+      ctx.fillStyle = "#5f6f8a"; ctx.font = "bold 30px sans-serif";
+      for (let i = 0; i < 3; i++) {
+        const t = (T * 0.5 + i * 0.33) % 1;
+        ctx.globalAlpha = 1 - t;
+        ctx.fillText("z", pp.x + (a.spot.head > 0 ? 46 : -60) + t * 26, F2 - 60 - t * 54);
+      }
+      ctx.restore();
+    } else if (a.act === "chat" && chatOn && a.spot.pair === turn) {
+      /* おしゃべりの ふきだし */
+      const bx = pp.x + pp.facing * 46, by = pp.y - pp.h - 34;
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.strokeStyle = "#c9b8a4"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.roundRect(bx - 42, by - 24, 84, 46, 20); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx - pp.facing * 34, by + 30, 7, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#7a6a58";
+      for (let i = 0; i < 3; i++) {
+        const on = (Math.floor(T * 3) % 3) >= i;
+        ctx.globalAlpha = on ? 1 : 0.25;
+        ctx.beginPath(); ctx.arc(bx - 22 + i * 22, by, 6, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    } else if (a.act === "eat" && Math.sin(a.wob * 5.5) > 0.9) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.strokeStyle = "#c9b8a4"; ctx.lineWidth = 3;
+      const bx = pp.x + pp.facing * 40, by = pp.y - pp.h - 24;
+      ctx.beginPath(); ctx.arc(bx, by, 17, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ffd43b";
+      ctx.beginPath(); ctx.ellipse(bx, by + 2, 9, 6, 0, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
 /* ---------------- しぶき ---------------- */
 function splash(x, y, n, dir) {
   for (let i = 0; i < n; i++) {
@@ -284,7 +701,9 @@ cv.addEventListener("pointerdown", (e) => {
     const b = a.puppet.bbox(a.airY);
     if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
       a.bubbleT = 1.6;
-      if (stage === "water") {
+      if (stage === "house") {
+        if (a.act !== "sleep") a.puppet.hop();       // ねている子は そっとしておく
+      } else if (stage === "water") {
         a.kickT = 1.4;                                   // バタ足で ぴゅーっと すすむ
         splash(a.puppet.x, a.swim === "fly" ? a.puppet.y : a.lineY, 12, a.dir);
       } else {
@@ -463,7 +882,9 @@ function loop(now) {
 
   onStage = actors.reduce((n, a) => n + (a.gone ? 0 : 1), 0);
   for (const a of actors) {
-    stage === "water" ? updateSwimmer(a, dt) : updateWalker(a, dt);
+    if (stage === "water") updateSwimmer(a, dt);
+    else if (stage === "house") updateHouse(a, dt);
+    else updateWalker(a, dt);
     if (a.bubbleT > 0) a.bubbleT -= dt;
     a.puppet.update(dt);
   }
@@ -495,6 +916,12 @@ function loop(now) {
     }
     for (const a of list) if (a.swim === "fly" && !a.gone) a.puppet.draw(ctx);
     drawDrops();
+  } else if (stage === "house") {
+    drawHouseBack();
+    for (const a of list) a.puppet.draw(ctx, a.airY);
+    drawHouseFront();
+    for (const a of list) if (a.act === "sleep") drawBlanket(a);   // かけぶとん
+    drawHouseFx();
   } else {
     drawLandBack();
     for (const a of list) a.puppet.draw(ctx, a.airY);
