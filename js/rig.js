@@ -288,38 +288,53 @@ class Puppet {
   }
 
   /* --- ちょうちょ(1まいの はねを 左右はんてんして ひらひら) ---
-     とんでいるとき … はねを 大きく ひらいたり とじたり
-     とまっているとき … はねを パタリと たたんだまま、ときどき 小さく ひらく */
+     とんでいるとき   … 上から みた すがた。はねを 大きく ひらいたり とじたり
+     とまっているとき … ななめから みた すがた。てまえの はねが 大きく みえ、
+                        おくの はねは その うしろに かさなる。
+                        たたんだ ままから ときどき 小さく ひらく */
   _drawButterfly(ctx, part, s) {
     const p = this.parts;
     if (!p.wing) { part(p.body, 0); return; }
     const wave = Math.sin(this.flap);
-    let open, bob, tilt;
+
+    /* はねを 1まい えがく(dir=+1 みぎ / -1 ひだり、w=よこ幅、rot=つけねを中心の かたむき) */
+    const wing = (dir, w, rot, alpha) => {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(p.cx, p.H * 0.5);
+      ctx.rotate(rot);
+      ctx.scale(dir * w, 1);
+      ctx.drawImage(p.wing.c, 0, -p.H * 0.5);
+      ctx.restore();
+    };
+
     if (this.perched) {
-      const pulse = Math.max(0, wave);               // はんぶんの あいだは とじたまま
-      const burst = Math.max(0, Math.sin(this.t * 0.5));  // ひらくのは ときどき まとめて
-      open = 0.14 + 0.40 * pulse * pulse * burst;    // たたんだ → 小さく ひらく
-      bob = 0;                                       // はばたきの たてゆれは なし
-      tilt = Math.sin(this.t * 0.9) * 0.04;          // 花の うえで そよぐ ていど
-    } else {
-      open = 0.32 + 0.68 * (wave * 0.5 + 0.5);       // はねの ひらきぐあい(よこ幅)
-      bob = wave * this.h * 0.035;                   // はばたきに あわせた たてゆれ
-      tilt = Math.sin(this.t * 1.4) * 0.09;          // ふわりと かたむく
+      /* ひらきぐあい 0(たたんでいる)〜1(小さく ひらく)。
+         はんぶんの あいだは とじたまま、ひらくのは ときどき まとめて */
+      const pulse = Math.max(0, wave);
+      const open = pulse * pulse * Math.max(0, Math.sin(this.t * 0.5));
+      const side = this.facing >= 0 ? 1 : -1;        // てまえに みせる はね
+      ctx.save();
+      ctx.translate(p.cx, p.H * 0.5);
+      ctx.rotate(side * (0.30 + Math.sin(this.t * 0.9) * 0.05));   // ななめに とまる
+      ctx.translate(-p.cx, -p.H * 0.5);
+      wing(side, 0.78 + 0.22 * open, -side * (0.10 + 0.34 * open), 0.8);   // おくの はね
+      wing(side, 0.94 + 0.06 * open, 0, 1);                                // てまえの はね
+      ctx.restore();
+      return;
     }
+
+    const open = 0.32 + 0.68 * (wave * 0.5 + 0.5);   // はねの ひらきぐあい(よこ幅)
+    const bob = wave * this.h * 0.035;               // はばたきに あわせた たてゆれ
+    const tilt = Math.sin(this.t * 1.4) * 0.09;      // ふわりと かたむく
 
     ctx.translate(0, -bob / s);
     ctx.save();
     ctx.translate(p.cx, p.H * 0.5);
     ctx.rotate(tilt);
     ctx.translate(-p.cx, -p.H * 0.5);
-    for (const dir of [-1, 1]) {          // おくの はね → てまえの はね の じゅんに
-      ctx.save();
-      ctx.globalAlpha = dir < 0 ? 0.92 : 1;
-      ctx.translate(p.cx, 0);
-      ctx.scale(dir * open, 1);
-      ctx.drawImage(p.wing.c, 0, 0);
-      ctx.restore();
-    }
+    wing(-1, open, 0, 0.92);              // おくの はね → てまえの はね の じゅんに
+    wing(1, open, 0, 1);
     ctx.restore();
   }
 
