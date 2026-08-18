@@ -34,7 +34,7 @@
 </main>
 
 <script src="../js/core.js?v=13"></script>
-<script src="../js/rig.js?v=12"></script>
+<script src="../js/rig.js?v=13"></script>
 <script>
 "use strict";
 const cv = document.getElementById("cv");
@@ -301,7 +301,7 @@ function makeFlutter(c) {
 function flutterTarget(a) {
   a.speed = Util.rand(38, 78);
   const pool = a.canPerch ? flowers.filter((f) => f.x > 30 && f.x < W - 30) : [];
-  if (pool.length && Math.random() < 0.5) {
+  if (pool.length && Math.random() < 0.6) {
     a.perch = pool[Math.floor(Math.random() * pool.length)];
     const head = flowerHead(a.perch);
     a.tx = head.x;
@@ -336,7 +336,7 @@ function updateFlutter(a, dt) {
     const d = Math.hypot(dx, dy) || 1;
     if (d < 14) {
       /* 花に ついたら しばらく とまる。そうでなければ つぎの ばしょへ */
-      if (a.perch) a.rest = Util.rand(2.5, 6.5);
+      if (a.perch) a.rest = Util.rand(3, 8);
       else flutterTarget(a);
     } else {
       pp.x += dx / d * a.speed * dt;
@@ -347,6 +347,8 @@ function updateFlutter(a, dt) {
     }
     pp.walking = true;
   }
+
+  pp.perched = a.rest > 0;                         // とまっているときは はねを たたむ
 
   /* 大きさ … とまっている あいだは その ひまわりの おくゆきに あわせる */
   const want = a.hBase * flowerDepth(a.rest > 0 ? a.perch.y : pp.y);
