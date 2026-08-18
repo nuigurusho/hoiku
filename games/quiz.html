@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>４たくクイズ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=11">
+<link rel="stylesheet" href="../css/style.css?v=12">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -17,6 +17,9 @@
   }
   .qnum { text-align: center; font-size: 20px; font-weight: bold; color: #8a7a68; margin-top: 10px; }
   .stars { text-align: center; font-size: 46px; letter-spacing: 6px; }
+  /* みるモードは こたえを おおきく出すので、絵を すこし ちいさくして ばしょを あける */
+  body.view-mode .qemoji { font-size: 64px; margin: 2px 0; }
+  body.view-mode .qtext { font-size: clamp(20px, 4vw, 32px); }
 </style>
 </head>
 <body>
@@ -31,6 +34,11 @@
     <h2>クイズたいかい!</h2>
     <p class="note hidden" id="customNote"></p>
     <p style="font-size:22px">4つのなかから こたえを えらんでね</p>
+
+    <div class="mode-sec" data-tier="yuru">👀 みる<span class="tag">えらばずに ながめるだけ・「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="row" data-tier="yuru">
+      <button class="btn big yellow" data-mode="miru">みんなで かんがえる</button>
+    </div>
 
     <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">スコアを ためるだけ・まちがえても へいき</span></div>
     <div class="row">
@@ -53,6 +61,11 @@
     <div class="qemoji" id="qemoji"></div>
     <div class="qtext" id="qtext"></div>
     <div class="choices" id="choices"></div>
+    <div class="answer-big hidden" id="answerBig"></div>
+    <div class="row hidden" id="viewRow">
+      <button class="btn big yellow" id="revealBtn">こたえを みる!</button>
+      <button class="btn big green hidden" id="nextQBtn">つぎの もんだい ▶</button>
+    </div>
   </div>
 
   <div id="endScreen" class="panel hidden">
@@ -73,6 +86,7 @@ const $ = (id) => document.getElementById(id);
 const GAME = "quiz";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
+  miru:   { label: "みる", n: 0, view: true },
   ren5:   { label: "ゆるふわ", n: 5 },
   renAll: { label: "ゆるふわ", n: 0 },
   g1: { label: "かんたん",   goal: 5,  missLimit: 3, lv: 1 },
@@ -117,6 +131,7 @@ document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
   };
 });
 $("retryBtn").onclick = () => {
+  document.body.classList.remove("view-mode");
   $("endScreen").classList.add("hidden");
   $("startScreen").classList.remove("hidden");
   refreshLocks();
@@ -131,6 +146,8 @@ function startRun() {
   $("endScreen").classList.add("hidden");
   $("quizScreen").classList.remove("hidden");
   $("gachiHud").classList.toggle("hidden", !mode.goal);
+  document.body.classList.toggle("view-mode", !!mode.view);
+  $("viewRow").classList.toggle("hidden", !mode.view);
   updateGachiHud();
   show();
 }
@@ -153,12 +170,62 @@ function show() {
   box.innerHTML = "";
   const order = Util.shuffle([0, 1, 2, 3]);
   order.forEach((ci, i) => {
-    const b = document.createElement("button");
-    b.className = `choice c${i}`;
+    /* みるモードは おせる ボタンではなく、ながめるだけの フレームに する */
+    const b = document.createElement(mode.view ? "div" : "button");
+    b.className = mode.view ? `choice frame c${i}` : `choice c${i}`;
     b.textContent = q.choices[ci];
-    b.onclick = () => answer(ci, b);
+    if (!mode.view) b.onclick = () => answer(ci, b);
     box.appendChild(b);
   });
+  if (mode.view) {
+    $("answerBig").classList.add("hidden");
+    $("revealBtn").classList.remove("hidden");
+    $("nextQBtn").classList.add("hidden");
+  }
+}
+
+/* ---------- みるモード:「こたえを みる」で こたえを おおきく出す ---------- */
+$("revealBtn").onclick = () => {
+  if (busy) return;
+  busy = true;
+  const q = queue[idx];
+  const ans = q.choices[q.answer];
+  document.querySelectorAll("#choices .choice").forEach((b) => {
+    if (b.textContent === ans) b.classList.add("correct");
+    else b.classList.add("dim");
+  });
+  const box = $("answerBig");
+  box.innerHTML = "";
+  const label = document.createElement("span");
+  label.className = "answer-label";
+  label.textContent = "こたえは…";
+  const text = document.createElement("div");
+  text.textContent = ans;
+  box.append(label, text);
+  box.classList.remove("hidden");
+  Sound.pon();
+  Ui.confetti(1500, 60);
+  $("revealBtn").classList.add("hidden");
+  $("nextQBtn").textContent = idx + 1 < queue.length ? "つぎの もんだい ▶" : "おしまい ▶";
+  $("nextQBtn").classList.remove("hidden");
+};
+
+$("nextQBtn").onclick = () => {
+  Sound.tap();
+  idx++;
+  if (idx < queue.length) show();
+  else finishView();
+};
+
+function finishView() {
+  document.body.classList.remove("view-mode");
+  $("viewRow").classList.add("hidden");
+  $("quizScreen").classList.add("hidden");
+  $("endScreen").classList.remove("hidden");
+  $("stars").textContent = "⭐⭐⭐";
+  $("scoreText").textContent = `${queue.length}もん ぜんぶ みたよ!`;
+  Sound.fanfare();
+  Ui.confetti();
 }
 
 function answer(ci, btn) {

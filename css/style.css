@@ -172,6 +172,55 @@ main { padding: 14px; }
 .choice.dim { opacity: .35; }
 @keyframes pulse { 50% { transform: scale(1.06); } }
 
+/* ---------- みるモード:えらべない「ただのフレーム」＋ こたえ ---------- */
+/* ボタンではないので 白ぬきの ふちどりだけにして、おせそうに 見えないようにする */
+.choice.frame {
+  background: #fff;
+  color: #5b4a36;
+  text-align: center;
+  border: 5px solid var(--shade);
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+.choice.frame:active { transform: none; box-shadow: none; }
+@media (hover: hover) {
+  .choice.frame:hover:not(:active) { transform: none; box-shadow: none; }
+}
+.choice.frame.correct {
+  background: var(--yellow);
+  color: #7a5b00;
+  border-color: var(--yellow-d);
+}
+
+/* おおきく出す こたえ */
+.answer-big {
+  max-width: 860px;
+  margin: 16px auto;
+  padding: 18px 24px;
+  text-align: center;
+  font-size: clamp(34px, 8vw, 68px);
+  font-weight: bold;
+  line-height: 1.25;
+  color: var(--pink);
+  background: #fff;
+  border: 6px solid var(--yellow);
+  border-radius: 28px;
+  box-shadow: 0 8px 0 rgba(150,110,70,.18);
+  animation: answerPop .45s cubic-bezier(.2,1.4,.5,1);
+}
+.answer-big .answer-label {
+  display: block;
+  font-size: 20px;
+  color: #8a7a68;
+  margin-bottom: 6px;
+}
+@keyframes answerPop {
+  0%   { transform: scale(.5); opacity: 0; }
+  70%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* ---------- ギャラリー(画像えらび) ---------- */
 .gallery {
   display: grid;
