@@ -178,6 +178,7 @@ async function startGame(mode) {
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
+  $("touchpad").classList.remove("hidden");   // タッチそうさボタンを だす
   $("clearRow").classList.add("hidden");
   $("starHud").textContent = "⭐ 0 / 10";
   $("timeHud").classList.toggle("hidden", !mode.time);
