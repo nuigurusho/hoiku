@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9ed6f5"/>
+      <stop offset="1" stop-color="#e9f7ff"/>
+    </linearGradient>
+    <linearGradient id="field" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d3ea9e"/>
+      <stop offset="1" stop-color="#a7d167"/>
+    </linearGradient>
+    <g id="hana">
+      <path d="M0 0 L0 -26" stroke="#5c9e3f" stroke-width="4" stroke-linecap="round"/>
+      <ellipse cx="-6" cy="-13" rx="6" ry="3" fill="#79bf55" transform="rotate(-25 -6 -13)"/>
+      <ellipse cx="6" cy="-16" rx="6" ry="3" fill="#79bf55" transform="rotate(25 6 -16)"/>
+      <g fill="#ffd43b" stroke="#e8a723" stroke-width="1.2">
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(45 0 -30)"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(90 0 -30)"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(135 0 -30)"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(180 0 -30)"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(225 0 -30)"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(270 0 -30)"/>
+        <ellipse cx="0" cy="-38" rx="3.4" ry="6.4" transform="rotate(315 0 -30)"/>
+      </g>
+      <circle cx="0" cy="-30" r="5.2" fill="#8a5a2b" stroke="#6b431d" stroke-width="1.2"/>
+    </g>
+  </defs>
+
+  <rect width="100" height="100" fill="url(#sky)"/>
+  <path d="M0 34 Q26 24 52 33 Q78 41 100 31 L100 100 L0 100 Z" fill="#bcdc90"/>
+  <rect y="44" width="100" height="56" fill="url(#field)"/>
+
+  <g opacity=".55" fill="#f5c93f">
+    <circle cx="12" cy="42" r="3"/><circle cx="30" cy="40" r="3"/><circle cx="48" cy="43" r="3"/>
+    <circle cx="66" cy="41" r="3"/><circle cx="86" cy="43" r="3"/>
+  </g>
+
+  <use href="#hana" x="20" y="80" transform="translate(0,0)"/>
+  <use href="#hana" x="52" y="94"/>
+  <use href="#hana" x="82" y="76"/>
+
+  <g fill="#ff922b" stroke="#e8590c" stroke-width="1">
+    <ellipse cx="64" cy="26" rx="5" ry="3.2" transform="rotate(-18 64 26)"/>
+    <ellipse cx="74" cy="26" rx="5" ry="3.2" transform="rotate(18 74 26)"/>
+  </g>
+  <path d="M69 22 L69 30" stroke="#5f3dc4" stroke-width="2" stroke-linecap="round"/>
+</svg>

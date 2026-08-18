@@ -25,6 +25,7 @@
     <button class="btn green active" data-stage="land" aria-label="おかの せかい"><img src="../assets/stages/world-land.png?v=2" alt=""></button>
     <button class="btn blue" data-stage="water" aria-label="みずの せかい"><img src="../assets/stages/world-water.png?v=2" alt=""></button>
     <button class="btn orange" data-stage="house" aria-label="いえの なか"><img src="../assets/stages/world-house.png?v=4" alt=""></button>
+    <button class="btn yellow" data-stage="flower" aria-label="ひまわり ばたけ"><img src="../assets/stages/world-flower.svg" alt=""></button>
   </div>
   <p style="text-align:center;font-weight:bold;margin:6px" id="hint">
     とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!
@@ -51,8 +52,9 @@ function depthScale(y) {
 
 const HINTS = {
   land:  "とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!",
-  water: "みんなで いぬかき。タッチすると ぱしゃぱしゃ すすむよ!",
+  water: "みんなで およぎの じかん。タッチすると ぱしゃぱしゃ すすむよ!",
   house: "ごはん・おふろ・おしゃべり・おひるね。みんなの くらしを のぞいてみよう!",
+  flower: "ひまわり ばたけを ちょうちょが たくさん とんでいるよ。タッチしてみてね!",
 };
 
 let stage = "land";
@@ -97,6 +99,7 @@ init();
 function build() {
   actors.length = 0; drops.length = 0; rings.length = 0; bubs.length = 0;
   for (const sp of SPOTS) sp.by = null;
+  if (stage === "flower") { buildFlowerStage(); return; }
   const copies = chars.length < 3 ? 2 : 1;   // キャラが すくないときは 2体ずつ
   for (const c of chars) {
     /* ちょうちょは そとの子。いえの なかには でてこない */
@@ -177,8 +180,204 @@ function updateWalker(a, dt) {
   if (!a.float) pp.h = a.hBase * depthScale(pp.y);
 }
 
+/* ---------------- ひまわり ばたけ ----------------
+   そらは すこしだけで、はたけの ほうが ひろい。
+   ひまわりも キャラも たて位置で 大きさが かわり(下ほど 大きい)、
+   下の ものから あとで えがくので、人は 花の あいだを あるいて みえる。
+   ちょうちょが 8わり(たりないときは おなじ子を 大きさちがいで)、
+   ふわふわも すこし まぜて、人は 1〜2人が ゆっくり とおりすぎる。 */
+const FL_SKY = 190;                 // そらと はたけの さかいめ
+const FL_FAR = FL_SKY + 30;         // いちばん おくの じめん
+const FL_NEAR = 716;                // いちばん てまえの じめん
+const FL_TOTAL = 13;                // 画面に だす キャラの かず
+
+/* たて位置 → 大きさ。おく(上)は 小さく、てまえ(下)は 大きく */
+function flowerDepth(y) {
+  return 0.26 + Util.clamp((y - FL_FAR) / (FL_NEAR - FL_FAR), 0, 1);
+}
+
+const flowers = [];                 // {x, y, img, seed, tilt} … yの じゅんに ならべる
+let sunImgs = null;                 // ひまわりの え(3しゅるい・つかいまわす)
+
+/* ひまわり1本を えがいて キャンバスに しておく(まいフレーム 線を ひかない) */
+function makeSunflower(petals, headR, stemH) {
+  const w = Math.round(headR * 5), h = Math.round(stemH + headR * 2.6);
+  const c = Util.makeCanvas(w, h);
+  const g = c.getContext("2d");
+  const bx = w / 2, by = h;                       // ねもと
+  const hy = h - stemH;                           // はなの ちゅうしん
+  g.lineCap = "round"; g.lineJoin = "round";
+  /* くき */
+  g.strokeStyle = "#5c9e3f"; g.lineWidth = Math.max(3, headR * 0.28);
+  g.beginPath();
+  g.moveTo(bx, by);
+  g.quadraticCurveTo(bx - headR * 0.2, by - stemH * 0.5, bx, hy);
+  g.stroke();
+  /* は */
+  g.fillStyle = "#8ccc63"; g.strokeStyle = "#4e8c36"; g.lineWidth = Math.max(2, headR * 0.16);
+  for (const d of [-1, 1]) {
+    g.beginPath();
+    g.ellipse(bx + d * headR * 0.75, by - stemH * (d < 0 ? 0.42 : 0.6), headR * 0.85, headR * 0.36, d * 0.5, 0, 7);
+    g.fill(); g.stroke();
+  }
+  /* はなびら */
+  g.fillStyle = "#ffd43b"; g.strokeStyle = "#e8a723"; g.lineWidth = Math.max(2, headR * 0.14);
+  for (let i = 0; i < petals; i++) {
+    g.save();
+    g.translate(bx, hy);
+    g.rotate(i / petals * Math.PI * 2);
+    g.beginPath();
+    g.ellipse(0, -headR * 1.32, headR * 0.42, headR * 0.78, 0, 0, 7);
+    g.fill(); g.stroke();
+    g.restore();
+  }
+  /* まんなか(たね) */
+  g.fillStyle = "#a9702f"; g.strokeStyle = "#6b431d";
+  g.beginPath(); g.arc(bx, hy, headR, 0, 7); g.fill(); g.stroke();
+  g.fillStyle = "rgba(107,67,29,.5)";
+  for (let i = 0; i < 10; i++) {
+    const an = i * 2.4, rr = headR * 0.62 * Math.sqrt((i + 1) / 10);
+    g.beginPath(); g.arc(bx + Math.cos(an) * rr, hy + Math.sin(an) * rr, headR * 0.12, 0, 7); g.fill();
+  }
+  return c;
+}
+
+/* はたけに ひまわりを うえる(おくほど 小さく・たくさん) */
+function plantFlowers() {
+  if (!sunImgs) sunImgs = [makeSunflower(12, 15, 104), makeSunflower(14, 13, 122), makeSunflower(11, 17, 88)];
+  flowers.length = 0;
+  for (let i = 0; i < 62; i++) {
+    const t = Math.pow(Math.random(), 1.5);        // おくを 多めに(てまえは まばらに)
+    const y = FL_FAR + t * (FL_NEAR - FL_FAR);
+    flowers.push({
+      x: Util.rand(-50, W + 50), y,
+      img: sunImgs[i % sunImgs.length],
+      seed: Math.random() * 7,
+      tilt: Util.rand(-0.09, 0.09),
+    });
+  }
+  flowers.sort((a, b) => a.y - b.y);
+}
+
+/* ちょうちょ・ふわふわ … 花の うえを ひらひら */
+function makeFlutter(c) {
+  const y = Util.rand(FL_FAR - 30, FL_NEAR - 30);
+  // 大きさは ばらばらに(ちょうちょは じどうで はんぶんに なる)
+  const hBase = c.kind === "fly" ? Util.rand(55, 112) : Util.rand(78, 126);
+  const a = {
+    puppet: new Puppet(c.parts, { x: Util.rand(0, W), y, h: hBase * flowerDepth(y), facing: 1 }),
+    name: c.rec.name || "",
+    voices: c.rec.voices || null,
+    hBase, wob: Math.random() * 6,
+    speed: Util.rand(38, 78),
+    tx: Util.rand(0, W), ty: Util.rand(FL_FAR - 30, FL_NEAR - 30),
+    bubbleT: 0, airY: 0,
+  };
+  return a;
+}
+
+function updateFlutter(a, dt) {
+  const pp = a.puppet;
+  a.wob += dt * 2.6;
+  const dx = a.tx - pp.x, dy = a.ty - pp.y;
+  const d = Math.hypot(dx, dy) || 1;
+  if (d < 20) {
+    a.tx = Util.rand(-40, W + 40);
+    a.ty = Util.rand(FL_FAR - 30, FL_NEAR - 30);
+    a.speed = Util.rand(38, 78);
+  } else {
+    pp.x += dx / d * a.speed * dt;
+    pp.y += dy / d * a.speed * 0.7 * dt;
+    pp.facing = dx >= 0 ? 1 : -1;
+  }
+  pp.y += Math.sin(a.wob) * 16 * dt;               // ひらひら たてに ゆれる
+  pp.y = Util.clamp(pp.y, FL_FAR - 40, FL_NEAR - 10);
+  pp.walking = true;
+  pp.h = a.hBase * flowerDepth(pp.y);
+}
+
+/* 人 … ときどき 立ちどまりながら、はたけを ゆっくり とおりすぎる */
+function makeStroller(c) {
+  const a = {
+    puppet: new Puppet(c.parts, { x: 0, y: FL_NEAR, h: 160, facing: 1 }),
+    name: "", voices: null, stroll: true,
+    dir: 1, hBase: 170, pause: 0, wob: Math.random() * 6,
+    bubbleT: 0, airY: 0, vy: 0, gone: false, wait: 0,
+  };
+  resetStroller(a);
+  return a;
+}
+
+/* つぎの人が 画面の そとから 入ってくる(だれが 来るかは そのつど えらぶ) */
+function resetStroller(a) {
+  const pp = a.puppet;
+  const pool = chars.filter((c) => c.kind === "walk");
+  if (pool.length) {
+    const c = pool[Math.floor(Math.random() * pool.length)];
+    pp.parts = c.parts;
+    a.name = c.rec.name || "";
+    a.voices = c.rec.voices || null;
+  }
+  a.dir = Math.random() < 0.5 ? 1 : -1;
+  pp.y = Util.rand(FL_FAR + 90, FL_NEAR - 6);
+  a.hBase = Util.rand(150, 195);
+  pp.h = a.hBase * flowerDepth(pp.y);
+  pp.x = a.dir > 0 ? -pp.w - 50 : W + pp.w + 50;
+  pp.facing = a.dir;
+  pp.walking = true;
+  a.pause = 0; a.gone = false; a.wait = 0; a.airY = 0; a.vy = 0;
+}
+
+function updateStroller(a, dt) {
+  const pp = a.puppet;
+  if (a.airY > 0 || a.vy > 0) {                    // タッチされた ときの ジャンプ
+    a.airY += a.vy * dt;
+    a.vy -= 1900 * dt;
+    if (a.airY <= 0) { a.airY = 0; a.vy = 0; }
+  }
+  if (a.gone) {                                    // 画面の そと。つぎの人を まつ
+    a.wait -= dt;
+    if (a.wait <= 0) resetStroller(a);
+    return;
+  }
+  if (a.pause > 0) {
+    a.pause -= dt;
+    pp.walking = false;
+  } else {
+    pp.x += a.dir * (30 + pp.h * 0.12) * dt;       // ゆっくり あるく
+    pp.facing = a.dir;
+    pp.walking = true;
+    if (Math.random() < dt * 0.14) a.pause = Util.rand(1.2, 3.6);   // ときどき 立ちどまる
+  }
+  const edge = pp.w + 70;
+  if (pp.x < -edge || pp.x > W + edge) { a.gone = true; a.wait = Util.rand(1.2, 3.5); }
+  pp.h = a.hBase * flowerDepth(pp.y);
+}
+
+/* ひまわり ばたけの キャラを そろえる */
+function buildFlowerStage() {
+  plantFlowers();
+  const flies = chars.filter((c) => c.kind === "fly");
+  const floats = chars.filter((c) => c.kind === "float");
+  const walkers = chars.filter((c) => c.kind === "walk");
+  const people = walkers.length ? (Math.random() < 0.5 ? 1 : 2) : 0;
+  let nFly = Math.round(FL_TOTAL * 0.8);           // ちょうちょが 8わり
+  let nFloat = Math.max(0, FL_TOTAL - people - nFly);
+  if (!flies.length) { nFloat += nFly; nFly = 0; }        // ちょうちょが ないときは ふわふわで
+  if (!floats.length) { nFly += nFloat; nFloat = 0; }
+  if (!flies.length && !floats.length) { nFly = 0; nFloat = 0; }
+  for (let i = 0; i < nFly; i++) actors.push(makeFlutter(flies[i % flies.length]));
+  for (let i = 0; i < nFloat; i++) actors.push(makeFlutter(floats[i % floats.length]));
+  for (let i = 0; i < people; i++) {
+    const a = makeStroller(walkers[i % walkers.length]);
+    if (i > 0) { a.gone = true; a.wait = Util.rand(6, 14); }   // 2人めは あとから 入ってくる
+    actors.push(a);
+  }
+}
+
 /* ---------------- みずの せかい ----------------
-   dog   … にんげんタイプは いぬかき。からだを おこしたまま、
+   back  … にんげんタイプは あおむけ(背泳ぎ)。ときどき バタ足で すすむ
+   dog   … よつあし(quad)は いぬかき。からだを おこしたまま、
            したはんぶんを 水に つけて ぱしゃぱしゃ かいて すすむ
    fish  … ふわふわ(float)は さかなっぽく、もぐって ゆらゆら・ときどき ダッシュ
    fly   … ちょうちょは 水面の うえを とぶ
@@ -186,7 +385,10 @@ function updateWalker(a, dt) {
 const SINK = 0.36;              // いぬかき:からだの どれだけが 水に つかるか
 
 function makeSwimmer(c) {
-  const swim = c.kind === "fly" ? "fly" : c.kind === "float" ? "fish" : "dog";
+  const swim = c.kind === "fly" ? "fly"
+    : c.kind === "float" ? "fish"
+      : c.parts.type === "quad" ? "dog"   // よつあしは いぬかき
+        : "back";                         // にほんあし・スカートは 背泳ぎ
   const depth = Math.random();                    // 0=おく(小さい) 1=てまえ(大きい)
   // 水面では おかの せかいより ずっと 小さく およぐ
   const h = swim === "fly" ? Util.rand(64, 92)
@@ -205,7 +407,7 @@ function makeSwimmer(c) {
     bubbleT: 0, airY: 0, vy: 0,
   };
   setLane(a);
-  a.puppet.kick = swim === "dog";                 // てあしを こまかく はやく うごかす
+  a.puppet.kick = swim === "back" || swim === "dog";   // てあしを こまかく はやく うごかす
   return a;
 }
 
@@ -248,28 +450,40 @@ function updateSwimmer(a, dt) {
     return;
   }
 
-  if (a.swim === "dog") {
-    /* いぬかき。ときどき つよく かいて(kickT>0)ぐっと すすみ、
-       おわったら nextKick びょう ゆっくり かきながら ういている */
+  if (a.swim === "back" || a.swim === "dog") {
+    const dog = a.swim === "dog";
+    /* ときどき つよく かいて(kickT>0)ぐっと すすみ、
+       おわったら nextKick びょう すべって すすむ */
     a.kickT -= dt;
     if (a.kickT <= -a.nextKick) {
       a.kickT = Util.rand(0.6, 1.5);
       a.nextKick = Util.rand(1.2, 3.4);
-      splash(pp.x + a.dir * pp.w * 0.42, a.lineY, 4, a.dir);
+      dog ? splash(pp.x + a.dir * pp.w * 0.42, a.lineY, 4, a.dir)
+        : splash(pp.x - a.dir * pp.h * 0.42, a.lineY, 4, -a.dir);
     }
     const kicking = a.kickT > 0;
-    pp.walking = true;                           // ずっと ぱしゃぱしゃ かいている
     const want = a.base * (kicking ? 2.2 : 0.5);
     a.speed += (want - a.speed) * Math.min(1, dt * 2.4);
     pp.x += a.dir * a.speed * dt;
-    pp.facing = a.dir;
-    a.wob += dt * (kicking ? 7 : 3.4);
-    /* すすむ ほうへ すこし まえかがみ + かくたびに からだが ゆれる */
-    pp.roll = a.dir * (kicking ? 0.15 : 0.09) + Math.sin(a.wob * 2) * 0.05;
-    /* からだを おこしたまま、したはんぶんを 水に しずめる */
-    pp.y = a.lineY + pp.h * SINK + Math.sin(a.wob) * 5;
-    /* まえで ぱしゃぱしゃ みずを かく */
-    if (Math.random() < dt * (kicking ? 16 : 5)) splash(pp.x + a.dir * pp.w * 0.4, a.lineY, 1, a.dir);
+
+    if (dog) {
+      /* いぬかき … からだを おこしたまま、したはんぶんを 水に しずめる */
+      pp.walking = true;                         // ずっと ぱしゃぱしゃ かいている
+      pp.facing = a.dir;
+      a.wob += dt * (kicking ? 7 : 3.4);
+      /* すすむ ほうへ すこし まえかがみ + かくたびに からだが ゆれる */
+      pp.roll = a.dir * (kicking ? 0.15 : 0.09) + Math.sin(a.wob * 2) * 0.05;
+      pp.y = a.lineY + pp.h * SINK + Math.sin(a.wob) * 5;
+      /* まえで ぱしゃぱしゃ みずを かく */
+      if (Math.random() < dt * (kicking ? 16 : 5)) splash(pp.x + a.dir * pp.w * 0.4, a.lineY, 1, a.dir);
+    } else {
+      /* 背泳ぎ … あおむけで、バタ足のときだけ あしが うごく */
+      pp.walking = kicking;
+      pp.roll = a.dir * Math.PI / 2;             // あおむけ(すすむ ほうへ 頭)
+      a.wob += dt * (kicking ? 5.5 : 2.4);
+      pp.y = a.lineY + pp.h / 2 + Math.sin(a.wob) * 4;
+      if (kicking && Math.random() < dt * 14) splash(pp.x - a.dir * pp.h * 0.45, a.lineY, 1, -a.dir);
+    }
 
   } else if (a.swim === "fish") {
     /* すーっと すすんで、ときどき ぴゅっと ダッシュ・むきを かえる */
@@ -731,6 +945,14 @@ cv.addEventListener("pointerdown", (e) => {
       } else if (stage === "water") {
         a.kickT = 1.4;                                   // バタ足で ぴゅーっと すすむ
         splash(a.puppet.x, a.swim === "fly" ? a.puppet.y : a.lineY, 12, a.dir);
+      } else if (stage === "flower") {
+        if (a.stroll) { a.vy = 460; }                    // 人は ぴょん
+        else {                                           // ちょうちょは びっくりして とびのく
+          a.tx = a.puppet.x + Util.rand(-200, 200);
+          a.ty = Util.clamp(a.puppet.y - Util.rand(50, 150), FL_FAR - 30, FL_NEAR - 30);
+          a.speed = Util.rand(90, 150);
+          a.puppet.jumpT = 0.4;
+        }
       } else {
         a.vy = 520;
       }
@@ -762,6 +984,68 @@ function drawLandBack() {
     { x: 110, y: 92, size: 105, speed: 2.4, alpha: 0.18 },
     { x: 760, y: 155, size: 72, speed: 1.6, alpha: 0.14 },
   ]);
+}
+
+/* ---- ひまわり ばたけ を えがく ---- */
+function drawFlowerBack() {
+  const sky = ctx.createLinearGradient(0, 0, 0, FL_SKY + 60);
+  sky.addColorStop(0, "#8ecdf5"); sky.addColorStop(1, "#eaf8ff");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, FL_SKY + 60);
+
+  BgFx.clouds(ctx, T, W, [
+    { x: 180, y: 58, size: 78, speed: 1.6, alpha: 0.16 },
+    { x: 900, y: 96, size: 56, speed: 1.1, alpha: 0.13 },
+  ]);
+
+  /* とおくの おか */
+  ctx.fillStyle = "#bcdc90";
+  ctx.beginPath();
+  ctx.moveTo(0, FL_SKY + 8);
+  ctx.quadraticCurveTo(W * 0.28, FL_SKY - 34, W * 0.55, FL_SKY + 4);
+  ctx.quadraticCurveTo(W * 0.8, FL_SKY + 34, W, FL_SKY - 6);
+  ctx.lineTo(W, FL_SKY + 60); ctx.lineTo(0, FL_SKY + 60);
+  ctx.closePath(); ctx.fill();
+
+  /* はたけ(下ほど こい きみどり) */
+  const g = ctx.createLinearGradient(0, FL_SKY + 10, 0, H);
+  g.addColorStop(0, "#d5ec9f"); g.addColorStop(1, "#9ecb5e");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, FL_SKY + 22, W, H - FL_SKY - 22);
+
+  /* おくの ひまわりの かたまり(かすんだ きいろの おび) */
+  ctx.save();
+  ctx.globalAlpha = 0.5; ctx.fillStyle = "#f5c93f";
+  for (let i = 0; i < 46; i++) {
+    const x = (i * 97 + 30) % (W + 40) - 20;
+    const y = FL_FAR - 12 + Math.sin(i * 1.7) * 6;
+    ctx.beginPath(); ctx.arc(x, y, 5 + (i % 3), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ひまわりを 1本 えがく(かぜで ゆれる) */
+function drawSunflower(f) {
+  const s = flowerDepth(f.y);
+  ctx.save();
+  ctx.translate(f.x, f.y);
+  ctx.rotate(f.tilt + Math.sin(T * 1.2 + f.seed) * 0.045);
+  ctx.scale(s, s);
+  ctx.drawImage(f.img, -f.img.width / 2, -f.img.height);
+  ctx.restore();
+}
+
+/* 花と キャラを たて位置じゅんに かさねる(人は 花の あいだを あるく) */
+function drawFlowerField(list) {
+  let i = 0;
+  for (const f of flowers) {
+    while (i < list.length && list[i].puppet.y <= f.y) {
+      const a = list[i++];
+      a.puppet.draw(ctx, a.airY);
+    }
+    drawSunflower(f);
+  }
+  while (i < list.length) { const a = list[i++]; a.puppet.draw(ctx, a.airY); }
 }
 
 function drawWaterBack() {
@@ -838,52 +1122,65 @@ function drawBubs() {
   ctx.restore();
 }
 
-/* いぬかきの子の まわりに ひろがる みず(からだの うしろに しく) */
+/* およいでいる子の まわりの あわ(からだの したに しく) */
 function foamR(pp) { return Math.max(pp.w * 0.55, pp.h * 0.3); }
 
 function drawFoamBack(a) {
   const pp = a.puppet;
   const r = foamR(pp);
+  const dog = a.swim === "dog";
   ctx.save();
   ctx.globalAlpha = 0.4; ctx.fillStyle = "#fff";
   ctx.beginPath();
-  ctx.ellipse(pp.x, a.lineY + Math.sin(a.wob) * 3, r * 1.35, r * 0.46, 0, 0, 7);
+  ctx.ellipse(pp.x, a.lineY + Math.sin(a.wob) * 3,
+    dog ? r * 1.35 : pp.h * 0.58, dog ? r * 0.46 : pp.w * 0.44, 0, 0, 7);
   ctx.fill();
   ctx.restore();
 }
 
-/* 水に つかった したはんぶんを かくして、みずぎわの あわと すすんだ あとを えがく */
+/* からだに かかる みずと、すすんできた あと */
 function drawFoamFront(a) {
   const pp = a.puppet;
   const y = a.lineY + Math.sin(a.wob) * 3;
-  const sink = pp.h * SINK;
+  const dog = a.swim === "dog";
   const r = foamR(pp);
   ctx.save();
-  /* 水中の ぶんは みずいろで かくす(ふちは ぼかして 水に とけこませる) */
-  const cy = y + sink * 0.5, rx = r * 1.1, ry = sink * 0.78;
-  const g = ctx.createRadialGradient(pp.x, cy, 1, pp.x, cy, Math.max(rx, ry));
-  g.addColorStop(0, "rgba(126,199,236,.72)");
-  g.addColorStop(0.72, "rgba(126,199,236,.6)");
-  g.addColorStop(1, "rgba(126,199,236,0)");
-  ctx.save();
-  ctx.translate(pp.x, cy);
-  ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry));
-  ctx.translate(-pp.x, -cy);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(pp.x, cy, Math.max(rx, ry), 0, 7);
-  ctx.fill();
-  ctx.restore();
-  /* みずぎわの しろい あわ */
-  ctx.globalAlpha = 0.5; ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.ellipse(pp.x, y, r * 0.9, r * 0.24, 0, 0, 7);
-  ctx.fill();
+  if (dog) {
+    /* いぬかき … 水中の ぶんを みずいろで かくす(ふちは ぼかして 水に とけこませる) */
+    const sink = pp.h * SINK;
+    const cy = y + sink * 0.5, rx = r * 1.1, ry = sink * 0.78, rr = Math.max(rx, ry);
+    const g = ctx.createRadialGradient(pp.x, cy, 1, pp.x, cy, rr);
+    g.addColorStop(0, "rgba(126,199,236,.72)");
+    g.addColorStop(0.72, "rgba(126,199,236,.6)");
+    g.addColorStop(1, "rgba(126,199,236,0)");
+    ctx.save();
+    ctx.translate(pp.x, cy);
+    ctx.scale(rx / rr, ry / rr);
+    ctx.translate(-pp.x, -cy);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pp.x, cy, rr, 0, 7);
+    ctx.fill();
+    ctx.restore();
+    /* みずぎわの しろい あわ */
+    ctx.globalAlpha = 0.5; ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.ellipse(pp.x, y, r * 0.9, r * 0.24, 0, 0, 7);
+    ctx.fill();
+  } else {
+    /* 背泳ぎ … からだの したがわに かかる みずの ライン */
+    ctx.strokeStyle = "#fff"; ctx.lineCap = "round";
+    ctx.globalAlpha = 0.5; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(pp.x, y, pp.h * 0.5, pp.w * 0.34, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+  }
   /* すすんできた あと(うしろに のびる すじ) */
+  const len = dog ? r * 1.2 : pp.h * 0.55;
   ctx.strokeStyle = "#fff"; ctx.lineCap = "round";
   ctx.globalAlpha = 0.32; ctx.lineWidth = 5;
   for (let i = 0; i < 3; i++) {
-    const from = r * 1.2 + i * 26 + a.speed * 0.12;
+    const from = len + i * 26 + a.speed * 0.12;
     ctx.beginPath();
     ctx.moveTo(pp.x - a.dir * from, y + Math.sin(T * 4 + i) * 3);
     ctx.lineTo(pp.x - a.dir * (from + 16), y + Math.sin(T * 4 + i + 1) * 3);
@@ -933,6 +1230,7 @@ function loop(now) {
   for (const a of actors) {
     if (stage === "water") updateSwimmer(a, dt);
     else if (stage === "house") updateHouse(a, dt);
+    else if (stage === "flower") (a.stroll ? updateStroller : updateFlutter)(a, dt);
     else updateWalker(a, dt);
     if (a.bubbleT > 0) a.bubbleT -= dt;
     a.puppet.update(dt);
@@ -948,9 +1246,9 @@ function loop(now) {
 
   /* --- 描画 --- */
   ctx.clearRect(0, 0, W, H);
-  /* 奥のキャラから描く。おかの せかいは たて位置(下ほど てまえ)、
+  /* 奥のキャラから描く。おかの せかい・ひまわり ばたけは たて位置(下ほど てまえ)、
      ほかは 大きさ(小さいほど おく)で じゅんばんを きめる */
-  const list = stage === "land"
+  const list = (stage === "land" || stage === "flower")
     ? actors.slice().sort((x, y) => x.puppet.y - y.puppet.y)
     : actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
 
@@ -961,7 +1259,7 @@ function loop(now) {
     drawVeil();
     drawSurface();
     for (const a of list) {
-      if (a.swim !== "dog" || a.gone) continue;
+      if ((a.swim !== "back" && a.swim !== "dog") || a.gone) continue;
       drawFoamBack(a);
       a.puppet.draw(ctx);
       drawFoamFront(a);
@@ -974,6 +1272,9 @@ function loop(now) {
     drawHouseFront();
     for (const a of list) if (a.act === "sleep") drawBlanket(a);   // かけぶとん
     drawHouseFx();
+  } else if (stage === "flower") {
+    drawFlowerBack();
+    drawFlowerField(list);
   } else {
     drawLandBack();
     for (const a of list) a.puppet.draw(ctx, a.airY);
