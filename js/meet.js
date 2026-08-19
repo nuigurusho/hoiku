@@ -61,17 +61,28 @@ const Meet = (() => {
   }
 
   /* ---- ページの DOM を エンジンに つなぐ ---- */
+  const BANNER_MS = 2400;          // テロップが 出ている ながさ
+  let bannerT = 0, bannerOutT = 0;
+
   function ui(els) {
     return {
+      /* テロップは 出来事が あった ときだけ 出して、BANNER_MS で 自分から 消える。
+         まえは 出しっぱなしで、ずっと 画面の下を ふさいでいた。
+         つぎの テロップが きたら すぐ 入れかわる。 */
       banner(list, team) {
         const b = els.banner;
         if (!b) return;
-        if (!list) { b.classList.add("hidden"); return; }
+        clearTimeout(bannerT); clearTimeout(bannerOutT);
+        if (!list) { b.classList.add("hidden"); b.classList.remove("out"); return; }
         b.className = "mt-banner" + (team ? " " + team : "");
         b.textContent = "";
         for (const n of list) b.appendChild(n);
-        b.classList.remove("hidden");
+        b.classList.remove("hidden", "out");
         b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";   // アニメを 再生し直す
+        bannerT = setTimeout(() => {
+          b.classList.add("out");
+          bannerOutT = setTimeout(() => b.classList.add("hidden"), 220);
+        }, BANNER_MS);
       },
       hud(s) {
         if (els.hudRed)  els.hudRed.textContent  = s.red  || "";
@@ -363,6 +374,8 @@ const Meet = (() => {
       red:  `${MARK.red} ${M.names.red} ${p.red}てん`,
       blue: `${MARK.blue} ${M.names.blue} ${p.blue}てん`,
       mid:  "かけっこ",
+      n:    { red: p.red, blue: p.blue },
+      unit: { red: "てん", blue: "てん" },
     });
   }
 
@@ -502,6 +515,7 @@ const Meet = (() => {
           }
           Sound.beep(520 + Math.min(n, 20) * 24, 0.09, "triangle", 0.16);
         }
+        tmHud(M);
         if (E.cnt.red >= E.score.red && E.cnt.blue >= E.score.blue && E.stateT > 1.2) tmEnd(M);
       }
 
@@ -607,10 +621,16 @@ const Meet = (() => {
 
   function tmHud(M) {
     const E = M.E;
+    /* かぞえて いる あいだは、かごの 中の 玉と おなじ「かぞえた かず」を 出す */
+    const counting = E.state === "count" || E.state === "over";
+    const v = counting ? E.cnt : E.score;
     M.ui.hud({
-      red:  `${MARK.red} ${M.names.red} ${E.score.red}こ`,
-      blue: `${MARK.blue} ${M.names.blue} ${E.score.blue}こ`,
+      red:  `${MARK.red} ${M.names.red} ${v.red}こ`,
+      blue: `${MARK.blue} ${M.names.blue} ${v.blue}こ`,
       mid:  E.state === "play" ? `のこり ${Math.ceil(E.time)}びょう` : "たまいれ",
+      n:    { red: v.red, blue: v.blue },
+      unit: { red: "こ", blue: "こ" },
+      sec:  E.state === "play" ? Math.ceil(E.time) : null,
     });
   }
 
@@ -707,13 +727,9 @@ const Meet = (() => {
     ctx.beginPath(); ctx.ellipse(0, 0, 62, 13, 0, 0, 7);
     ctx.fillStyle = "#d9b382"; ctx.fill();
     ctx.lineWidth = 5; ctx.strokeStyle = "#a97f4a"; ctx.stroke();
-    // かず
-    ctx.font = "bold 44px sans-serif";
-    ctx.textAlign = "center";
-    ctx.lineWidth = 7; ctx.strokeStyle = "#fff";
-    ctx.strokeText(String(shown), 0, -22);
-    ctx.fillStyle = COLD[key];
-    ctx.fillText(String(shown), 0, -22);
+    /* かごの 上に かずは 出さない。
+       おなじ すうじが 上の チップにも 出ていて 2かしょに なるため。
+       入った しゅんかんは「+1」の うきもじ、たまった かずは かごの 中の 玉で わかる。 */
     ctx.restore();
     ctx.textAlign = "left";
   }
@@ -841,6 +857,8 @@ const Meet = (() => {
       red:  `${MARK.red} ${M.names.red} のこり ${dbCount(M, "red")}にん`,
       blue: `${MARK.blue} ${M.names.blue} のこり ${dbCount(M, "blue")}にん`,
       mid:  "ドッヂボール",
+      n:    { red: dbCount(M, "red"), blue: dbCount(M, "blue") },
+      unit: { red: "にん", blue: "にん" },
     });
   }
 
@@ -1209,10 +1227,14 @@ const Meet = (() => {
   function rlHud(M) {
     const E = M.E;
     const state = (t) => (t.done ? `ゴール! ${t.rank}い` : `${Math.min(t.leg + 1, E.LEGS)}/${E.LEGS}にんめ`);
+    const num  = (t) => (t.done ? t.rank : Math.min(t.leg + 1, E.LEGS));
+    const unit = (t) => (t.done ? "い" : "にんめ");
     M.ui.hud({
       red:  `${MARK.red} ${M.names.red} ${state(E.T.red)}`,
       blue: `${MARK.blue} ${M.names.blue} ${state(E.T.blue)}`,
       mid:  M._lead || "リレー",
+      n:    { red: num(E.T.red), blue: num(E.T.blue) },
+      unit: { red: unit(E.T.red), blue: unit(E.T.blue) },
     });
   }
 
@@ -1623,7 +1645,11 @@ const Meet = (() => {
     });
   }
 
-  /* opts: {cv, members, teamKey, trophy} */
+  /* opts: {cv, members, teamKey, trophy}
+     members は「がめんに 出す 人 ぜんぶ」。teamKey が かった チーム。
+     かった チームは とびはねる。まけた チームは くらくせず、
+     その場で からだを ゆらして はくしゅ(まけた子の えも ちゃんと 見せる)。
+     teamKey が null(どうてん)なら みんな とびはねる。 */
   function celebrate(opts) {
     stop();
     const cv = opts.cv;
@@ -1642,9 +1668,15 @@ const Meet = (() => {
       if (cur !== token) return;
       const dt = Math.min(0.04, (now - last) / 1000); last = now;
       for (const a of list) {
-        a.hopCd -= dt;
-        if (a.hopCd <= 0 && a.puppet.jumpT <= 0) { a.puppet.jumpT = 0.5; a.hopCd = Util.rand(0.05, 0.35); }
         a.puppet.walking = false;
+        if (!opts.teamKey || a.team === opts.teamKey) {
+          a.hopCd -= dt;
+          if (a.hopCd <= 0 && a.puppet.jumpT <= 0) { a.puppet.jumpT = 0.5; a.hopCd = Util.rand(0.05, 0.35); }
+        } else {
+          // はくしゅ:とばずに、からだを ゆらす
+          a.puppet.jumpT = 0;
+          a.puppet.roll = Math.sin(a.puppet.t * 7) * 0.11;
+        }
         a.puppet.update(dt);
       }
       const g = ctx.createLinearGradient(0, 0, 0, CH);
@@ -1663,8 +1695,13 @@ const Meet = (() => {
       const order = list.slice().sort((a, b) => a.puppet.y - b.puppet.y);
       for (const a of order) {
         a.puppet.draw(ctx);
-        ctx.font = "bold 24px sans-serif";
         ctx.textAlign = "center";
+        // まけた チームには はくしゅを つける(くらくする かわりに、うごきで ちがいを 出す)
+        if (opts.teamKey && a.team !== opts.teamKey) {
+          ctx.font = `${Math.round(a.puppet.h * 0.34)}px serif`;
+          ctx.fillText("👏", a.puppet.x, a.puppet.y - a.puppet.h - 6);
+        }
+        ctx.font = "bold 24px sans-serif";
         ctx.fillStyle = COLD[a.team];
         ctx.fillText(a.name, a.puppet.x, a.puppet.y + 26);
       }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>うんどうかい</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=17">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -22,7 +22,6 @@
   .uk-panel { max-width: 900px; }
   .uk-mem { cursor: pointer; }
   .uk-mem:active { transform: scale(.94); }
-  #progLbl { text-align: center; margin: 2px 0 6px; font-weight: bold; }
   .uk-skip { text-align: center; margin: 6px 0 0; }
   .uk-skip button { font-size: 14px; padding: 8px 16px; }
 </style>
@@ -74,23 +73,23 @@
 
   <!-- ============ ほんばん の がめん ============ -->
   <div id="playScreen" class="hidden">
-    <div class="mt-score">
-      <div class="side red"><div class="nm" id="scNameRed">あかチーム</div><div class="pt"><span id="scPtRed">0</span><small>てん</small></div></div>
-      <div class="mid">VS</div>
-      <div class="side blue"><div class="nm" id="scNameBlue">あおチーム</div><div class="pt"><span id="scPtBlue">0</span><small>てん</small></div></div>
-    </div>
-    <p class="note" id="progLbl"></p>
-    <div class="mt-hud">
-      <span class="mt-red"  id="hudRed"></span>
-      <span class="mt-mid"  id="hudMid"></span>
-      <span class="mt-blue" id="hudBlue"></span>
+    <!-- あそび中に つねに 出るのは この おびだけ。
+         そうごう点は ここには 出さず、さいごの そうごうけっかで 1回だけ 見せる。 -->
+    <div class="uk-top" id="topBar">
+      <div class="uk-chip red" id="chipRed">
+        <span class="lbl" id="lblRed">あかチーム</span><span class="n" id="nRed">0</span><span class="u" id="uRed"></span>
+      </div>
+      <div class="uk-prog" id="progRow"></div>
+      <div class="uk-chip blue" id="chipBlue">
+        <span class="n" id="nBlue">0</span><span class="u" id="uBlue"></span><span class="lbl" id="lblBlue">あおチーム</span>
+      </div>
     </div>
     <div class="mt-stage">
       <canvas id="cv" class="stage" width="1280" height="720"></canvas>
       <div class="mt-banner hidden" id="banner"></div>
       <div class="mt-over hidden" id="over"></div>
     </div>
-    <div class="uk-skip" id="skipRow"><button class="btn gray" id="skipBtn">この きょうぎを とばす</button></div>
+    <div class="uk-skip hidden" id="skipRow"><button class="btn gray" id="skipBtn">この きょうぎを とばす</button></div>
     <div class="mt-list hidden" id="finaleList"></div>
     <div class="row hidden" id="finaleRow"></div>
   </div>
@@ -98,7 +97,7 @@
 
 <script src="js/core.js?v=18"></script>
 <script src="js/rig.js?v=15"></script>
-<script src="js/meet.js?v=11"></script>
+<script src="js/meet.js?v=12"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -114,7 +113,8 @@ const EVENTS = [
 ];
 const WIN_PT = 2, DRAW_PT = 1;
 
-const ui = Meet.ui({ banner: $("banner"), hudRed: $("hudRed"), hudBlue: $("hudBlue"), hudMid: $("hudMid") });
+const ui = Meet.ui({ banner: $("banner") });
+ui.hud = renderHud;          // きょうぎの すうじは 上の チップに 出す(下で さだめる)
 
 /* ---- したくの じょうたい ---- */
 let allChars = [];
@@ -313,7 +313,10 @@ async function runProgramme() {
   $("skipRow").classList.add("hidden");
   $("finaleList").classList.add("hidden");
   $("finaleRow").classList.add("hidden");
-  renderScore();
+  showTop(false);
+  hudPrev.red = hudPrev.blue = null;
+  $("lblRed").textContent = names.red;
+  $("lblBlue").textContent = names.blue;
 
   card({ no: "うんどうかい", ttl: "よういちゅう…", sub: "キャラの じゅんびを しています" });
   actors = await Meet.actors({ red: members("red"), blue: members("blue") });
@@ -331,36 +334,42 @@ async function runProgramme() {
 
   for (let i = 0; i < list.length; i++) {
     const ev = list[i];
-    $("progLbl").textContent = `だい${i + 1}きょうぎ / ぜん${list.length}きょうぎ`;
 
-    // --- きょうぎの しょうかい ---
+    // --- きょうぎの しょうかい(この ときは カードだけ) ---
     card({ no: `だい${i + 1}きょうぎ`, icon: ev.icon, ttl: ev.name, sub: ev.desc });
     Meet.drumroll();
     Sound.pon();
     await pause(2600, "はじめる!");
     if (myRun !== runId) return;
 
-    // --- きょうぎ 本体 ---
+    // --- きょうぎ 本体(上の おびを 出す) ---
     hideCard();
+    hudPrev.red = hudPrev.blue = null;
+    renderProg(i);
+    showTop(true);
     $("skipRow").classList.remove("hidden");
     skipReq = false;
     let res = await Meet.run({ key: ev.key, cv, actors, names, ui, quick: true });
     if (myRun !== runId) return;
     $("skipRow").classList.add("hidden");
-    $("banner").classList.add("hidden");
     if (!res) {
       if (!skipReq) return;                       // やめた
       res = { win: null, score: { red: 0, blue: 0 }, label: "とばした" };
     }
 
-    // --- てんすう ---
+    // --- きまった しゅんかん:光らせて、UIを 消して「ま」を つくる ---
+    await breakBeat();
+    if (myRun !== runId) return;
+    showTop(false);
+
+    // --- てんすう(そうごう点は ここでは 出さない) ---
     if (res.win) pts[res.win] += WIN_PT;
     else { pts.red += DRAW_PT; pts.blue += DRAW_PT; }
     log.push({ ev, res });
-    renderScore();
 
     const lastOne = i === list.length - 1;
     card({
+      top: true,
       no: `${ev.name} の けっか`,
       ttl: res.win ? `${Meet.MARK[res.win]} ${names[res.win]} の かち!` : "ひきわけ!",
       sub: `${res.label}  /  ${res.win ? `+${WIN_PT}てん` : `りょうチーム +${DRAW_PT}てん`}`,
@@ -376,11 +385,11 @@ async function runProgramme() {
 
 /* ---- そうごう ゆうしょう はっぴょう ---- */
 async function finale(myRun) {
-  $("progLbl").textContent = "そうごう けっか";
-  ui.hud({ red: "", blue: "", mid: "" });
+  showTop(false);
+  $("skipRow").classList.add("hidden");
 
   // ためて…
-  card({ no: "そうごう けっか", ttl: "ゆうしょうは…?", sub: "ドキドキ…" });
+  card({ top: true, no: "そうごう けっか", ttl: "ゆうしょうは…?", sub: "ドキドキ…" });
   Meet.drumroll();
   await sleep(700); Meet.drumroll();
   await sleep(700); Meet.drumroll();
@@ -388,8 +397,11 @@ async function finale(myRun) {
   if (myRun !== runId) return;
 
   const win = pts.red === pts.blue ? null : (pts.red > pts.blue ? "red" : "blue");
-  const cheering = win ? actors[win].slice() : actors.red.concat(actors.blue);
-  Meet.celebrate({ cv, members: cheering, teamKey: win });
+  /* まけた チームも がめんに のこす。くらくする かわりに、かった チームだけ
+     とびはねさせて ちがいを 出す(まけた子の えも ちゃんと 見えるように) */
+  const everyone = actors.red.concat(actors.blue);
+  const cheering = win ? actors[win].slice() : everyone;
+  Meet.celebrate({ cv, members: everyone, teamKey: win });
 
   Sound.fanfare();
   setTimeout(() => Sound.fanfare(), 900);
@@ -402,8 +414,9 @@ async function finale(myRun) {
   card({
     clear: true,
     team: win,
-    no: `🏆 ${names.red} ${pts.red}てん  -  ${names.blue} ${pts.blue}てん`,
+    no: "🏆 そうごう けっか",
     ttl: win ? `ゆうしょう! ${Meet.MARK[win]} ${names[win]}` : "どうてん! りょうチーム ゆうしょう!",
+    score: pts,                       // そうごう点は ここで 1回だけ 大きく
     sub: win ? "おめでとう!! みんな よくがんばりました!" : "どちらも よくがんばりました!",
   });
 
@@ -455,12 +468,99 @@ $("skipBtn").onclick = () => {
   Meet.stop();
 };
 
-/* ---- とくてんばん ---- */
-function renderScore() {
-  $("scNameRed").textContent = names.red;
-  $("scNameBlue").textContent = names.blue;
-  $("scPtRed").textContent = pts.red;
-  $("scPtBlue").textContent = pts.blue;
+/* ============================================================
+   あそび中の 上の おび
+   ・チップ … きょうぎの すうじ。かわった しゅんかんに はねて 色の わが 出る
+   ・しんこう … きょうぎの アイコンを ならべる。いまの きょうぎだけ 台に のせ、
+                のこりびょうも その中に 入れる(時間の ピルを 別に 置かない)
+   ============================================================ */
+const hudPrev = { red: null, blue: null };
+
+function renderHud(s) {
+  const n = s.n || {}, u = s.unit || {};
+  setChip("red", n.red, u.red);
+  setChip("blue", n.blue, u.blue);
+  setSec(s.sec);
+}
+
+function setChip(key, v, unit) {
+  const red = key === "red";
+  $(red ? "nRed" : "nBlue").textContent = v == null ? "" : v;
+  $(red ? "uRed" : "uBlue").textContent = unit || "";
+  if (hudPrev[key] != null && v != null && v !== hudPrev[key]) popChip($(red ? "chipRed" : "chipBlue"));
+  hudPrev[key] = v == null ? null : v;
+}
+
+/* かわった ほうに 目が いくように、数字を はねさせて わを ひろげる。
+   1こずつ かぞえる ときは 何回も つづくので、みじかい 間は かさねない */
+const popAt = { red: 0, blue: 0 };
+function popChip(el) {
+  const key = el.id === "chipRed" ? "red" : "blue";
+  const now = performance.now();
+  if (now - popAt[key] < 260) return;
+  popAt[key] = now;
+  el.classList.remove("pop");
+  void el.offsetWidth;                 // アニメを 最初から やり直す
+  el.classList.add("pop");
+}
+
+/* のこりびょうは いまの きょうぎの 台の 中に 出す(ない きょうぎは 出さない) */
+function setSec(sec) {
+  const now = $("progRow").querySelector(".ev.now");
+  if (!now) return;
+  const s = now.querySelector(".sec"), su = now.querySelector(".secu");
+  if (!s) return;
+  const on = sec != null;
+  s.textContent = on ? sec : "";
+  su.textContent = on ? "びょう" : "";
+  now.classList.toggle("hurry", on && sec <= 10);
+}
+
+const ARROW = '<svg class="arrow" width="13" height="13" viewBox="0 0 12 12" aria-hidden="true">'
+  + '<path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3"'
+  + ' stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+const CHECK = '<svg class="done" viewBox="0 0 16 16" aria-hidden="true">'
+  + '<circle cx="8" cy="8" r="7" fill="#51cf66" stroke="#fff" stroke-width="2"></circle>'
+  + '<path d="M4.6 8.2 L7 10.6 L11.4 5.6" fill="none" stroke="#fff" stroke-width="2.2"'
+  + ' stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+
+/* cur ばんめの きょうぎを あそんでいる、という ならびを つくる。
+   まる い だけの しるしでは 何の きょうぎか わからないので、
+   しょうかいカードや したく画面と おなじ アイコンを そのまま つかう。 */
+function renderProg(cur) {
+  const row = $("progRow");
+  row.innerHTML = "";
+  chosen().forEach((ev, i) => {
+    if (i) row.insertAdjacentHTML("beforeend", ARROW);
+    const d = document.createElement("div");
+    d.className = "ev " + (i < cur ? "past" : i === cur ? "now" : "next");
+    d.innerHTML = `<img src="${ev.icon}" alt="${ev.name}">`
+      + (i < cur ? CHECK : "")
+      + (i === cur ? '<span class="sec"></span><span class="secu"></span>' : "");
+    row.appendChild(d);
+  });
+}
+
+/* きまった しゅんかん:白く 光らせ、UIを 0.3びょう 消して「ま」を つくる。
+   ここが きょうぎの きれめだと からだで わかるようにする。 */
+async function breakBeat() {
+  const st = document.querySelector(".mt-stage");
+  if (st) {
+    const f = document.createElement("div");
+    f.className = "uk-flash";
+    st.appendChild(f);
+    setTimeout(() => f.remove(), 420);
+  }
+  Sound.tick();
+  await sleep(240);
+  $("topBar").classList.add("uk-hush");
+  ui.banner(null);
+  await sleep(300);
+}
+
+function showTop(on) {
+  $("topBar").classList.toggle("hidden", !on);
+  $("topBar").classList.remove("uk-hush");
 }
 
 /* ============================================================
@@ -475,10 +575,12 @@ function button(cls, label, fn) {
   return b;
 }
 
-/* o: {no, ttl, sub, icon, team} */
+/* o: {no, ttl, sub, icon, team, clear, top, score}
+   top   … まんなかではなく 上1/3に よせる(キャラを かくさない)
+   score … そうごう点。うんどうかいで 1回だけ、さいごに 大きく 出す */
 function card(o) {
   const box = $("over");
-  box.className = "mt-over" + (o.clear ? " clear" : "");
+  box.className = "mt-over" + (o.clear ? " clear" : "") + (o.top ? " top" : "");
   box.innerHTML = "";
   const c = document.createElement("div");
   c.className = "mt-card" + (o.team ? " " + o.team : "");
@@ -499,6 +601,17 @@ function card(o) {
   t.className = "ttl" + (o.team ? " " + o.team : "");
   t.textContent = o.ttl || "";
   c.appendChild(t);
+  if (o.score) {
+    const sc = document.createElement("div");
+    sc.className = "uk-total";
+    sc.innerHTML =
+      `<span class="side red"><span class="nm"></span><span class="pt">${o.score.red}</span></span>`
+      + `<span class="mid">-</span>`
+      + `<span class="side blue"><span class="pt">${o.score.blue}</span><span class="nm"></span></span>`;
+    sc.querySelector(".red .nm").textContent = names.red;
+    sc.querySelector(".blue .nm").textContent = names.blue;
+    c.appendChild(sc);
+  }
   if (o.sub) {
     const s = document.createElement("div");
     s.className = "sub";
