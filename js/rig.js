@@ -297,14 +297,17 @@ class Puppet {
     if (!p.wing) { part(p.body, 0); return; }
     const wave = Math.sin(this.flap);
 
-    /* はねを 1まい えがく(dir=+1 みぎ / -1 ひだり、w=よこ幅、rot=つけねを中心の かたむき) */
-    const wing = (dir, w, rot, alpha) => {
+    /* とまるときの じく … からだの まんなかの 線・下から 1/3 の たかさ */
+    const PIVOT_Y = p.H * (2 / 3);
+
+    /* はねを 1まい えがく(dir=+1 みぎ / -1 ひだり、w=よこ幅、rot=じくを中心の かたむき) */
+    const wing = (dir, w, rot, alpha, cy) => {
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.translate(p.cx, p.H * 0.5);
+      ctx.translate(p.cx, cy);
       ctx.rotate(rot);
       ctx.scale(dir * w, 1);
-      ctx.drawImage(p.wing.c, 0, -p.H * 0.5);
+      ctx.drawImage(p.wing.c, 0, -cy);
       ctx.restore();
     };
 
@@ -313,13 +316,15 @@ class Puppet {
          はんぶんの あいだは とじたまま、ひらくのは ときどき まとめて */
       const pulse = Math.max(0, wave);
       const open = pulse * pulse * Math.max(0, Math.sin(this.t * 0.5));
-      const side = this.facing >= 0 ? 1 : -1;        // てまえに みせる はね
+      /* むいている ほうへ 40どくらい かたむいて とまる。
+         じくは からだの まんなかの 線・下から 1/3 の てん。
+         えがくときの 左右はんてん(facing)で、ひだりむきは ひだりへ かたむく */
       ctx.save();
-      ctx.translate(p.cx, p.H * 0.5);
-      ctx.rotate(side * (0.30 + Math.sin(this.t * 0.9) * 0.05));   // ななめに とまる
-      ctx.translate(-p.cx, -p.H * 0.5);
-      wing(side, 0.78 + 0.22 * open, -side * (0.10 + 0.34 * open), 0.8);   // おくの はね
-      wing(side, 0.94 + 0.06 * open, 0, 1);                                // てまえの はね
+      ctx.translate(p.cx, PIVOT_Y);
+      ctx.rotate(-0.70 + Math.sin(this.t * 0.9) * 0.05);
+      ctx.translate(-p.cx, -PIVOT_Y);
+      wing(1, 0.78 + 0.22 * open, -(0.10 + 0.34 * open), 0.8, PIVOT_Y);   // おくの はね
+      wing(1, 0.94 + 0.06 * open, 0, 1, PIVOT_Y);                         // てまえの はね
       ctx.restore();
       return;
     }
@@ -333,8 +338,8 @@ class Puppet {
     ctx.translate(p.cx, p.H * 0.5);
     ctx.rotate(tilt);
     ctx.translate(-p.cx, -p.H * 0.5);
-    wing(-1, open, 0, 0.92);              // おくの はね → てまえの はね の じゅんに
-    wing(1, open, 0, 1);
+    wing(-1, open, 0, 0.92, p.H * 0.5);   // おくの はね → てまえの はね の じゅんに
+    wing(1, open, 0, 1, p.H * 0.5);
     ctx.restore();
   }
 
