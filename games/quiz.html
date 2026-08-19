@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>４たくクイズ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -72,7 +72,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script src="../js/quiz-data.js?v=11"></script>
 <script>
 "use strict";
@@ -87,6 +87,7 @@ const MODES = {
 };
 let queue = [], idx = 0, score = 0, busy = false;
 let mode = null, streak = 0, miss = 0;
+let left = false;   // 「もどる」で ぬけたか(あとから 出る タイマーを とめる)
 
 function refreshLocks() {
   const lv = Tiers.unlock(GAME);
@@ -122,6 +123,7 @@ document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
     startRun();
   };
 });
+Nav.onLeave(() => { left = true; busy = true; document.body.classList.remove("view-mode"); refreshLocks(); });
 $("retryBtn").onclick = () => {
   document.body.classList.remove("view-mode");
   $("endScreen").classList.add("hidden");
@@ -133,7 +135,7 @@ function startRun() {
   // 内蔵の問題 + この端末で作ったオリジナル問題
   queue = Util.shuffle(window.QUIZ.concat(CustomQuiz.all()));
   if (mode.n > 0) queue = queue.slice(0, mode.n);
-  idx = 0; score = 0; streak = 0; miss = 0;
+  idx = 0; score = 0; streak = 0; miss = 0; left = false;
   $("startScreen").classList.add("hidden");
   $("endScreen").classList.add("hidden");
   $("quizScreen").classList.remove("hidden");
@@ -242,6 +244,7 @@ function answer(ci, btn) {
   if (mode.goal) updateGachiHud();
 
   setTimeout(() => {
+    if (left) return;
     if (streak >= mode.goal) return clearGachi();
     if (miss >= mode.missLimit) return failGachi();
     idx = (idx + 1) % queue.length;   // つぎつぎ 出しつづける

@@ -1617,6 +1617,91 @@ const Fullscreen = {
   },
 };
 
+/* ---------------- Nav(がめんを 1つずつ もどる) ----------------
+   ゲームの中は 「えらぶ → (チームわけ) → あそぶ」のように すすんでいく。
+   「← もどる」と スマホの バックキーは、その 1つ まえの がめんに もどす。
+   いちばん まえの がめんで もどると、はじめて トップページへ もどる。
+
+   ・ゲームの ループを とめる しまつが いるページは Nav.onLeave(fn) を よんでおく */
+const Nav = {
+  /* おく(あそび中)から 手前(えらぶ)の じゅん */
+  ALL: ["endScreen", "playScreen", "quizScreen", "animalScreen", "drawScreen",
+        "teamScreen", "readyScreen", "makeScreen", "setupScreen",
+        "selectScreen", "startScreen", "modeScreen"],
+  /* 「もどる」で もどれる がめん(あそび中・おわりの がめんには もどらない) */
+  RETURN: ["teamScreen", "readyScreen", "makeScreen", "setupScreen",
+           "selectScreen", "startScreen", "modeScreen"],
+
+  stack: [], cur: null, _leave: null,
+
+  /* ゲームがわの しまつ(ループ停止・ボタンの かたづけ など) */
+  onLeave(fn) { this._leave = fn; },
+
+  _el(id) { return document.getElementById(id); },
+
+  _shown() {
+    for (const id of this.ALL) {
+      const el = this._el(id);
+      if (el && !el.classList.contains("hidden")) return id;
+    }
+    return null;
+  },
+
+  /* いま出ている がめんを 見て、通ってきた みちを おぼえておく */
+  sync() {
+    const now = this._shown();
+    if (!now || now === this.cur) return;
+    const i = this.stack.indexOf(now);
+    if (i >= 0) this.stack.length = i;                                   // もどった
+    else if (this.cur && this.RETURN.includes(this.cur)) this.stack.push(this.cur);
+    this.cur = now;
+  },
+
+  /* えらぶ まど(モーダル)が 出ていたら とじる */
+  _closeOverlay() {
+    const ov = document.querySelector(".picker, .modal");
+    if (!ov) return false;
+    const cancel = ov.querySelector('[data-x="0"]') || ov.querySelector(".btn.gray");
+    if (cancel) cancel.click(); else ov.remove();
+    return true;
+  },
+
+  /* 1つ まえの がめんへ。もどれないときは false(→ トップページへ) */
+  back() {
+    if (this._closeOverlay()) return true;
+    if (!this.stack.length) return false;
+    const prev = this.stack[this.stack.length - 1];
+    Sound.tap();
+    if (this._leave) this._leave();
+    for (const id of this.ALL) {
+      const el = this._el(id);
+      if (el) el.classList.toggle("hidden", id !== prev);
+    }
+    this.sync();
+    return true;
+  },
+
+  init() {
+    if (!this.ALL.some((id) => this._el(id))) return;   // がめん切りかえの ないページ
+
+    const mo = new MutationObserver(() => this.sync());
+    for (const id of this.ALL) {
+      const el = this._el(id);
+      if (el) mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+    }
+    this.sync();
+
+    /* スマホの バックキー(ブラウザの もどる)も おなじ うごきに する。
+       りれきを 1つ よぶんに つくっておき、おされたら つかった ぶんを つくりなおす。
+       もう もどれる がめんが ないときだけ、ほんとうに まえのページへ 出る。 */
+    history.pushState({ hoiku: 1 }, "");
+    addEventListener("popstate", () => {
+      if (this.back()) history.pushState({ hoiku: 1 }, "");
+      else history.go(-1);
+    });
+  },
+};
+
 /* ---------------- GameChrome(ゲーム中はヘッダーを消してフローティングもどるだけに) ----------------
    ・#playScreen / #quizScreen / #animalScreen / #drawScreen が表示されたら「ゲーム中」
    ・<body data-chrome="game"> のページ(ずっとゲーム画面のもの)は最初からゲーム中 */
@@ -1630,6 +1715,11 @@ const GameChrome = {
     f.href = (back && back.getAttribute("href")) || "../index.html";
     f.textContent = "← もどる";
     document.body.appendChild(f);
+
+    /* 「もどる」は まず 1つ まえの がめんへ。もどれないときだけ トップページへ */
+    const step = (e) => { if (Nav.back()) e.preventDefault(); };
+    f.addEventListener("click", step);
+    if (back) back.addEventListener("click", step);
 
     const always = document.body.dataset.chrome === "game";
     const screens = ["playScreen", "quizScreen", "animalScreen", "drawScreen"]
@@ -1646,7 +1736,7 @@ const GameChrome = {
     update();
   },
 };
-function initChrome() { GameChrome.init(); Fullscreen.init(); Entry.init(); }
+function initChrome() { Nav.init(); GameChrome.init(); Fullscreen.init(); Entry.init(); }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initChrome);
 } else {

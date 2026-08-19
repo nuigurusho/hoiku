@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>こえで ジャンプ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 </head>
 <body>
 <header class="bar">
@@ -19,8 +19,7 @@
     <h2>こえを だすと キャラが とぶよ!</h2>
     <p style="font-size:20px">「わーーー!」って いっぱい こえを だしてね</p>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">タイマーなし・45びょうで ⭐を あつめる(1〜2さいから)</span></div>
-    <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="yuru">ふわふわ あそぶ</button></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげん・⭐は かぞえないで すきなだけ(1〜2さいから)</span></div>
     <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">⭐ノルマ&ランキング・クリアで つぎが とけるよ</span></div>
@@ -36,15 +35,17 @@
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="scoreHud">⭐ 0</span><span id="timeHud">⏰ 45</span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+    <div class="row hidden" id="honbanRow">
+      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+    </div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
-      <button class="btn big pink hidden" id="honbanBtn">ほんばんへ</button>
       <button class="btn gray" id="backBtn">えらびなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -54,8 +55,8 @@ const GROUND = 640;
 const GAME = "voice";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  yuru: { label: "ゆるふわ", yuru: true },
-  ren:  { label: "れんしゅう", time: 45 },
+  /* れんしゅうは じかんむせいげん。⭐は 出るし とれるけど かぞえない */
+  ren:  { label: "れんしゅう", yuru: true },
   g1: { label: "かんたん",   time: 45, goal: 8,  lv: 1 },
   g2: { label: "ふつう",     time: 45, goal: 12, lv: 2 },
   g3: { label: "むずかしい", time: 45, goal: 16, lv: 3 },
@@ -134,7 +135,7 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     start(m);
   };
 });
-/* れんしゅうが おわったら そのまま ガチンコの かんたんへ */
+/* れんしゅうは おわらないので、あそびながら ガチンコの かんたんへ 行ける */
 $("honbanBtn").onclick = () => {
   if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
@@ -149,6 +150,7 @@ $("backBtn").onclick = () => {
   $("selectScreen").classList.remove("hidden");
   refreshLocks();
 };
+Nav.onLeave(() => { if (G) G.stop = true; refreshLocks(); });
 
 async function start(mode) {
   if (G) G.stop = true;
@@ -159,7 +161,7 @@ async function start(mode) {
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
-  $("honbanBtn").classList.toggle("hidden", !!mode.goal);   // れんしゅうから ほんばんへ
+  $("honbanRow").classList.toggle("hidden", !!mode.goal);   // れんしゅうから ほんばんへ
   $("timeHud").classList.toggle("hidden", !mode.time);
   updateScoreHud();
 

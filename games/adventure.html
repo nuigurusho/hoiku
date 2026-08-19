@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきのたび</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 </head>
 <body>
 <header class="bar">
@@ -19,7 +19,7 @@
     <div class="panel">
       <h2>あそびかたを えらんでね</h2>
 
-      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげんで ⭐10こ あつめて ゴール(1〜2さいから)</span></div>
+      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">ゴールなし・ひだりも みぎも どこまでも(1〜2さいから)</span></div>
       <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・のこりタイムランキング・クリアで つぎが とけるよ</span></div>
@@ -36,9 +36,11 @@
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="starHud">⭐ 0 / 10</span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+    <div class="row hidden" id="honbanRow">
+      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+    </div>
     <div class="row hidden" id="clearRow">
       <button class="btn big green" id="againBtn">もういちど あそぶ</button>
-      <button class="btn big pink hidden" id="honbanBtn">ほんばんへ</button>
       <button class="btn gray" id="selBtn">えらびなおす</button>
     </div>
   </div>
@@ -55,7 +57,7 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -63,7 +65,8 @@ const $ = (id) => document.getElementById(id);
 const GAME = "adventure";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  ren:  { label: "れんしゅう" },
+  /* れんしゅうは ゴールなし。ひだりも みぎも どこまでも 行けて、⭐は かぞえない */
+  ren:  { label: "れんしゅう", free: true },
   g1: { label: "かんたん",   time: 90, lv: 1 },
   g2: { label: "ふつう",     time: 60, lv: 2 },
   g3: { label: "むずかしい", time: 45, lv: 3 },
@@ -137,12 +140,19 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     startGame(m);
   };
 });
-/* れんしゅうを クリアしたら そのまま ガチンコの かんたんへ */
+/* れんしゅうは おわらないので、あそびながら ガチンコの かんたんへ 行ける */
 $("honbanBtn").onclick = () => {
+  if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
+  $("touchpad").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
   document.querySelector('#gachiRow [data-mode="g1"]').click();
 };
+Nav.onLeave(() => {
+  if (G) G.stop = true;
+  $("touchpad").classList.add("hidden");
+  refreshLocks();
+});
 $("againBtn").onclick = () => startGame(curMode);
 $("selBtn").onclick = () => {
   $("playScreen").classList.add("hidden");
@@ -169,13 +179,19 @@ async function startGame(mode) {
   const cv = $("cv"), ctx = cv.getContext("2d");
   const WORLD = 3400, GROUND = 645;
   const puppet = new Puppet(parts, { h: 175 });
+  const free = !!mode.free;                     // れんしゅう:ゴールなしで どこまでも
+  const starY = () => GROUND - (Math.random() < 0.34 ? Util.rand(220, 300) : Util.rand(40, 130));
   const stars = [];
-  for (let i = 0; i < 10; i++) {
-    stars.push({
-      x: 380 + i * ((WORLD - 700) / 10) + Util.rand(-80, 80),
-      y: GROUND - (i % 3 === 2 ? Util.rand(220, 300) : Util.rand(40, 130)),
-      got: false, t: Util.rand(0, 6),
-    });
+  if (free) {
+    for (let i = 0; i < 8; i++) stars.push({ x: 380 + i * 420, y: starY(), got: false, t: Util.rand(0, 6) });
+  } else {
+    for (let i = 0; i < 10; i++) {
+      stars.push({
+        x: 380 + i * ((WORLD - 700) / 10) + Util.rand(-80, 80),
+        y: starY(),
+        got: false, t: Util.rand(0, 6),
+      });
+    }
   }
 
   G = {
@@ -187,9 +203,9 @@ async function startGame(mode) {
   $("playScreen").classList.remove("hidden");
   $("touchpad").classList.remove("hidden");   // タッチそうさボタンを だす
   $("clearRow").classList.add("hidden");
-  $("starHud").textContent = "⭐ 0 / 10";
+  $("starHud").textContent = free ? "⭐ あつめて あそぼう!" : "⭐ 0 / 10";
   $("timeHud").classList.toggle("hidden", !mode.time);
-  $("honbanBtn").classList.toggle("hidden", !!mode.time);   // れんしゅうから ほんばんへ
+  $("honbanRow").classList.toggle("hidden", !free);   // れんしゅうから ほんばんへ
   if (mode.time) $("timeHud").textContent = `⏰ ${mode.time}`;
 
   const starCv = Util.emojiCanvas("⭐", 90);
@@ -218,7 +234,7 @@ async function startGame(mode) {
     let vx = 0;
     if (left) { vx = -SPEED; puppet.facing = -1; }
     if (right) { vx = SPEED; puppet.facing = 1; }
-    g.px = Util.clamp(g.px + vx * dt, 60, WORLD - 60);
+    g.px = free ? g.px + vx * dt : Util.clamp(g.px + vx * dt, 60, WORLD - 60);
     puppet.walking = vx !== 0 && g.grounded;
 
     if (jump && !g.prevA && g.grounded) {
@@ -238,13 +254,23 @@ async function startGame(mode) {
       if (s.got) continue;
       s.t += dt;
       if (Math.abs(pcx - s.x) < 60 && Math.abs(pcy - s.y) < 95) {
-        s.got = true; g.got++;
+        s.got = true;
         Sound.pop();
+        if (free) continue;               // れんしゅうは かぞえない
+        g.got++;
         $("starHud").textContent = `⭐ ${g.got} / 10`;
         if (g.got === 10) Ui.msg("ゴールへ いそげ!🚩", 1500, "#ff922b");
       }
     }
-    if (g.got === 10 && !g.cleared && g.px > WORLD - 220) {
+    /* れんしゅう:とおくの ⭐を かたづけて、進むさきに ランダムに 出しなおす */
+    if (free) {
+      g.stars = g.stars.filter((s) => !s.got && Math.abs(s.x - g.px) < 2600);
+      while (g.stars.length < 8) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        g.stars.push({ x: g.px + side * Util.rand(700, 2400), y: starY(), got: false, t: Util.rand(0, 6) });
+      }
+    }
+    if (!free && g.got === 10 && !g.cleared && g.px > WORLD - 220) {
       g.cleared = true;
       Sound.fanfare();
       Ui.confetti();
@@ -260,10 +286,12 @@ async function startGame(mode) {
     }
 
     /* --- 描画 --- */
-    const cam = Util.clamp(g.px - 500, 0, WORLD - 1280);
+    const cam = free ? g.px - 500 : Util.clamp(g.px - 500, 0, WORLD - 1280);
     ctx.clearRect(0, 0, 1280, 720);
     if (bgImg) {
+      // ひだりへ どこまでも 行けるので、まえ・いま・つぎ の 3まいを ならべて すきまを つくらない
       const off = -(cam * 0.4) % 1280;
+      ctx.drawImage(bgImg, off - 1280, 0, 1280, 720);
       ctx.drawImage(bgImg, off, 0, 1280, 720);
       ctx.drawImage(bgImg, off + 1280, 0, 1280, 720);
     } else {
@@ -279,17 +307,19 @@ async function startGame(mode) {
       const bob = Math.sin(s.t * 3) * 8;
       ctx.drawImage(starCv, s.x - 45, s.y - 45 + bob);
     }
-    if (g.got === 10) ctx.drawImage(flagCv, WORLD - 190, GROUND - 150);
+    if (!free && g.got === 10) ctx.drawImage(flagCv, WORLD - 190, GROUND - 150);
     puppet.x = g.px;
     puppet.y = GROUND;
     puppet.draw(ctx, GROUND - g.py);
     ctx.restore();
 
-    /* すすみぐあいメーター */
-    ctx.fillStyle = "rgba(255,255,255,.7)";
-    ctx.fillRect(340, 18, 600, 14);
-    ctx.fillStyle = "#ff6b9d";
-    ctx.fillRect(340, 18, 600 * (g.px / WORLD), 14);
+    /* すすみぐあいメーター(ゴールの ある ガチンコだけ) */
+    if (!free) {
+      ctx.fillStyle = "rgba(255,255,255,.7)";
+      ctx.fillRect(340, 18, 600, 14);
+      ctx.fillStyle = "#ff6b9d";
+      ctx.fillRect(340, 18, 600 * (g.px / WORLD), 14);
+    }
 
     requestAnimationFrame(loop);
   })(last);
