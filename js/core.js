@@ -228,14 +228,16 @@ const Util = {
     return c;
   },
 
-  /* キャンバス上のポインタ位置 → 論理座標 */
+  /* キャンバス上のポインタ位置 → 論理座標
+     はこの ひりつが 絵と ちがう ときは、object-fit: contain で まんなかに
+     おさまっている ぶんを のぞいて かぞえる(はこ = 絵 なら いままでと おなじ) */
   canvasPos(canvas, ev) {
     const r = canvas.getBoundingClientRect();
     const p = ev.touches ? ev.touches[0] : ev;
-    return {
-      x: (p.clientX - r.left) * canvas.width / r.width,
-      y: (p.clientY - r.top) * canvas.height / r.height,
-    };
+    const sc = Math.min(r.width / canvas.width, r.height / canvas.height) || 1;
+    const left = r.left + (r.width - canvas.width * sc) / 2;
+    const top  = r.top  + (r.height - canvas.height * sc) / 2;
+    return { x: (p.clientX - left) / sc, y: (p.clientY - top) / sc };
   },
 };
 
@@ -1569,6 +1571,43 @@ const BgFx = {
   },
 };
 
+/* ---------------- Rotate(よこむきに してね の おしらせ) ----------------
+   iPad の Safari は ページから がめんを まわせない。ぜんがめんに した ときに
+   たてむき だったら、やさしく おねがいを 出す(よこむきに なったら 自分で 消える)。 */
+const Rotate = {
+  el: null,
+
+  ask() {
+    if (this.el || innerWidth > innerHeight) return;   // もう よこむきなら 出さない
+    const d = document.createElement("div");
+    d.className = "rotate-hint";
+    d.innerHTML =
+      '<div class="mark">\u{1F4F1}</div>' +
+      '<div>よこむきに してね</div>' +
+      '<p class="note" style="font-size:15px;max-width:440px;line-height:1.6">' +
+      'まわらない ときは、がめんの むきの ロックを きってね' +
+      '(みぎうえから 下に スワイプ \u2192 かぎの マーク)。</p>';
+    const b = document.createElement("button");
+    b.className = "btn gray";
+    b.textContent = "このままで いい";
+    b.onclick = () => this.close();
+    d.appendChild(b);
+    document.body.appendChild(d);
+    this.el = d;
+    this._watch = () => { if (innerWidth > innerHeight) this.close(); };
+    addEventListener("resize", this._watch);
+    addEventListener("orientationchange", this._watch);
+  },
+
+  close() {
+    if (!this.el) return;
+    removeEventListener("resize", this._watch);
+    removeEventListener("orientationchange", this._watch);
+    this.el.remove();
+    this.el = null;
+  },
+};
+
 /* ---------------- Fullscreen(ぜんがめん ボタン) ----------------
    みぎうえに ちいさく うかべる。ページを いどうすると ぜんがめんは
    かいじょされるので、core.js を よむ ページ ぜんぶに つける。
@@ -1589,12 +1628,31 @@ const Fullscreen = {
       if (this.isOn()) {
         const exit = document.exitFullscreen || document.webkitExitFullscreen;
         if (exit) exit.call(document);
+        this.unlock();
       } else {
         const el = document.documentElement;
         const req = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (req) req.call(el);
+        const r = req && req.call(el);
+        if (r && r.then) r.then(() => this.landscape(), () => this.landscape());
+        else this.landscape();
       }
     } catch (e) { /* ことわられても なにも おきないだけ */ }
+  },
+
+  /* よこむきに する。できない ブラウザ(iPad の Safari など)では
+     「よこむきに してね」の おしらせを 出す */
+  landscape() {
+    const so = screen.orientation;
+    let p = null;
+    try { if (so && so.lock) p = so.lock("landscape"); } catch (e) { p = null; }
+    if (p && p.then) p.then(() => Rotate.close(), () => Rotate.ask());
+    else Rotate.ask();
+  },
+
+  unlock() {
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }
+    catch (e) { /* きにしない */ }
+    Rotate.close();
   },
 
   init() {
@@ -1712,6 +1770,8 @@ const Nav = {
    ・#playScreen / #quizScreen / #animalScreen / #drawScreen が表示されたら「ゲーム中」
    ・<body data-chrome="game"> のページ(ずっとゲーム画面のもの)は最初からゲーム中 */
 const GameChrome = {
+  BACK_ICON: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+
   init() {
     const bar = document.querySelector("header.bar");
     if (!bar) return;
@@ -1719,7 +1779,9 @@ const GameChrome = {
     const f = document.createElement("a");
     f.className = "back-float";
     f.href = (back && back.getAttribute("href")) || "../index.html";
-    f.textContent = "← もどる";
+    f.innerHTML = this.BACK_ICON;                 /* 文字なし・アイコンだけ */
+    f.title = "もどる";
+    f.setAttribute("aria-label", "もどる");
     document.body.appendChild(f);
 
     /* 「もどる」は まず 1つ まえの がめんへ。もどれないときだけ トップページへ */
@@ -1733,6 +1795,7 @@ const GameChrome = {
     const update = () => {
       const ingame = always || screens.some((s) => !s.classList.contains("hidden"));
       document.body.classList.toggle("ingame", ingame);
+      Stage.update();
     };
     if (!always && !screens.length) return;   // 画面切りかえのないページはそのまま
     if (screens.length) {
@@ -1742,7 +1805,99 @@ const GameChrome = {
     update();
   },
 };
-function initChrome() { Nav.init(); GameChrome.init(); Fullscreen.init(); Entry.init(); }
+
+/* ---------------- Stage(あそび中は ステージを がめん いっぱいに) ----------------
+   ・ステージ(canvas.stage)の ある がめんで あそんでいる あいだだけ はたらく
+   ・canvas の おやばこ(.fit-box)を 絵と おなじ ひりつの おおきさに して、
+     canvas は そのなかを 100% で うめる
+     → 絵が つぶれない・あそぶ ばしょが いちばん 大きい・タッチの ばしょも ずれない
+   ・ステージ いがいの もの(HUD・ボタン・ヒント)は うえ/したに うかせて かさねる
+     → がめんが スクロールしない
+   ふだん(ステージの ない がめん)は なにも しない。 */
+const Stage = {
+  /* うかせる はこを つくる。ならびは いままでどおり(ステージの まえ→うえ、あと→した) */
+  _lift(container, stageChild) {
+    if (container.dataset.fitReady) return;
+    container.dataset.fitReady = "1";
+    const kids = Array.from(container.children);
+    const at = kids.indexOf(stageChild);
+    const top = document.createElement("div");
+    const bottom = document.createElement("div");
+    top.className = "fit-top";
+    bottom.className = "fit-bottom";
+    container.insertBefore(top, stageChild);
+    container.insertBefore(bottom, stageChild.nextSibling);
+    kids.forEach((k, i) => {
+      if (k === stageChild) return;
+      if (/Screen$/.test(k.id || "")) return;        // ほかの がめんは うごかさない
+      (i < at ? top : bottom).appendChild(k);
+    });
+  },
+
+  /* class を つけかえる のは 「まだ ついていない とき」だけ。
+     MutationObserver は おなじ あたいでも 「かわった」と おしえて くるので、
+     なにも かんがえずに つけると 見はり → つけなおし の むげんループに なる */
+  _mark(el, cls, on) {
+    if (!el) return;
+    if (on === false) { if (el.classList.contains(cls)) el.classList.remove(cls); return; }
+    if (!el.classList.contains(cls)) el.classList.add(cls);
+  },
+
+  /* ステージの まわりを ととのえる(1回だけ) */
+  _prepare(cv) {
+    const box = cv.parentElement;
+    if (!box || box === document.body) return null;
+    this._mark(box, "fit-box", true);
+    const container = box.parentElement;
+    if (!container) return null;
+    if (container.tagName !== "MAIN") this._mark(container, "fit-fill", true);
+    this._lift(container, box);
+    return box;
+  },
+
+  /* いま 見えている ステージだけを、あいている ばしょに ぴったり おさめる */
+  fit() {
+    const on = document.body.classList.contains("fitstage");
+    for (const cv of document.querySelectorAll("canvas.stage")) {
+      const box = cv.parentElement;
+      if (!box) continue;
+      if (!on || !cv.getClientRects().length) { box.style.width = ""; box.style.height = ""; continue; }
+      const area = box.parentElement && box.parentElement.getBoundingClientRect();
+      if (!area || !area.width || !area.height) continue;
+      const ar = cv.width / cv.height;
+      const w = Math.min(area.width, area.height * ar);
+      /* まるめすぎると ほんの すこし ひりつが ずれるので 小数のまま */
+      box.style.width = w.toFixed(2) + "px";
+      box.style.height = (w / ar).toFixed(2) + "px";
+    }
+  },
+
+  update() {
+    const ingame = document.body.classList.contains("ingame");
+    let live = null;
+    for (const cv of document.querySelectorAll("canvas.stage")) {
+      if (cv.getClientRects().length) { live = cv; break; }
+    }
+    const on = !!(ingame && live);
+    if (on) this._prepare(live);
+    this._mark(document.body, "fitstage", on);
+    this._mark(document.documentElement, "fitstage", on);
+    this.fit();
+  },
+
+  init() {
+    if (!document.querySelector("canvas.stage")) return;
+    const again = () => this.update();
+    addEventListener("resize", again);
+    addEventListener("orientationchange", again);
+    document.addEventListener("fullscreenchange", again);
+    document.addEventListener("webkitfullscreenchange", again);
+    if (window.visualViewport) visualViewport.addEventListener("resize", again);
+    addEventListener("load", again);
+    this.update();
+  },
+};
+function initChrome() { Nav.init(); GameChrome.init(); Stage.init(); Fullscreen.init(); Entry.init(); }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initChrome);
 } else {

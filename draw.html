@@ -5,9 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかき</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=15">
+<link rel="stylesheet" href="css/style.css?v=16">
 <style>
-  .draw-wrap { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { position: fixed; top: 0; left: 0; right: 0; bottom: 0; inset: 0; }
+  main {
+    padding: 0 0 96px;          /* した=ミニどうぐバーの ばしょを あける */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   .paper {
     background: #fff;
     border-radius: 16px;
@@ -19,14 +28,13 @@
     border-radius: 10px;
     background: #fff;
     touch-action: none;
-    max-width: 100%;
-    max-height: calc(100vh - 150px);
     width: auto;
     height: auto;
+    max-width: calc(100vw - 130px);          /* ひだり=もどる みぎ=どうぐ の ぶん */
+    max-height: calc(100vh - 130px);
+    max-height: calc(100dvh - 130px);
     cursor: crosshair;
   }
-  .tools { width: 300px; max-width: 100%; }
-  .tools .panel { margin: 0; padding: 18px; text-align: left; }
   .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 6px 0 4px; }
   .swatch {
     width: 100%;
@@ -48,14 +56,14 @@
   }
   .size-btn.active { border-color: #212529; background: #fff0f6; }
   .size-btn .dot { background: #4a3f35; border-radius: 50%; }
-  .tools h3 { margin: 14px 0 4px; font-size: 17px; }
+  .drawer h3 { margin: 14px 0 4px; font-size: 17px; }
   .tool-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .tool-row .btn { font-size: 16px; padding: 10px 16px; box-shadow: 0 4px 0 var(--shade); }
   .tool-row .btn:active { transform: translateY(4px); box-shadow: none; }
   .cat-row label.radio { display: block; margin: 6px 0; font-size: 16px; }
 </style>
 </head>
-<body>
+<body data-chrome="game">
 <header class="bar">
   <a class="back" href="index.html">← もどる</a>
   <h1><img class="bar-icon" src="assets/buttons/draw.png" alt=""> おえかき</h1>
@@ -63,62 +71,64 @@
 </header>
 
 <main>
-  <p class="note" style="text-align:center;max-width:760px;margin:2px auto 12px">
-    えを かいて「ほぞん」すると、そのまま ゲームで つかえます。
-    キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。<br>
-    🦋ちょうちょ を つくるときは <b>はねを1まいだけ</b> かいて、あとで「うごきせってい」で ちょうちょを えらんでね。
-  </p>
-
-  <div class="draw-wrap">
-    <div class="paper">
-      <canvas id="drawCanvas" width="820" height="1040"></canvas>
-    </div>
-
-    <div class="tools">
-      <div class="panel">
-        <h3 style="margin-top:0">いろ</h3>
-        <div class="swatches" id="swatches"></div>
-
-        <h3>ふとさ</h3>
-        <div class="sizes" id="sizes"></div>
-
-        <h3>どうぐ</h3>
-        <div class="tool-row">
-          <button class="btn purple" id="fillBtn">ぬりつぶし</button>
-          <button class="btn gray" id="eraserBtn">けしゴム</button>
-          <button class="btn blue" id="undoBtn">↩ もどす</button>
-          <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
-        </div>
-        <p class="note" id="toolHint" style="margin:6px 0 0">ペンで かけます</p>
-
-        <h3 id="catTitle">なんの え?</h3>
-        <div class="cat-row" id="catRow">
-          <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
-          <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
-          <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵</label>
-          <label class="radio"><input type="radio" name="cat" value="fuku"> 😀 ふくわらいパーツ</label>
-        </div>
-
-        <div class="tool-row" style="margin-top:14px">
-          <button class="btn green big" id="saveBtn" style="flex:1">✔ ほぞんする</button>
-          <button class="btn green big hidden" id="overwriteBtn" style="flex:1">✔ うわがき ほぞん</button>
-        </div>
-        <div class="tool-row hidden" id="saveNewRow">
-          <button class="btn blue" id="saveNewBtn" style="flex:1">べつの えとして ほぞん</button>
-        </div>
-        <div class="tool-row" style="margin-top:10px">
-          <button class="btn yellow" id="openBtn" style="flex:1">とりこんだ えを なおす</button>
-        </div>
-        <p class="note" style="margin:10px 0 0">
-          ほぞんした あとの こまかい せってい(うごき・まちがいスポットなど)は
-          <a href="create.html">つくる</a> でできます。
-        </p>
-      </div>
-    </div>
+  <div class="paper">
+    <canvas id="drawCanvas" width="820" height="1040"></canvas>
   </div>
 </main>
 
-<script src="js/core.js?v=17"></script>
+<!-- した:よく つかう ものだけ うかせる -->
+<div class="minibar">
+  <button class="now" id="nowColor" title="いろを えらぶ" aria-label="いろを えらぶ"></button>
+  <button class="btn blue" id="undoBtn">↩ もどす</button>
+  <button class="btn gray" id="eraserBtn">けしゴム</button>
+  <button class="btn green big" id="saveBtn">✔ ほぞんする</button>
+  <button class="btn green big hidden" id="overwriteBtn">✔ うわがき ほぞん</button>
+</div>
+
+<!-- みぎ:どうぐばこ(ドロワー) -->
+<button class="drawer-handle" id="toolsHandle">🎨 どうぐ</button>
+<div class="drawer-scrim hidden" id="toolsScrim"></div>
+<aside class="drawer" id="toolsDrawer" aria-label="どうぐばこ">
+  <button class="drawer-close" id="toolsClose">✕ とじる</button>
+  <div class="panel">
+    <h3 style="margin-top:0">いろ</h3>
+    <div class="swatches" id="swatches"></div>
+
+    <h3>ふとさ</h3>
+    <div class="sizes" id="sizes"></div>
+
+    <h3>どうぐ</h3>
+    <div class="tool-row">
+      <button class="btn purple" id="fillBtn">ぬりつぶし</button>
+      <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
+    </div>
+    <p class="note" id="toolHint" style="margin:6px 0 0">ペンで かけます</p>
+
+    <h3 id="catTitle">なんの え?</h3>
+    <div class="cat-row" id="catRow">
+      <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
+      <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
+      <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵</label>
+      <label class="radio"><input type="radio" name="cat" value="fuku"> 😀 ふくわらいパーツ</label>
+    </div>
+
+    <div class="tool-row hidden" id="saveNewRow" style="margin-top:14px">
+      <button class="btn blue" id="saveNewBtn" style="flex:1">べつの えとして ほぞん</button>
+    </div>
+    <div class="tool-row" style="margin-top:10px">
+      <button class="btn yellow" id="openBtn" style="flex:1">とりこんだ えを なおす</button>
+    </div>
+
+    <h3>かきかたの コツ</h3>
+    <p class="note" style="line-height:1.7">
+      キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。<br>
+      🦋ちょうちょ を つくるときは <b>はねを1まいだけ</b> かいて、あとで「うごきせってい」で ちょうちょを えらんでね。<br>
+      こまかい せってい(うごき・まちがいスポット)は <a href="create.html">つくる</a> でできます。
+    </p>
+  </div>
+</aside>
+
+<script src="js/core.js?v=18"></script>
 <script src="js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -194,6 +204,7 @@ function syncTools() {
     b.classList.toggle("active", +b.dataset.size === state.size));
   $("eraserBtn").classList.toggle("green", isEraser());
   $("eraserBtn").classList.toggle("gray", !isEraser());
+  $("nowColor").style.background = isEraser() ? "#ffffff" : state.color;
   $("fillBtn").classList.toggle("green", state.tool === "fill");
   $("fillBtn").classList.toggle("purple", state.tool !== "fill");
   $("toolHint").textContent = TOOL_HINT[state.tool];
@@ -445,6 +456,23 @@ async function saveOverwrite() {
 $("saveBtn").onclick = saveAsNew;
 $("saveNewBtn").onclick = saveAsNew;
 $("overwriteBtn").onclick = saveOverwrite;
+
+/* ---------- どうぐばこ(ドロワー)の あけしめ ---------- */
+const drawer = $("toolsDrawer"), scrim = $("toolsScrim");
+function openTools(on) {
+  Sound.tap();
+  drawer.classList.toggle("open", on);
+  scrim.classList.toggle("hidden", !on);
+  $("toolsHandle").classList.toggle("hidden", on);
+}
+$("toolsHandle").onclick = () => openTools(true);
+$("toolsClose").onclick  = () => openTools(false);
+scrim.onclick            = () => openTools(false);
+$("nowColor").onclick    = () => openTools(true);
+/* いろ・ふとさを えらんだら すぐ かけるように とじる */
+drawer.addEventListener("click", (e) => {
+  if (e.target.closest(".swatch, .size-btn")) openTools(false);
+});
 
 syncTools();
 </script>
