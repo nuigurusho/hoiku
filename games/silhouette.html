@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>かげえクイズ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 <style>
   .shadow-box {
     width: min(420px, 80vw);
@@ -35,18 +35,15 @@
   <div id="startScreen" class="panel">
     <h2>これ なんの かげ?</h2>
 
-    <div class="mode-sec" data-tier="yuru">👀 みる<span class="tag">えらばずに ながめるだけ・「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">えらばずに ながめて、「こたえを みる」で こたえが 出るよ</span></div>
     <div class="row" data-tier="yuru">
-      <button class="btn big yellow" id="viewBtn" data-mode="miru">みんなで かんがえる</button>
+      <button class="btn big yellow" id="viewBtn" data-mode="miru">みんなで</button>
       <button class="btn big pink" id="drawBtn" data-mode="draw">だれの え でしょう?</button>
     </div>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じぶんで えらぶ・どうぶつの かげあて 5もん(1〜2さいから)</span></div>
-    <div class="row"><button class="btn big blue" id="animalBtn" data-mode="animal">どうぶつクイズ</button></div>
-
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">3もん れんぞく</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">3もん れんぞく</span></button>
       <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">5もん れんぞく</span></button>
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">8もん れんぞく</span></button>
     </div>
@@ -62,8 +59,8 @@
     <div class="choices" id="achoices"></div>
     <div class="answer-big hidden" id="aAnswer"></div>
     <div class="row hidden" id="aViewRow">
-      <button class="btn big yellow" id="aRevealBtn">こたえを みる!</button>
-      <button class="btn big green hidden" id="aNextBtn">つぎの かげ ▶</button>
+      <button class="btn big yellow" id="aRevealBtn">こたえを みる</button>
+      <button class="btn big green hidden" id="aNextBtn">つぎ ▶</button>
     </div>
   </div>
 
@@ -72,8 +69,8 @@
     <div class="shadow-box" id="dbox"><canvas id="dcv" width="420" height="420"></canvas></div>
     <div class="revealName" id="dname">&nbsp;</div>
     <div class="row">
-      <button class="btn big yellow" id="revealBtn">こたえを みる!</button>
-      <button class="btn big green hidden" id="nextBtn">つぎの かげ ▶</button>
+      <button class="btn big yellow" id="revealBtn">こたえを みる</button>
+      <button class="btn big green hidden" id="nextBtn">つぎ ▶</button>
     </div>
   </div>
 
@@ -84,7 +81,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -112,7 +109,6 @@ function silhouette(srcCanvas, dst, black = true) {
 
 /* ---------- どうぶつクイズ(ゆるふわ & ガチンコ) ---------- */
 let apool = [], aidx = 0, ascore = 0, abusy = false;
-const ROUNDS = 5;
 const VIEW_ROUNDS = 8;
 let gmode = null, astreak = 0, amiss = 0;
 let aview = false;   // みるモード(えらばずに ながめるだけ)
@@ -136,7 +132,6 @@ function refreshLocks() {
 }
 refreshLocks();
 
-$("animalBtn").onclick = () => { gmode = null; aview = false; startAnimal(); };
 $("viewBtn").onclick = () => { gmode = null; aview = true; startAnimal(); };
 document.querySelectorAll("#gachiRow [data-mode]").forEach((b) => {
   b.onclick = () => {
@@ -153,7 +148,7 @@ document.querySelectorAll("#gachiRow [data-mode]").forEach((b) => {
 function startAnimal() {
   Sound.tap();
   apool = Util.shuffle(ANIMALS);
-  if (!gmode) apool = apool.slice(0, aview ? VIEW_ROUNDS : ROUNDS);
+  if (!gmode) apool = apool.slice(0, VIEW_ROUNDS);
   aidx = 0; ascore = 0; astreak = 0; amiss = 0;
   swap("animalScreen");
   $("agHud").classList.toggle("hidden", !gmode);
@@ -196,22 +191,11 @@ function aShow() {
       else { astreak = 0; if (gmode) amiss++; Sound.bad(); Ui.msg(`「${name}」でした`, 1300, "#4dabf7"); }
       if (gmode) updateAgHud();
       setTimeout(() => {
-        if (gmode) {
-          if (astreak >= gmode.goal) return clearGachi();
-          if (amiss >= gmode.missLimit) return failGachi();
-          aidx = (aidx + 1) % apool.length;
-          if (aidx === 0) apool = Util.shuffle(apool);
-          aShow();
-        } else {
-          aidx++;
-          if (aidx < ROUNDS) aShow();
-          else {
-            swap("endScreen");
-            $("scoreText").textContent = `${ROUNDS}もん中 ${ascore}もん せいかい!`;
-            Sound.fanfare();
-            if (ascore >= 3) Ui.confetti();
-          }
-        }
+        if (astreak >= gmode.goal) return clearGachi();
+        if (amiss >= gmode.missLimit) return failGachi();
+        aidx = (aidx + 1) % apool.length;
+        if (aidx === 0) apool = Util.shuffle(apool);
+        aShow();
       }, 1600);
     };
     box.appendChild(b);
@@ -244,7 +228,7 @@ $("aRevealBtn").onclick = () => {
   Sound.pon();
   Ui.confetti(1500, 60);
   $("aRevealBtn").classList.add("hidden");
-  $("aNextBtn").textContent = aidx + 1 < apool.length ? "つぎの かげ ▶" : "おしまい ▶";
+  $("aNextBtn").textContent = aidx + 1 < apool.length ? "つぎ ▶" : "おしまい ▶";
   $("aNextBtn").classList.remove("hidden");
 };
 

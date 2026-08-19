@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>もぐらたたき</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 </head>
 <body>
 <header class="bar">
@@ -18,12 +18,12 @@
   <div id="startScreen" class="panel">
     <h2>でてきた みんなの えを タッチ!</h2>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">30びょうで なんかい タッチできるかな?(1〜2さいから)</span></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげん・すきなだけ タッチ(1〜2さいから)</span></div>
     <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">タッチノルマ&ランキング・だんだん はやい・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">10タッチ</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">10タッチ</span></button>
       <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">15タッチ・はやい</span></button>
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">20タッチ・もっとはやい</span></button>
     </div>
@@ -33,6 +33,9 @@
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="scoreHud">タッチ: 0</span><span id="timeHud">⏰ 30</span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1000" height="700" style="max-width:900px"></canvas></div>
+    <div class="row hidden" id="honbanRow">
+      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+    </div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
       <button class="btn gray" id="backBtn">えらびなおす</button>
@@ -40,7 +43,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -51,7 +54,7 @@ const CELLW = 1000 / COLS, CELLH = 620 / ROWS;
 const GAME = "mole";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  ren:  { label: "れんしゅう", time: 30, speed: 1 },
+  ren:  { label: "れんしゅう", time: 0, speed: 1 },   /* じかんむせいげん */
   g1: { label: "かんたん",   time: 30, speed: 1.2,  goal: 10, lv: 1 },
   g2: { label: "ふつう",     time: 30, speed: 1.55, goal: 15, lv: 2 },
   g3: { label: "むずかしい", time: 30, speed: 2.0,  goal: 20, lv: 3 },
@@ -92,6 +95,14 @@ document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
     start(m);
   };
 });
+/* れんしゅうは おわらないので、あそびながら ガチンコの かんたんへ 行ける */
+$("honbanBtn").onclick = () => {
+  if (G) G.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+  refreshLocks();
+  document.querySelector('#gachiRow [data-mode="g1"]').click();
+};
 $("againBtn").onclick = () => start(G.mode);
 $("backBtn").onclick = () => {
   if (G) G.stop = true;
@@ -112,6 +123,7 @@ async function start(mode) {
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  $("honbanRow").classList.toggle("hidden", !!mode.goal);
   $("timeHud").classList.toggle("hidden", !mode.time);
   updateScoreHud();
   $("timeHud").textContent = `⏰ ${mode.time || 0}`;

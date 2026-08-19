@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>なわとび</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 </head>
 <body>
 <header class="bar">
@@ -20,11 +20,11 @@
       <h2>あそびかたを えらんでね</h2>
 
       <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">タップでジャンプ・しっぱいしても へいき(1〜2さいから)</span></div>
-      <div class="row"><button class="btn big green" data-mode="ren">れんしゅう</button></div>
+      <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくノルマ&ランキング・クリアで つぎが とけるよ</span></div>
       <div class="row" id="gachiRow">
-        <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">10かい れんぞく</span></button>
+        <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">10かい れんぞく</span></button>
         <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">20かい れんぞく</span></button>
         <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30かい・かそく!</span></button>
       </div>
@@ -42,6 +42,9 @@
     <div class="row">
       <span class="note" id="hint">がめんタップ か スペースで ジャンプ!</span>
     </div>
+    <div class="row hidden" id="honbanRow">
+      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+    </div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="retryBtn">もういちど</button>
       <button class="btn gray" id="backBtn">えらびなおす</button>
@@ -49,7 +52,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -108,6 +111,13 @@ document.querySelectorAll("[data-mode]").forEach((b) => {
     start(b.dataset.mode);
   };
 });
+/* れんしゅうは おわらないので、あそびながら ガチンコの かんたんへ 行ける */
+$("honbanBtn").onclick = () => {
+  if (G) G.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+  document.querySelector('#gachiRow [data-mode="g1"]').click();
+};
 $("retryBtn").onclick = () => start(G.modeKey);
 $("backBtn").onclick = () => {
   if (G) G.stop = true;
@@ -156,6 +166,7 @@ async function start(modeKey) {
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  $("honbanRow").classList.toggle("hidden", !!mode.goal);
   $("hint").textContent = "なわが 下にくる タイミングで タップ(スペースでもOK)!";
   $("hudC").classList.toggle("hidden", !mode.goal);
   updateHud();

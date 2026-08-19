@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきのたび</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 </head>
 <body>
 <header class="bar">
@@ -20,11 +20,11 @@
       <h2>あそびかたを えらんでね</h2>
 
       <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげんで ⭐10こ あつめて ゴール(1〜2さいから)</span></div>
-      <div class="row"><button class="btn big green" data-mode="ren">れんしゅう</button></div>
+      <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・のこりタイムランキング・クリアで つぎが とけるよ</span></div>
       <div class="row" id="gachiRow">
-        <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">90びょう</span></button>
+        <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">90びょう</span></button>
         <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">60びょう</span></button>
         <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">45びょう</span></button>
       </div>
@@ -38,6 +38,7 @@
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="clearRow">
       <button class="btn big green" id="againBtn">もういちど あそぶ</button>
+      <button class="btn big pink hidden" id="honbanBtn">ほんばんへ</button>
       <button class="btn gray" id="selBtn">えらびなおす</button>
     </div>
   </div>
@@ -54,7 +55,7 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -136,6 +137,12 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     startGame(m);
   };
 });
+/* れんしゅうを クリアしたら そのまま ガチンコの かんたんへ */
+$("honbanBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+  document.querySelector('#gachiRow [data-mode="g1"]').click();
+};
 $("againBtn").onclick = () => startGame(curMode);
 $("selBtn").onclick = () => {
   $("playScreen").classList.add("hidden");
@@ -182,6 +189,7 @@ async function startGame(mode) {
   $("clearRow").classList.add("hidden");
   $("starHud").textContent = "⭐ 0 / 10";
   $("timeHud").classList.toggle("hidden", !mode.time);
+  $("honbanBtn").classList.toggle("hidden", !!mode.time);   // れんしゅうから ほんばんへ
   if (mode.time) $("timeHud").textContent = `⏰ ${mode.time}`;
 
   const starCv = Util.emojiCanvas("⭐", 90);
