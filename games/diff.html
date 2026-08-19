@@ -61,7 +61,7 @@
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">15びょう</span></button>
     </div>
     <div class="rank" id="rankView"></div>
-    <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます。「とりこみ・せってい」で写真を入れて「まちがいスポット」を設定すると、園の写真でも遊べます</p>
+    <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます。「つくる」で元絵と差分画像、画像ごとのスポットを登録できます</p>
   </div>
 
   <div id="playScreen" class="hidden">
@@ -85,7 +85,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=13"></script>
+<script src="../js/core.js?v=14"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -149,7 +149,10 @@ $("againBtn").onclick = () => {
 async function startGame(rec, mode) {
   if (G) G.stop = true;
   const img = await Util.loadImage(rec.dataURL);
-  let spots = (rec.diffSpots || []).map((s) => ({ ...s, found: false }));
+  const variants = (rec.diffVariants || []).filter((v) => v.dataURL && v.spots && v.spots.length);
+  const variant = variants.length ? variants[Math.floor(Math.random() * variants.length)] : null;
+  const diffImg = variant ? await Util.loadImage(variant.dataURL) : null;
+  let spots = ((variant && variant.spots) || rec.diffSpots || []).map((s) => ({ ...s, found: false }));
   if (!spots.length) {
     // スポット未設定なら自動でつくる(こっそりモード)
     for (let i = 0; i < 5; i++) {
@@ -163,30 +166,30 @@ async function startGame(rec, mode) {
   cvL.height = cvR.height = H;
   cvL.getContext("2d").drawImage(img, 0, 0);
 
-  // 右側:スポット部分を まわりの絵で「うわがき」して消す
+  // 右側:登録した差分画像を表示。旧データだけ従来の自動差分で遊べる
   const ctxR = cvR.getContext("2d");
-  ctxR.drawImage(img, 0, 0);
-  for (const s of spots) {
-    const cx = s.x * W, cy = s.y * H, r = s.r * W;
-    // まわりから安全な「うつしもと」を決める(画面の中心方向とは逆側から)
-    let sx = cx + (cx < W / 2 ? r * 2.4 : -r * 2.4);
-    let sy = cy + (cy < H / 2 ? r * 1.6 : -r * 1.6);
-    sx = Util.clamp(sx, r, W - r);
-    sy = Util.clamp(sy, r, H - r);
-    // ふわっとぼかした円形パッチでうわがき(クローンスタンプ)
-    const patch = Util.makeCanvas(Math.ceil(r * 2), Math.ceil(r * 2));
-    const pctx = patch.getContext("2d");
-    pctx.drawImage(img, sx - r, sy - r, r * 2, r * 2, 0, 0, r * 2, r * 2);
-    pctx.globalCompositeOperation = "destination-in";
-    const grad = pctx.createRadialGradient(r, r, r * 0.55, r, r, r);
-    grad.addColorStop(0, "rgba(0,0,0,1)");
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    pctx.fillStyle = grad;
-    pctx.fillRect(0, 0, r * 2, r * 2);
-    ctxR.drawImage(patch, cx - r, cy - r);
+  ctxR.drawImage(diffImg || img, 0, 0, W, H);
+  if (!diffImg) {
+    for (const s of spots) {
+      const cx = s.x * W, cy = s.y * H, r = s.r * W;
+      let sx = cx + (cx < W / 2 ? r * 2.4 : -r * 2.4);
+      let sy = cy + (cy < H / 2 ? r * 1.6 : -r * 1.6);
+      sx = Util.clamp(sx, r, W - r);
+      sy = Util.clamp(sy, r, H - r);
+      const patch = Util.makeCanvas(Math.ceil(r * 2), Math.ceil(r * 2));
+      const pctx = patch.getContext("2d");
+      pctx.drawImage(img, sx - r, sy - r, r * 2, r * 2, 0, 0, r * 2, r * 2);
+      pctx.globalCompositeOperation = "destination-in";
+      const grad = pctx.createRadialGradient(r, r, r * 0.55, r, r, r);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      pctx.fillStyle = grad;
+      pctx.fillRect(0, 0, r * 2, r * 2);
+      ctxR.drawImage(patch, cx - r, cy - r);
+    }
   }
 
-  G = { img, spots, W, H, done: false, mode, stop: false, elapsed: 0 };
+  G = { img, diffImg, spots, W, H, done: false, mode, stop: false, elapsed: 0 };
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("timeHud").classList.toggle("hidden", !mode.limit);
