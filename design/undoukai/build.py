@@ -93,11 +93,22 @@ BLUES = [(790, 500, "さくら"), (960, 574, "けんと"), (1120, 528, "ゆい")
 LITTER = [(120,612,11,"red"),(250,596,10,"red"),(420,624,12,"red"),(540,588,9,"red"),
           (760,608,10,"blue"),(880,628,12,"blue"),(1040,592,9,"blue"),(1180,616,11,"blue")]
 
-def stage(dim=False):
-    dimr = " dimred" if dim else ""
-    dimb = " dimblue" if dim else ""
-    figs = "".join(figure(x, y, "red", n, "fig" + dimr) for x, y, n in REDS)
-    figs += "".join(figure(x, y, "blue", n, "fig" + dimb) for x, y, n in BLUES)
+def stage(act=False, glow=False):
+    """act=True で 勝った側は跳ね、負けた側は拍手する。glow=True でお祝いの光を敷く。
+       どちらも暗くしたりぼかしたりはしない(明るいまま)。"""
+    lose = " loseact" if act else ""
+    win = " winact" if act else ""
+    figs = "".join(figure(x, y, "red", n, "fig" + lose) for x, y, n in REDS)
+    figs += "".join(figure(x, y, "blue", n, "fig" + win) for x, y, n in BLUES)
+    # js/meet.js の Meet.celebrate と同じ:勝った色のグラデ + 黄色いグロー
+    glow_html = ""
+    if glow:
+        glow_html = (
+            '<div class="anim" style="position:absolute;left:0;top:0;width:1280px;height:720px;'
+            'animation-name:party;background:linear-gradient(rgba(227,240,255,.88),rgba(255,253,245,0) 62%)"></div>'
+            '<div class="anim" style="position:absolute;left:340px;top:170px;width:1240px;height:1240px;'
+            'margin-left:-300px;animation-name:party;background:radial-gradient(circle closest-side,'
+            'rgba(255,212,59,.55) 0,rgba(255,212,59,0) 100%)"></div>')
     return f"""
   <div style="position:absolute;left:0;top:0;width:1280px;height:720px;overflow:hidden;background:linear-gradient(#a5d8ff,#e3f4ff 300px)">
     <div style="position:absolute;left:0;top:300px;width:1280px;height:420px;background:#a9dd7e"></div>
@@ -109,6 +120,7 @@ def stage(dim=False):
     <div style="position:absolute;left:0;top:46px;width:1280px;height:15px;background:radial-gradient(circle 15px at 15px 0,#ffd43b 0 15px,transparent 15px);background-size:30px 15px"></div>
     {"".join(ball(*b) for b in LITTER)}
     {basket("red")}{basket("blue")}
+    {glow_html}
     {figs}
   </div>"""
 
@@ -164,19 +176,19 @@ main_body = f"""<div style="position:relative;width:1280px;height:880px;backgrou
   <div class="zone" style="left:270px;top:4px;width:740px;height:200px"></div>
   <div class="zone" style="left:380px;top:224px;width:520px;height:170px;border-style:solid"></div>
   <div class="zone" style="left:-3px;top:652px;width:1286px;height:70px"></div>
-  <div class="mark" style="left:1022px;top:64px"><b>1</b>チーム名と 色が 2かしょで だぶる</div>
-  <div class="mark" style="left:912px;top:246px;max-width:340px"><b>2</b>カードが かごと あたまの ちょうど うえ</div>
-  <div class="mark" style="left:24px;top:594px"><b>3</b>黒おびは 出っぱなし(がめんの 8%)</div>
-  <div class="mark" style="left:24px;top:116px"><b>4</b>いちどに 6つ 読ませている</div>
+  <div class="mark" style="left:1022px;top:64px"><b>1</b>チーム名と色が2か所で重複</div>
+  <div class="mark" style="left:912px;top:246px;max-width:340px"><b>2</b>カードがカゴと頭のちょうど上</div>
+  <div class="mark" style="left:24px;top:594px"><b>3</b>黒帯は出しっぱなし(画面の8%)</div>
+  <div class="mark" style="left:24px;top:116px"><b>4</b>一度に6つ読ませている</div>
 
   <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:16px 28px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae">
     <div style="display:flex;align-items:baseline;gap:12px">
-      <span class="tag bad">いま</span>
-      <div style="font-size:22px;font-weight:800">きょうぎ中に 6つの ことを 同時に 言っている</div>
+      <span class="tag bad">現状</span>
+      <div style="font-size:22px;font-weight:800">競技中に6つのことを同時に言っている</div>
     </div>
     <div class="cap" style="margin-top:8px">
-      ① そうごう点(2てん-2てん)と ② きょうぎ点(3こ-5こ)が べつの 意味なのに 見た目が にている。チーム名・色マークは それぞれに 入っていて <b>2かい ずつ</b> 出る。<br>
-      ③ しんこう(だい2/ぜん4)は しょうかいカードで 2びょう前に 言ったばかり。④ テロップは 出来事が なくても 出っぱなし。⑤ けっかカードは がめんの まんなか=かごと キャラの あたまの 上に かぶる。
+      ① 総合点(2てん-2てん)と ② 競技点(3こ-5こ)は別の意味なのに見た目が似ている。チーム名と色マークはそれぞれに入っていて<b>2回ずつ</b>出る。<br>
+      ③ 進行(だい2/ぜん4)は紹介カードで2秒前に言ったばかり。④ テロップは出来事がなくても出しっぱなし。⑤ 結果カードは画面中央 = カゴとキャラの頭の上に重なる。
     </div>
   </div>
 </div>
@@ -218,12 +230,12 @@ play_body = f"""<div style="position:relative;width:1280px;height:880px;backgrou
 
   <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:16px 28px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae">
     <div style="display:flex;align-items:baseline;gap:12px">
-      <span class="tag good">ていあん</span>
-      <div style="font-size:22px;font-weight:800">プレー中に つねに 出るのは「2つの すうじ」だけ</div>
+      <span class="tag good">提案</span>
+      <div style="font-size:22px;font-weight:800">プレー中に常に出るのは「2つの数字」だけ</div>
     </div>
     <div class="cap" style="margin-top:8px">
-      チーム名は <b>色そのもの</b>に まかせて 文字を やめる(「あか」「あお」の 2文字だけ のこす)。そうごう点は きょうぎ中は 出さず、<b>上の 4つの ドット</b>で 「いま 何きょうぎ目か」だけ しめす。<br>
-      テロップは 出来事が おきた ときだけ 下から 出て 2.4びょうで きえる。黒おびを やめ、まるい 白ふきだし + チーム色のふちに して、じめんが すけて 見えるように する。
+      チーム名は<b>色そのもの</b>に任せて文字をやめる(「あか」「あお」の2文字だけ残す)。<b>総合点は競技中は一切出さず、最後の総合結果で1回だけ</b>見せる。今が何競技目かは上の4つのドットだけで示す。<br>
+      テロップは出来事が起きたときだけ下から出て2.4秒で消える。黒帯をやめ、丸い白フキダシ + チーム色のフチにして、地面が透けて見えるようにする。
     </div>
   </div>
 </div>
@@ -247,27 +259,31 @@ rule_body = f"""<div style="position:relative;width:1280px;height:880px;backgrou
     <div style="position:absolute;left:0;top:630px;width:1280px;height:90px;background:rgba(77,171,247,.24)"></div>
     <div class="zoneline" style="top:104px"></div>
     <div class="zoneline" style="top:630px"></div>
-    <div class="zlabel" style="left:28px;top:34px">0-104px:UIおび(スコアだけ)</div>
-    <div class="zlabel" style="left:28px;top:340px;border-color:#2f9e44;color:#2f9e44">104-630px:キャラの ばしょ / なにも おかない</div>
-    <div class="zlabel" style="left:28px;top:658px;border-color:#1c7ed6;color:#1c7ed6">630-720px:テロップおび(出来事の ときだけ)</div>
+    <div class="zlabel" style="left:28px;top:34px">0-104px:UI帯(スコアだけ)</div>
+    <div class="zlabel" style="left:28px;top:340px;border-color:#2f9e44;color:#2f9e44">104-630px:キャラの場所 / 何も置かない</div>
+    <div class="zlabel" style="left:28px;top:658px;border-color:#1c7ed6;color:#1c7ed6">630-720px:テロップ帯(出来事のときだけ)</div>
     <div style="position:absolute;left:832px;top:120px;width:420px;background:rgba(255,255,255,.9);border:4px dashed #2f9e44;border-radius:24px;padding:12px 18px 14px;text-align:center">
-      <div style="font-size:15px;font-weight:800;color:#2f9e44">カードを 出す ときは ここ(上1/3)</div>
-      <div style="font-size:13px;color:#6a5c4c;margin-top:4px;line-height:1.5">キャラは かならず 下半分に のこす。<br>まんなかに 出さない。</div>
+      <div style="font-size:15px;font-weight:800;color:#2f9e44">カードを出すときはここ(上1/3)</div>
+      <div style="font-size:13px;color:#6a5c4c;margin-top:4px;line-height:1.5">キャラは必ず下半分に残す。<br>中央には出さない。</div>
     </div>
   </div>
 
   <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:14px 24px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae;display:flex;gap:14px">
     <div class="rulecard" style="flex:1">
-      <h3>1. つねに 出すのは 1しゅるいだけ</h3>
-      <p>「いまの きょうぎの てんすう」だけを 常設。そうごう点・きょうぎ名・じゅんばん・せつめいは、それを 見せる 場面でしか 出さない。</p>
+      <h3>1. 常に出すのは1種類だけ</h3>
+      <p>「今の競技の点数」だけを常設。<b>総合点は最後の総合結果で1回だけ</b>。競技名・順番・説明は、それを見せる場面でしか出さない。</p>
     </div>
     <div class="rulecard" style="flex:1">
-      <h3>2. キャラの おびには 何も おかない</h3>
-      <p>y=104-630 は キャラと かごの 場所。文字・カード・ボタンを ここに 置かない。かさねるなら 上1/3 か 下の おび。</p>
+      <h3>2. キャラの帯には何も置かない</h3>
+      <p>y=104-630 はキャラとカゴの場所。文字・カード・ボタンをここに置かない。重ねるなら上1/3か下の帯。</p>
     </div>
     <div class="rulecard" style="flex:1">
-      <h3>3. 同じことを 2かい 言わない</h3>
-      <p>チーム名は 色で。てんすうは 数字で。マーク(🔴🔵)と 名前と 色の 3かさねを やめて 1つに する。</p>
+      <h3>3. 切り替わる前に一度消す</h3>
+      <p>次を出す前に0.3秒だけ全部消してステージだけにする。この「間」が競技の区切りになり、次の表示が新しい情報だと伝わる。</p>
+    </div>
+    <div class="rulecard" style="flex:1">
+      <h3>4. 同じことを2回言わない</h3>
+      <p>チーム名は色で、点数は数字で。マーク(🔴🔵)と名前と色の3重ねをやめて1つにする。</p>
     </div>
   </div>
 </div>
@@ -285,7 +301,7 @@ flow_css = """
     .fr p { margin: 0; font-size: 13px; line-height: 1.55; color: #6a5c4c; }
     .cnt { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: #e6f7e9; color: #2f9e44; }
     .cnt.hi { background: #ffe3ee; color: #c92a5f; }
-    .rail { position: absolute; left: 40px; top: 470px; width: 1520px; height: 6px; border-radius: 3px; background: #e8cbae; }
+    .rail { position: absolute; left: 40px; top: 470px; width: 1840px; height: 6px; border-radius: 3px; background: #e8cbae; }
     .tick { position: absolute; top: -7px; width: 20px; height: 20px; border-radius: 50%; background: #fffdf5; border: 5px solid #ff6b9d; }
     .tlab { position: absolute; top: 24px; font-size: 13px; font-weight: 800; color: #8a7a68; transform: translateX(-50%); }
 """
@@ -298,34 +314,42 @@ def mini(chars_red, chars_blue, extra=""):
     return f'<div class="mini"><div class="gr"></div>{ch}{extra}</div>'
 
 FRAMES = [
-    (40, "0.0s", "しょうかい", "きょうぎ名と アイコンだけ。スコアも しんこうも まだ 出さない。",
+    (40, "0.0s", "紹介", "競技名とアイコンだけ。スコアも進行もまだ出さない。",
      mini([46,74,102],[170,198,226],
           '<div style="position:absolute;left:52px;top:34px;width:176px;background:rgba(255,255,255,.95);border:3px solid #e8cbae;border-radius:12px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#8a7a68;font-weight:800">だい2きょうぎ</div><div style="font-size:20px;font-weight:800">たまいれ</div></div>'),
      "出るもの 1つ", False),
-    (360, "1.2s", "カードが スコアに なる", "カードが しゅっと 上に すいこまれて、そのまま スコアおびに かわる。目が 上に ついていく。",
+    (360, "1.2s", "カードがスコアになる", "カードがすっと上に吸い込まれ、そのままスコア帯に変わる。目が上についていく。",
      mini([46,74,102],[170,198,226],
           '<div style="position:absolute;left:88px;top:10px;width:104px;height:30px;background:rgba(255,255,255,.95);border:3px solid #e8cbae;border-radius:10px;opacity:.55;transform:scale(.8)"></div>'
           '<div style="position:absolute;left:8px;top:8px;width:44px;height:22px;border-radius:8px;background:#ff6b9d"></div>'
           '<div style="position:absolute;left:228px;top:8px;width:44px;height:22px;border-radius:8px;background:#4dabf7"></div>'),
      "出るもの 1つ", False),
-    (680, "1.8s", "スタート!", "まんなかに 1ことだけ 0.6びょう。ここで 目を ステージに もどす。",
+    (680, "1.8s", "スタート", "中央に1語だけ0.6秒。ここで目をステージに戻す。",
      mini([46,74,102],[170,198,226],
           '<div style="position:absolute;left:0;top:52px;width:280px;text-align:center;font-size:30px;font-weight:800;color:#d6336c;-webkit-text-stroke:4px #fff;paint-order:stroke fill">スタート!</div>'
           '<div style="position:absolute;left:8px;top:8px;width:44px;height:22px;border-radius:8px;background:#ff6b9d"></div>'
           '<div style="position:absolute;left:228px;top:8px;width:44px;height:22px;border-radius:8px;background:#4dabf7"></div>'),
      "出るもの 2つ", False),
-    (1000, "プレー中", "あそんでいる あいだ", "スコア2つと じかんだけ。出来事が あった ときだけ テロップが 2.4びょう。",
+    (1000, "プレー中", "遊んでいるあいだ", "スコア2つと時間だけ。出来事があったときだけテロップが2.4秒。",
      mini([46,74,102],[170,198,226],
           '<div style="position:absolute;left:8px;top:8px;width:44px;height:22px;border-radius:8px;background:#ff6b9d"></div>'
           '<div style="position:absolute;left:118px;top:8px;width:44px;height:20px;border-radius:8px;background:#fff;border:2px solid #e8cbae"></div>'
           '<div style="position:absolute;left:228px;top:8px;width:44px;height:22px;border-radius:8px;background:#4dabf7"></div>'
           '<div style="position:absolute;left:60px;bottom:6px;width:160px;height:20px;border-radius:999px;background:rgba(255,253,245,.95);border:2px solid #4dabf7"></div>'),
      "出るもの 2-3つ", False),
-    (1320, "決着", "きまった しゅんかん", "白フラッシュ → まけた側を うすく → かちカードが 上1/3に せり上がる。ここで 一気に もりあげる。",
-     mini([],[170,198,226],
-          '<div style="position:absolute;left:0;top:0;width:280px;height:158px;background:radial-gradient(circle at 70% 60%,rgba(255,255,255,0) 30%,rgba(20,12,6,.45) 100%)"></div>'
-          '<div style="position:absolute;left:40px;top:8px;width:26px;height:26px;border-radius:8px;background:#ff8fab;opacity:.3"></div>'
-          '<div style="position:absolute;left:44px;top:34px;width:192px;background:rgba(255,255,255,.96);border:3px solid #4dabf7;border-radius:12px;padding:6px;text-align:center"><div style="font-size:17px;font-weight:800;color:#1c7ed6">あおチーム の かち!</div></div>'),
+    (1320, "0.3s", "区切り(間)", "決まった瞬間に白フラッシュ。そのあと0.3秒だけ全部消してステージだけにする。ここが競技の切れ目になる。",
+     mini([46,74,102],[170,198,226],
+          '<div style="position:absolute;left:0;top:0;width:280px;height:158px;background:rgba(255,255,255,.55)"></div>'
+          '<div style="position:absolute;left:0;top:64px;width:280px;text-align:center;font-size:13px;font-weight:800;color:#8a7a68">UI が ぜんぶ 消える</div>'),
+     "出るもの 0", False),
+    (1640, "お祝い", "決まったあと", "勝った側は跳ねて紙吹雪、負けた側は拍手。どちらも明るいまま、勝った側だけ派手にする。",
+     mini([46,74,102],[170,198,226],
+          '<div style="position:absolute;left:0;top:0;width:280px;height:158px;background:radial-gradient(circle at 70% 62%,rgba(255,212,59,.5) 0,rgba(255,212,59,0) 58%),linear-gradient(rgba(227,240,255,.8),rgba(255,253,245,0) 60%)"></div>'
+          '<div style="position:absolute;left:12px;top:14px;width:8px;height:12px;background:#ff6b9d;border-radius:2px"></div>'
+          '<div style="position:absolute;left:80px;top:6px;width:8px;height:12px;background:#ffd43b;border-radius:2px"></div>'
+          '<div style="position:absolute;left:150px;top:20px;width:8px;height:12px;background:#4dabf7;border-radius:2px"></div>'
+          '<div style="position:absolute;left:220px;top:8px;width:8px;height:12px;background:#51cf66;border-radius:2px"></div>'
+          '<div style="position:absolute;left:44px;top:44px;width:192px;background:rgba(255,255,255,.96);border:3px solid #4dabf7;border-radius:12px;padding:6px;text-align:center"><div style="font-size:17px;font-weight:800;color:#1c7ed6">あおチーム の かち!</div></div>'),
      "出るもの 1つ", True),
 ]
 frames_html = ""
@@ -338,20 +362,21 @@ for x, t, ttl, desc, m, cnt, hi in FRAMES:
     <span class="cnt{' hi' if hi else ''}">{cnt}</span>
   </div>"""
 
-flow_body = f"""<div style="position:relative;width:1600px;height:620px;background:#fffdf5;padding:0">
+flow_body = f"""<div style="position:relative;width:1960px;height:620px;background:#fffdf5;padding:0">
   <div style="position:absolute;left:40px;top:26px">
-    <span class="tag good">ていあん</span>
-    <span style="font-size:24px;font-weight:800;margin-left:12px">じかんで わける — 同時に 読ませるのは 最大2つ</span>
+    <span class="tag good">提案</span>
+    <span style="font-size:24px;font-weight:800;margin-left:12px">時間で分ける — 同時に読ませるのは最大2つ</span>
   </div>
 {frames_html}
   <div class="rail"></div>
   <div class="tick" style="left:132px"></div><div class="tlab" style="left:142px">0.0</div>
   <div class="tick" style="left:452px"></div><div class="tlab" style="left:462px">1.2</div>
   <div class="tick" style="left:772px"></div><div class="tlab" style="left:782px">1.8</div>
-  <div class="tick" style="left:1092px;border-color:#51cf66"></div><div class="tlab" style="left:1102px">2.4 - おわりまで</div>
-  <div class="tick" style="left:1412px;border-color:#ffd43b"></div><div class="tlab" style="left:1422px">きまった しゅんかん</div>
-  <div class="cap" style="position:absolute;left:40px;top:534px;width:1520px">
-    いまは この 5つの 場面 ぜんぶで 同じ UI が 出っぱなしに なっている。<b>出す・消す の タイミングを ずらすだけで、読ませる 量は 6つ → 最大2つに 減る。</b>減らした ぶん、決着の しゅんかんに 全部を つかえる。
+  <div class="tick" style="left:1092px;border-color:#51cf66"></div><div class="tlab" style="left:1102px">2.4 - 終わりまで</div>
+  <div class="tick" style="left:1412px;border-color:#8a7a68"></div><div class="tlab" style="left:1422px">決着 → 間</div>
+  <div class="tick" style="left:1732px;border-color:#ffd43b"></div><div class="tlab" style="left:1742px">お祝い</div>
+  <div class="cap" style="position:absolute;left:40px;top:534px;width:1880px">
+    今はこの5つの場面すべてで同じUIが出しっぱなしになっている。<b>出す・消すのタイミングをずらすだけで、読ませる量は6つ → 最大2つに減る。</b>減らした分を、決着の瞬間にすべて使う。総合点はここには出さず、全競技が終わった最後に1回だけ見せる。
   </div>
 </div>
 """
@@ -361,13 +386,43 @@ flow_body = f"""<div style="position:relative;width:1600px;height:620px;backgrou
 # ---------------------------------------------------------------
 motion_css = """
     .stagewrap { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; overflow: hidden; }
-    .fig { animation: none; }
-    .dimred { animation: dimout var(--t) linear infinite; }
     .anim { animation-duration: var(--t); animation-timing-function: linear; animation-iteration-count: infinite; }
-    @keyframes dimout {
-      0%, 40% { opacity: 1; filter: none; }
-      46%, 88% { opacity: .28; filter: grayscale(.7); }
-      96%, 100% { opacity: 1; filter: none; }
+    .fig { animation-duration: var(--t); animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+    /* 勝った側:とびはねる。負けた側:はくしゅして おじぎ。どちらも 明るいまま */
+    .winact { animation-name: winjump; }
+    .loseact { animation-name: loseclap; }
+    @keyframes winjump {
+      0%, 46% { transform: translateY(0); }
+      49% { transform: translateY(-30px); }
+      52% { transform: translateY(0); }
+      55% { transform: translateY(-24px); }
+      58% { transform: translateY(0); }
+      61% { transform: translateY(-28px); }
+      64% { transform: translateY(0); }
+      67% { transform: translateY(-20px); }
+      70% { transform: translateY(0); }
+      73% { transform: translateY(-26px); }
+      76%, 100% { transform: translateY(0); }
+    }
+    @keyframes loseclap {
+      0%, 46% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(5px) rotate(-5deg); }
+      54% { transform: translateY(0) rotate(0deg); }
+      58% { transform: translateY(5px) rotate(5deg); }
+      62% { transform: translateY(0) rotate(0deg); }
+      66% { transform: translateY(5px) rotate(-5deg); }
+      70%, 100% { transform: translateY(0) rotate(0deg); }
+    }
+    @keyframes party {
+      0%, 44% { opacity: 0; }
+      48%, 88% { opacity: 1; }
+      95%, 100% { opacity: 0; }
+    }
+    /* 区切り:つぎが 出る まえに UI を ぜんぶ 消して 0.3びょうの 間 をつくる */
+    @keyframes untilbreak {
+      0%, 40% { opacity: 1; }
+      41%, 94% { opacity: 0; }
+      98%, 100% { opacity: 1; }
     }
     @keyframes bluepop {
       0%, 10% { transform: scale(1); }
@@ -388,18 +443,13 @@ motion_css = """
     }
     @keyframes telop {
       0%, 11% { opacity: 0; transform: translateY(72px); }
-      14%, 34% { opacity: 1; transform: translateY(0); }
-      38%, 100% { opacity: 0; transform: translateY(72px); }
+      14%, 33% { opacity: 1; transform: translateY(0); }
+      37%, 100% { opacity: 0; transform: translateY(72px); }
     }
     @keyframes flash {
-      0%, 39% { opacity: 0; }
-      41% { opacity: .92; }
-      46%, 100% { opacity: 0; }
-    }
-    @keyframes spot {
-      0%, 42% { opacity: 0; }
-      50%, 88% { opacity: 1; }
-      96%, 100% { opacity: 0; }
+      0%, 37% { opacity: 0; }
+      39% { opacity: .92; }
+      44%, 100% { opacity: 0; }
     }
     @keyframes card {
       0%, 50% { opacity: 0; transform: translateY(70px) scale(.92); }
@@ -407,34 +457,34 @@ motion_css = """
       58%, 88% { opacity: 1; transform: translateY(0) scale(1); }
       94%, 100% { opacity: 0; transform: translateY(70px) scale(.92); }
     }
-    @keyframes timer0 { 0%, 36% { opacity: 1; } 38%, 92% { opacity: 0; } 98%, 100% { opacity: 1; } }
-    @keyframes conf1 { 0%, 54% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 57% { opacity: 1; } 84%, 100% { opacity: 0; transform: translateY(560px) rotate(420deg); } }
-    @keyframes conf2 { 0%, 56% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 59% { opacity: 1; } 88%, 100% { opacity: 0; transform: translateY(600px) rotate(-380deg); } }
-    @keyframes conf3 { 0%, 58% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 61% { opacity: 1; } 90%, 100% { opacity: 0; transform: translateY(520px) rotate(300deg); } }
-    @keyframes beat {
-      0%, 8% { background: #fff; }
-      10%, 22% { background: #ffd43b; }
-      26%, 100% { background: #fff; }
+    @keyframes bubble {
+      0%, 56% { opacity: 0; transform: translateY(20px) scale(.9); }
+      60%, 86% { opacity: 1; transform: translateY(0) scale(1); }
+      92%, 100% { opacity: 0; transform: translateY(20px) scale(.9); }
     }
+    @keyframes timer0 { 0%, 36% { opacity: 1; } 38%, 94% { opacity: 0; } 98%, 100% { opacity: 1; } }
+    @keyframes conf1 { 0%, 46% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 49% { opacity: 1; } 84%, 100% { opacity: 0; transform: translateY(560px) rotate(420deg); } }
+    @keyframes conf2 { 0%, 49% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 52% { opacity: 1; } 88%, 100% { opacity: 0; transform: translateY(600px) rotate(-380deg); } }
+    @keyframes conf3 { 0%, 52% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 55% { opacity: 1; } 90%, 100% { opacity: 0; transform: translateY(520px) rotate(300deg); } }
+    @keyframes conf4 { 0%, 55% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 58% { opacity: 1; } 92%, 100% { opacity: 0; transform: translateY(580px) rotate(-460deg); } }
 """
-CONF = [(120,"#ff6b9d","conf1"),(240,"#ffd43b","conf2"),(360,"#4dabf7","conf3"),(480,"#51cf66","conf1"),
-        (600,"#ff922b","conf2"),(720,"#9775fa","conf3"),(840,"#ff6b9d","conf1"),(960,"#ffd43b","conf2"),
-        (1080,"#4dabf7","conf3"),(1180,"#51cf66","conf1")]
+CONF = [(70,"#ff6b9d","conf1"),(150,"#ffd43b","conf3"),(230,"#4dabf7","conf2"),(310,"#51cf66","conf4"),
+        (390,"#ff922b","conf1"),(470,"#9775fa","conf3"),(560,"#ff6b9d","conf2"),(640,"#ffd43b","conf4"),
+        (720,"#4dabf7","conf1"),(800,"#51cf66","conf3"),(880,"#ff922b","conf2"),(950,"#4dabf7","conf4"),
+        (1020,"#9775fa","conf1"),(1090,"#ffd43b","conf3"),(1160,"#4dabf7","conf2"),(1230,"#ff6b9d","conf4")]
 conf_html = "".join(
     f'<div class="anim" style="position:absolute;left:{x}px;top:-40px;width:14px;height:20px;border-radius:3px;background:{c};animation-name:{k};z-index:60"></div>'
     for x, c, k in CONF)
 
 motion_body = f"""<div style="position:relative;width:1280px;height:880px;background:#fffdf5;--t:{{{{dur}}}}">
   <div class="stagewrap">
-{stage(dim=True)}
-    <!-- スポットライト:まけた側を くらく -->
-    <div class="anim" style="position:absolute;left:0;top:0;width:1280px;height:720px;animation-name:spot;background:radial-gradient(circle 420px at 960px 470px,rgba(0,0,0,0) 40%,rgba(24,14,6,.52) 100%);z-index:25"></div>
-    <!-- 白フラッシュ -->
+{stage(act=True, glow=True)}
+    <!-- 白フラッシュ(決まった しゅんかん) -->
     <div class="anim" style="position:absolute;left:0;top:0;width:1280px;height:720px;animation-name:flash;background:#fff;z-index:55"></div>
 {conf_html}
 
-    <!-- スコア(あか) -->
-    <div class="anim dimred" style="position:absolute;left:36px;top:36px;display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff;z-index:30">
+    <!-- スコア(あか):区切りで 消える -->
+    <div class="anim" style="position:absolute;left:36px;top:36px;display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff;animation-name:untilbreak;z-index:30">
       <span style="font-size:17px;font-weight:800;opacity:.92">あか</span>
       <span style="font-size:52px;font-weight:800;line-height:1">5</span>
     </div>
@@ -443,8 +493,8 @@ motion_body = f"""<div style="position:relative;width:1280px;height:880px;backgr
       <div style="font-size:40px;font-weight:800;line-height:1.05;color:#4a3f35">3</div>
       <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
     </div>
-    <!-- スコア(あお)+ ポップ と リング -->
-    <div style="position:absolute;left:1064px;top:36px;z-index:30">
+    <!-- スコア(あお):ポップ と リング。区切りで 消える -->
+    <div class="anim" style="position:absolute;left:1064px;top:36px;animation-name:untilbreak;z-index:30">
       <div class="anim" style="position:absolute;left:-16px;top:-16px;width:220px;height:96px;border-radius:999px;border:6px solid #4dabf7;animation-name:ring"></div>
       <div class="anim" style="display:flex;align-items:center;gap:12px;background:#4dabf7;border:4px solid #1c7ed6;border-radius:22px;box-shadow:0 6px 0 #1c7ed6;padding:6px 22px 8px;color:#fff;animation-name:bluepop;transform-origin:50% 50%">
         <span style="position:relative;width:34px;height:52px;display:inline-block">
@@ -458,24 +508,26 @@ motion_body = f"""<div style="position:relative;width:1280px;height:880px;backgr
     <div class="anim" style="position:absolute;left:1030px;top:204px;font-size:44px;font-weight:800;color:#1c7ed6;-webkit-text-stroke:5px #fff;paint-order:stroke fill;animation-name:plusone;z-index:30">+1</div>
     <!-- テロップ -->
     <div class="anim" style="position:absolute;left:340px;top:642px;width:600px;text-align:center;background:rgba(255,253,245,.94);border:4px solid #4dabf7;border-radius:999px;box-shadow:0 6px 0 rgba(28,126,214,.28);padding:8px 24px 10px;font-size:26px;font-weight:800;color:#1c7ed6;animation-name:telop;z-index:30">さくら、ナイスシュート!</div>
-    <!-- かちカード(上1/3) -->
+    <!-- 勝ったチームの カード(上1/3) -->
     <div class="anim" style="position:absolute;left:340px;top:120px;width:600px;box-sizing:border-box;background:rgba(255,255,255,.96);border:5px solid #4dabf7;border-radius:26px;box-shadow:0 8px 0 #1c7ed6;padding:16px 30px 20px;text-align:center;animation-name:card;z-index:58">
       <div style="font-size:21px;font-weight:800;color:#8a7a68">たまいれ</div>
       <div style="font-size:50px;font-weight:800;color:#1c7ed6;line-height:1.15">あおチーム の かち!</div>
       <div style="font-size:22px;font-weight:800;color:#6a5c4c">3 - 6</div>
     </div>
+    <!-- 負けたチームにも ひとこと(暗くしない・ちゃんと 見せる) -->
+    <div class="anim" style="position:absolute;left:56px;top:612px;width:330px;text-align:center;background:rgba(255,253,245,.96);border:4px solid #ff6b9d;border-radius:999px;box-shadow:0 6px 0 rgba(214,51,108,.28);padding:6px 18px 8px;font-size:23px;font-weight:800;color:#d6336c;animation-name:bubble;z-index:58">よく がんばった!</div>
   </div>
 
   <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:16px 28px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae">
     <div style="display:flex;align-items:baseline;gap:12px">
-      <span class="tag good">うごき</span>
-      <div style="font-size:22px;font-weight:800">目を つれていく 4つの うごき(じどう再生)</div>
+      <span class="tag good">動き</span>
+      <div style="font-size:22px;font-weight:800">目を連れていく5つの動き(自動再生・速度も変えられます)</div>
     </div>
     <div class="cap" style="margin-top:8px">
-      <b>1. ポップ+リング</b>(0.9s) 入った 瞬間に すうじが はねて、チーム色の わが ひろがる。どっちが 入れたか 一目で わかる。 /
-      <b>2. テロップ</b>(1.0-2.6s) 下から 出て 下へ 消える。目が ステージへ もどる。<br>
-      <b>3. 白フラッシュ</b>(3.0s) 0.2びょうだけ。ここで 場面が かわる ことを からだで わからせる。 /
-      <b>4. スポット+せり上がり</b>(3.3s-) まけた側を うすく して、かちカードが 下から せり上がる。まんなかは あけて キャラを 見せたまま。
+      <b>1. ポップ+リング</b>(0.9s) 入った瞬間に数字が跳ね、チーム色の輪が広がる。どちらが入れたか一目で分かる。 /
+      <b>2. テロップ</b>(1.0-2.5s) 下から出て下へ消える。目がステージへ戻る。<br>
+      <b>3. 白フラッシュ → 間</b>(2.9s) 0.2秒光ったあと、<b>UIを全部消して0.3秒の間</b>を作る。これが競技の区切りになる。 /
+      <b>4. お祝い</b>(3.4s-) 勝った側は跳ねて紙吹雪と光。<b>5. 負けた側も暗くしない</b> — 拍手のしぐさと「よく がんばった!」を出す。差は明るさではなく派手さでつける。
     </div>
   </div>
 </div>
@@ -491,10 +543,10 @@ parts_css = """
     .pcard .spec b { color: #4a3f35; }
     .demo { display: flex; align-items: center; justify-content: center; min-height: 96px; border-radius: 14px; background: linear-gradient(#a5d8ff,#a9dd7e); margin-top: 10px; }
 """
-parts_body = """<div style="position:relative;width:1280px;height:900px;background:#fffdf5;padding:26px 28px;box-sizing:border-box">
+parts_body = """<div style="position:relative;width:1280px;height:1000px;background:#fffdf5;padding:26px 28px;box-sizing:border-box">
   <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:16px">
-    <span class="tag good">ぶひん</span>
-    <span style="font-size:24px;font-weight:800">つかう ぶひんは 5つだけ</span>
+    <span class="tag good">部品</span>
+    <span style="font-size:24px;font-weight:800">使う部品は6つだけ</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
     <div class="pcard">
@@ -504,20 +556,20 @@ parts_body = """<div style="position:relative;width:1280px;height:900px;backgrou
           <span style="font-size:17px;font-weight:800">あか</span><span style="font-size:52px;font-weight:800;line-height:1">3</span>
         </div>
       </div>
-      <p class="spec"><b>いち</b> 左上 36,36 / 右上 1064,36<br><b>色</b> チーム色ベタ + 濃い色の ふち(既存の .btn と 同じ 立体)<br><b>やめる</b> 🔴🔵マーク・フルのチーム名</p>
+      <p class="spec"><b>位置</b> 左上 36,36 / 右上 1064,36<br><b>色</b> チーム色ベタ + 濃い色のフチ(既存の .btn と同じ立体)<br><b>やめる</b> 🔴🔵マーク・フルのチーム名</p>
     </div>
     <div class="pcard">
-      <h3>のこり じかん</h3>
+      <h3>残り時間</h3>
       <div class="demo">
         <div style="width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px">
           <div style="font-size:40px;font-weight:800;line-height:1.05">12</div>
           <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
         </div>
       </div>
-      <p class="spec"><b>いち</b> 上ちゅうおう 576,40<br><b>10びょうを きったら</b> 数字を #d6336c に して 1びょうごとに 1.12ばい ふくらむ<br><b>ないとき</b> 出さない(かけっこ・リレー)</p>
+      <p class="spec"><b>位置</b> 上中央 576,40<br><b>10秒を切ったら</b> 数字を #d6336c にして1秒ごとに1.12倍ふくらむ<br><b>無いとき</b> 出さない(かけっこ・リレー)</p>
     </div>
     <div class="pcard">
-      <h3>しんこうドット</h3>
+      <h3>進行ドット</h3>
       <div class="demo">
         <div style="display:flex;gap:7px">
           <div style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(150,110,70,.22)"></div>
@@ -526,17 +578,25 @@ parts_body = """<div style="position:relative;width:1280px;height:900px;backgrou
           <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
         </div>
       </div>
-      <p class="spec"><b>かわり</b> 「だい2きょうぎ / ぜん4きょうぎ」の 文字を なくす<br><b>すんだ きょうぎ</b> は 白、いまは 黄、これから は うすい<br><b>おきかえ先</b> undoukai.html の #progLbl</p>
+      <p class="spec"><b>代わり</b>「だい2きょうぎ / ぜん4きょうぎ」の文字をなくす<br><b>済んだ競技</b>は白、今は黄、これからは薄い<br><b>置き換え先</b> undoukai.html の #progLbl</p>
     </div>
     <div class="pcard">
-      <h3>テロップ(2.4びょう)</h3>
+      <h3>テロップ(2.4秒)</h3>
       <div class="demo">
         <div style="text-align:center;background:rgba(255,253,245,.94);border:4px solid #4dabf7;border-radius:999px;box-shadow:0 6px 0 rgba(28,126,214,.28);padding:8px 24px 10px;font-size:22px;font-weight:800;color:#1c7ed6">さくら、ナイスシュート!</div>
       </div>
-      <p class="spec"><b>いち</b> 下から 72px せり上がり、y=642<br><b>ふち</b> しゃべった チームの 色<br><b>きえかた</b> 2.4びょう後に 下へ / つぎが 来たら すぐ 入れかえ<br><b>やめる</b> 黒おび(.mt-banner の 出っぱなし)</p>
+      <p class="spec"><b>位置</b> 下から72px せり上がり、y=642<br><b>フチ</b> しゃべったチームの色<br><b>消え方</b> 2.4秒後に下へ / 次が来たらすぐ入れ替え<br><b>やめる</b> 黒帯(.mt-banner の出しっぱなし)</p>
     </div>
     <div class="pcard">
-      <h3>かちカード</h3>
+      <h3>区切りの間(0.3秒)</h3>
+      <div class="demo" style="background:linear-gradient(#a5d8ff,#a9dd7e);position:relative">
+        <div style="position:absolute;inset:0;background:rgba(255,255,255,.5);border-radius:14px"></div>
+        <div style="position:relative;font-size:15px;font-weight:800;color:#6a5c4c">UI が ぜんぶ 消える</div>
+      </div>
+      <p class="spec"><b>いつ</b> 決着の白フラッシュの直後、次の表示が出る前<br><b>長さ</b> 0.3秒<br><b>消すもの</b> スコアチップ・時間・テロップ(ステージだけ残す)<br><b>ねらい</b> ここが競技の切れ目だと体で分かる</p>
+    </div>
+    <div class="pcard">
+      <h3>勝ちカード</h3>
       <div class="demo" style="min-height:120px">
         <div style="width:300px;background:rgba(255,255,255,.96);border:4px solid #4dabf7;border-radius:20px;box-shadow:0 6px 0 #1c7ed6;padding:8px 14px 12px;text-align:center">
           <div style="font-size:14px;font-weight:800;color:#8a7a68">たまいれ</div>
@@ -544,21 +604,34 @@ parts_body = """<div style="position:relative;width:1280px;height:900px;backgrou
           <div style="font-size:15px;font-weight:800;color:#6a5c4c">3 - 6</div>
         </div>
       </div>
-      <p class="spec"><b>いち</b> 上1/3(y=120)。まんなかに 出さない<br><b>中身</b> きょうぎ名・かち・すうじ の 3つだけ(せつめい文は 入れない)<br><b>出かた</b> 下から せり上がり + 3%の いきすぎ</p>
+      <p class="spec"><b>位置</b> 上1/3(y=120)。中央には出さない<br><b>中身</b> 競技名・勝ち・数字の3つだけ<br><b>出方</b> 下からせり上がり + 3%の行き過ぎ</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px">
+    <div class="pcard" style="background:#f3fbf4;border-color:#51cf66;box-shadow:0 6px 0 #2f9e44">
+      <h3>勝ち負けの見せ方(暗くしない)</h3>
+      <p class="spec" style="margin-top:6px">
+        <b>やめる</b> 負けた側を暗くする・ぼかす・グレーにする。画面が暗くなり、負けた子の絵が見えなくなる。<br>
+        <b>勝った側</b> キャラが跳ねる / 紙吹雪 / チーム色の光(js/meet.js の Meet.celebrate と同じグラデ) / 勝ちカード。<br>
+        <b>負けた側</b> 明るいまま。拍手のしぐさ(上下に揺れる)と「よく がんばった!」のフキダシ。<br>
+        差は<b>明るさではなく派手さ</b>でつける。どちらの絵もちゃんと見えている状態を保つ。
+      </p>
     </div>
     <div class="pcard" style="background:#fff9e8;border-color:#ffd43b;box-shadow:0 6px 0 #e8a805">
-      <h3>とる もの</h3>
+      <h3>取るもの</h3>
       <p class="spec" style="margin-top:6px">
-        <b>.mt-score</b>(そうごう点)… きょうぎ中は 出さない。きょうぎと きょうぎの あいだ だけ、大きく 1回。<br>
-        <b>#progLbl</b> … ドットに おきかえ。<br>
-        <b>.mt-hud</b> の チーム名 … スコアチップに 統合。<br>
-        <b>.mt-banner</b> の 黒おび … まるい テロップに。<br>
-        <b>けっかカードの sub</b>(「あか3こ-あお5こ / +2てん」)… 数字だけ のこす。
+        <b>.mt-score</b>(総合点)… 競技中は出さない。<b>全競技が終わった最後の総合結果で1回だけ</b>大きく見せる。<br>
+        <b>#progLbl</b> … 進行ドットに置き換え。<br>
+        <b>.mt-hud</b> のチーム名 … スコアチップに統合。<br>
+        <b>.mt-banner</b> の黒帯 … 丸いテロップに。<br>
+        <b>結果カードの sub</b>(「あか3こ-あお5こ / +2てん」)… 数字だけ残す。
       </p>
     </div>
   </div>
-  <div class="cap" style="position:absolute;left:28px;bottom:22px;width:1224px">
-    ぜんぶ 既存の トークンの まま:チーム色 #ff6b9d / #4dabf7、ふちは 濃い色 #d6336c / #1c7ed6、立体は box-shadow 0 6px 0、まるみ 22px、フォントは そのまま。<b>あたらしい 色や フォントは 1つも ふやしていない。</b>
+
+  <div class="cap" style="position:absolute;left:28px;bottom:20px;width:1224px">
+    すべて既存のトークンのまま。チーム色 #ff6b9d / #4dabf7、フチは濃い色 #d6336c / #1c7ed6、立体は box-shadow 0 6px 0、丸み 22px、フォントもそのまま。<b>新しい色やフォントは1つも増やしていない。</b>
   </div>
 </div>
 """
@@ -567,11 +640,11 @@ FILES = {
     "Main.dc.html": page(main_css, main_body),
     "Play.dc.html": page("", play_body),
     "Rule.dc.html": page(rule_css, rule_body),
-    "Flow.dc.html": page(flow_css, flow_body, props='{"$preview":{"width":1600,"height":620}}'),
+    "Flow.dc.html": page(flow_css, flow_body, props='{"$preview":{"width":1960,"height":620}}'),
     "Motion.dc.html": page(motion_css, motion_body,
         props='{"speed":{"editor":"range","default":1,"min":0.5,"max":2,"step":0.25,"unit":"x","section":"うごき"},"$preview":{"width":1280,"height":880}}',
         vals="    const sp = this.props.speed ?? 1;\n    return { dur: (7.5 / sp).toFixed(2) + 's' };"),
-    "Parts.dc.html": page(parts_css, parts_body, props='{"$preview":{"width":1280,"height":900}}'),
+    "Parts.dc.html": page(parts_css, parts_body, props='{"$preview":{"width":1280,"height":1000}}'),
 }
 for name, text in FILES.items():
     open(name, "w").write(text)

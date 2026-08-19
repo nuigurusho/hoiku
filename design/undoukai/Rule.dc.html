@@ -25,10 +25,17 @@
     .bad { background: #ffe3ee; color: #c92a5f; }
     .good { background: #e6f7e9; color: #2f9e44; }
 
+    .zoneline { position: absolute; left: 0; width: 1280px; border-top: 3px dashed #4a3f35; opacity: .55; }
+    .zlabel { position: absolute; font-size: 15px; font-weight: 800; background: #fffdf5; border: 3px solid #e8cbae; border-radius: 999px; padding: 4px 14px; }
+    .rulecard { background: #fff; border: 4px solid #e8cbae; border-radius: 20px; box-shadow: 0 6px 0 #e8cbae; padding: 14px 18px 16px; }
+    .rulecard h3 { margin: 0 0 6px; font-size: 19px; }
+    .rulecard p { margin: 0; font-size: 14.5px; line-height: 1.6; color: #6a5c4c; }
+
   </style>
 </helmet>
 <div style="position:relative;width:1280px;height:880px;background:#fffdf5">
-
+  <div style="position:absolute;left:0;top:0;width:1280px;height:720px;overflow:hidden">
+    <div style="opacity:.5">
   <div style="position:absolute;left:0;top:0;width:1280px;height:720px;overflow:hidden;background:linear-gradient(#a5d8ff,#e3f4ff 300px)">
     <div style="position:absolute;left:0;top:300px;width:1280px;height:420px;background:#a9dd7e"></div>
     <div style="position:absolute;left:0;top:300px;width:640px;height:420px;background:rgba(255,107,157,.16)"></div>
@@ -53,6 +60,7 @@
       <path d="M8 0 H132 L112 86 H28 Z" fill="#f0d5a8" stroke="#a97f4a" stroke-width="5"></path>
       <path d="M20 30 H120 M26 58 H114" stroke="#a97f4a" stroke-width="3" opacity=".6"></path>
     </svg>
+    
     
     <div class="fig" style="position:absolute;left:135px;top:410px;width:70px">
       <svg width="70" height="110" viewBox="0 0 70 110">
@@ -138,44 +146,37 @@
       </svg>
       <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#1c7ed6">ゆい</div>
     </div>
-  </div>
-
-  <!-- ===== あたらしい UI:上の おび だけ ===== -->
-  <!-- しんこうドット -->
-  <div style="position:absolute;left:0;top:14px;width:1280px;display:flex;justify-content:center;gap:7px;z-index:20">
-    <div style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(150,110,70,.22)"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:#ffd43b;box-shadow:0 0 0 3px #e8a805"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-  </div>
-  <!-- あかの てん -->
-  <div style="position:absolute;left:36px;top:36px;display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff;z-index:20">
-    <span style="font-size:17px;font-weight:800;opacity:.92">あか</span>
-    <span style="font-size:52px;font-weight:800;line-height:1">3</span>
-  </div>
-  <!-- のこり じかん -->
-  <div style="position:absolute;left:576px;top:40px;width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px;z-index:20">
-    <div style="font-size:40px;font-weight:800;line-height:1.05;color:#4a3f35">12</div>
-    <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
-  </div>
-  <!-- あおの てん -->
-  <div style="position:absolute;left:1064px;top:36px;display:flex;align-items:center;gap:12px;background:#4dabf7;border:4px solid #1c7ed6;border-radius:22px;box-shadow:0 6px 0 #1c7ed6;padding:6px 22px 8px;color:#fff;z-index:20">
-    <span style="font-size:52px;font-weight:800;line-height:1">5</span>
-    <span style="font-size:17px;font-weight:800;opacity:.92">あお</span>
-  </div>
-
-  <!-- 出来事の ときだけ 出る テロップ(2.4びょう) -->
-  <div style="position:absolute;left:340px;top:642px;width:600px;text-align:center;background:rgba(255,253,245,.94);border:4px solid #4dabf7;border-radius:999px;box-shadow:0 6px 0 rgba(28,126,214,.28);padding:8px 24px 10px;font-size:26px;font-weight:800;color:#1c7ed6;z-index:20">さくら、ナイスシュート!</div>
-  <div style="position:absolute;left:952px;top:648px;font-size:13px;font-weight:800;color:#8a7a68;z-index:20">2.4びょうで きえる</div>
-
-  <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:16px 28px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae">
-    <div style="display:flex;align-items:baseline;gap:12px">
-      <span class="tag good">ていあん</span>
-      <div style="font-size:22px;font-weight:800">プレー中に つねに 出るのは「2つの すうじ」だけ</div>
+  </div></div>
+    <div style="position:absolute;left:0;top:0;width:1280px;height:104px;background:rgba(255,212,59,.30)"></div>
+    <div style="position:absolute;left:0;top:104px;width:1280px;height:526px;background:rgba(81,207,102,.16)"></div>
+    <div style="position:absolute;left:0;top:630px;width:1280px;height:90px;background:rgba(77,171,247,.24)"></div>
+    <div class="zoneline" style="top:104px"></div>
+    <div class="zoneline" style="top:630px"></div>
+    <div class="zlabel" style="left:28px;top:34px">0-104px:UI帯(スコアだけ)</div>
+    <div class="zlabel" style="left:28px;top:340px;border-color:#2f9e44;color:#2f9e44">104-630px:キャラの場所 / 何も置かない</div>
+    <div class="zlabel" style="left:28px;top:658px;border-color:#1c7ed6;color:#1c7ed6">630-720px:テロップ帯(出来事のときだけ)</div>
+    <div style="position:absolute;left:832px;top:120px;width:420px;background:rgba(255,255,255,.9);border:4px dashed #2f9e44;border-radius:24px;padding:12px 18px 14px;text-align:center">
+      <div style="font-size:15px;font-weight:800;color:#2f9e44">カードを出すときはここ(上1/3)</div>
+      <div style="font-size:13px;color:#6a5c4c;margin-top:4px;line-height:1.5">キャラは必ず下半分に残す。<br>中央には出さない。</div>
     </div>
-    <div class="cap" style="margin-top:8px">
-      チーム名は <b>色そのもの</b>に まかせて 文字を やめる(「あか」「あお」の 2文字だけ のこす)。そうごう点は きょうぎ中は 出さず、<b>上の 4つの ドット</b>で 「いま 何きょうぎ目か」だけ しめす。<br>
-      テロップは 出来事が おきた ときだけ 下から 出て 2.4びょうで きえる。黒おびを やめ、まるい 白ふきだし + チーム色のふちに して、じめんが すけて 見えるように する。
+  </div>
+
+  <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:14px 24px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae;display:flex;gap:14px">
+    <div class="rulecard" style="flex:1">
+      <h3>1. 常に出すのは1種類だけ</h3>
+      <p>「今の競技の点数」だけを常設。<b>総合点は最後の総合結果で1回だけ</b>。競技名・順番・説明は、それを見せる場面でしか出さない。</p>
+    </div>
+    <div class="rulecard" style="flex:1">
+      <h3>2. キャラの帯には何も置かない</h3>
+      <p>y=104-630 はキャラとカゴの場所。文字・カード・ボタンをここに置かない。重ねるなら上1/3か下の帯。</p>
+    </div>
+    <div class="rulecard" style="flex:1">
+      <h3>3. 切り替わる前に一度消す</h3>
+      <p>次を出す前に0.3秒だけ全部消してステージだけにする。この「間」が競技の区切りになり、次の表示が新しい情報だと伝わる。</p>
+    </div>
+    <div class="rulecard" style="flex:1">
+      <h3>4. 同じことを2回言わない</h3>
+      <p>チーム名は色で、点数は数字で。マーク(🔴🔵)と名前と色の3重ねをやめて1つにする。</p>
     </div>
   </div>
 </div>

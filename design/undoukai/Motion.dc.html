@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "M PLUS Rounded 1c", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      color: #4a3f35;
+      background: #fffdf5;
+    }
+    a { color: #d6336c; }
+    a:hover { color: #b02a54; }
+    .cap { font-size: 15px; line-height: 1.65; color: #6a5c4c; }
+    .tag {
+      display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: .04em;
+      border-radius: 999px; padding: 3px 12px;
+    }
+    .bad { background: #ffe3ee; color: #c92a5f; }
+    .good { background: #e6f7e9; color: #2f9e44; }
+
+    .stagewrap { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; overflow: hidden; }
+    .anim { animation-duration: var(--t); animation-timing-function: linear; animation-iteration-count: infinite; }
+    .fig { animation-duration: var(--t); animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+    /* 勝った側:とびはねる。負けた側:はくしゅして おじぎ。どちらも 明るいまま */
+    .winact { animation-name: winjump; }
+    .loseact { animation-name: loseclap; }
+    @keyframes winjump {
+      0%, 46% { transform: translateY(0); }
+      49% { transform: translateY(-30px); }
+      52% { transform: translateY(0); }
+      55% { transform: translateY(-24px); }
+      58% { transform: translateY(0); }
+      61% { transform: translateY(-28px); }
+      64% { transform: translateY(0); }
+      67% { transform: translateY(-20px); }
+      70% { transform: translateY(0); }
+      73% { transform: translateY(-26px); }
+      76%, 100% { transform: translateY(0); }
+    }
+    @keyframes loseclap {
+      0%, 46% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(5px) rotate(-5deg); }
+      54% { transform: translateY(0) rotate(0deg); }
+      58% { transform: translateY(5px) rotate(5deg); }
+      62% { transform: translateY(0) rotate(0deg); }
+      66% { transform: translateY(5px) rotate(-5deg); }
+      70%, 100% { transform: translateY(0) rotate(0deg); }
+    }
+    @keyframes party {
+      0%, 44% { opacity: 0; }
+      48%, 88% { opacity: 1; }
+      95%, 100% { opacity: 0; }
+    }
+    /* 区切り:つぎが 出る まえに UI を ぜんぶ 消して 0.3びょうの 間 をつくる */
+    @keyframes untilbreak {
+      0%, 40% { opacity: 1; }
+      41%, 94% { opacity: 0; }
+      98%, 100% { opacity: 1; }
+    }
+    @keyframes bluepop {
+      0%, 10% { transform: scale(1); }
+      13% { transform: scale(1.34); }
+      17%, 100% { transform: scale(1); }
+    }
+    @keyframes ring {
+      0%, 10% { opacity: 0; transform: scale(.4); }
+      11% { opacity: .9; }
+      22%, 100% { opacity: 0; transform: scale(2.4); }
+    }
+    @keyframes swap5 { 0%, 10.5% { opacity: 1; } 11%, 100% { opacity: 0; } }
+    @keyframes swap6 { 0%, 10.5% { opacity: 0; } 11%, 100% { opacity: 1; } }
+    @keyframes plusone {
+      0%, 10% { opacity: 0; transform: translateY(0); }
+      12% { opacity: 1; }
+      24%, 100% { opacity: 0; transform: translateY(-58px); }
+    }
+    @keyframes telop {
+      0%, 11% { opacity: 0; transform: translateY(72px); }
+      14%, 33% { opacity: 1; transform: translateY(0); }
+      37%, 100% { opacity: 0; transform: translateY(72px); }
+    }
+    @keyframes flash {
+      0%, 37% { opacity: 0; }
+      39% { opacity: .92; }
+      44%, 100% { opacity: 0; }
+    }
+    @keyframes card {
+      0%, 50% { opacity: 0; transform: translateY(70px) scale(.92); }
+      55% { opacity: 1; transform: translateY(-10px) scale(1.03); }
+      58%, 88% { opacity: 1; transform: translateY(0) scale(1); }
+      94%, 100% { opacity: 0; transform: translateY(70px) scale(.92); }
+    }
+    @keyframes bubble {
+      0%, 56% { opacity: 0; transform: translateY(20px) scale(.9); }
+      60%, 86% { opacity: 1; transform: translateY(0) scale(1); }
+      92%, 100% { opacity: 0; transform: translateY(20px) scale(.9); }
+    }
+    @keyframes timer0 { 0%, 36% { opacity: 1; } 38%, 94% { opacity: 0; } 98%, 100% { opacity: 1; } }
+    @keyframes conf1 { 0%, 46% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 49% { opacity: 1; } 84%, 100% { opacity: 0; transform: translateY(560px) rotate(420deg); } }
+    @keyframes conf2 { 0%, 49% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 52% { opacity: 1; } 88%, 100% { opacity: 0; transform: translateY(600px) rotate(-380deg); } }
+    @keyframes conf3 { 0%, 52% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 55% { opacity: 1; } 90%, 100% { opacity: 0; transform: translateY(520px) rotate(300deg); } }
+    @keyframes conf4 { 0%, 55% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 58% { opacity: 1; } 92%, 100% { opacity: 0; transform: translateY(580px) rotate(-460deg); } }
+
+  </style>
+</helmet>
+<div style="position:relative;width:1280px;height:880px;background:#fffdf5;--t:{{dur}}">
+  <div class="stagewrap">
+
+  <div style="position:absolute;left:0;top:0;width:1280px;height:720px;overflow:hidden;background:linear-gradient(#a5d8ff,#e3f4ff 300px)">
+    <div style="position:absolute;left:0;top:300px;width:1280px;height:420px;background:#a9dd7e"></div>
+    <div style="position:absolute;left:0;top:300px;width:640px;height:420px;background:rgba(255,107,157,.16)"></div>
+    <div style="position:absolute;left:640px;top:300px;width:640px;height:420px;background:rgba(77,171,247,.16)"></div>
+    <div style="position:absolute;left:638px;top:300px;width:5px;height:420px;background:repeating-linear-gradient(rgba(255,255,255,.8) 0 24px,transparent 24px 42px)"></div>
+    <div style="position:absolute;left:0;top:0;width:1280px;height:46px;background:repeating-linear-gradient(90deg,#ff8fab 0 80px,#fff 80px 160px)"></div>
+    <div style="position:absolute;left:0;top:41px;width:1280px;height:5px;background:rgba(150,110,70,.18)"></div>
+    <div style="position:absolute;left:0;top:46px;width:1280px;height:15px;background:radial-gradient(circle 15px at 15px 0,#ffd43b 0 15px,transparent 15px);background-size:30px 15px"></div>
+    <div style="position:absolute;left:109px;top:601px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#ffd8e6,#ff6b9d 45%,#c92a5f)"></div><div style="position:absolute;left:240px;top:586px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#ffd8e6,#ff6b9d 45%,#c92a5f)"></div><div style="position:absolute;left:408px;top:612px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#ffd8e6,#ff6b9d 45%,#c92a5f)"></div><div style="position:absolute;left:531px;top:579px;width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#ffd8e6,#ff6b9d 45%,#c92a5f)"></div><div style="position:absolute;left:750px;top:598px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#d5ecff,#4dabf7 45%,#1864ab)"></div><div style="position:absolute;left:868px;top:616px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#d5ecff,#4dabf7 45%,#1864ab)"></div><div style="position:absolute;left:1031px;top:583px;width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#d5ecff,#4dabf7 45%,#1864ab)"></div><div style="position:absolute;left:1169px;top:605px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:radial-gradient(circle at 34% 32%,#d5ecff,#4dabf7 45%,#1864ab)"></div>
+    
+    <svg width="140" height="310" viewBox="0 0 140 310" style="position:absolute;left:250px;top:236px">
+      <rect x="62" y="0" width="16" height="292" fill="#c9a227"></rect>
+      <ellipse cx="70" cy="296" rx="40" ry="12" fill="#a97f4a"></ellipse>
+      <ellipse cx="70" cy="290" rx="40" ry="12" fill="#c9a06a"></ellipse>
+      <path d="M8 0 H132 L112 86 H28 Z" fill="#f0d5a8" stroke="#a97f4a" stroke-width="5"></path>
+      <path d="M20 30 H120 M26 58 H114" stroke="#a97f4a" stroke-width="3" opacity=".6"></path>
+    </svg>
+    <svg width="140" height="310" viewBox="0 0 140 310" style="position:absolute;left:890px;top:236px">
+      <rect x="62" y="0" width="16" height="292" fill="#c9a227"></rect>
+      <ellipse cx="70" cy="296" rx="40" ry="12" fill="#a97f4a"></ellipse>
+      <ellipse cx="70" cy="290" rx="40" ry="12" fill="#c9a06a"></ellipse>
+      <path d="M8 0 H132 L112 86 H28 Z" fill="#f0d5a8" stroke="#a97f4a" stroke-width="5"></path>
+      <path d="M20 30 H120 M26 58 H114" stroke="#a97f4a" stroke-width="3" opacity=".6"></path>
+    </svg>
+    <div class="anim" style="position:absolute;left:0;top:0;width:1280px;height:720px;animation-name:party;background:linear-gradient(rgba(227,240,255,.88),rgba(255,253,245,0) 62%)"></div><div class="anim" style="position:absolute;left:340px;top:170px;width:1240px;height:1240px;margin-left:-300px;animation-name:party;background:radial-gradient(circle closest-side,rgba(255,212,59,.55) 0,rgba(255,212,59,0) 100%)"></div>
+    
+    <div class="fig loseact" style="position:absolute;left:135px;top:410px;width:70px">
+      <svg width="70" height="110" viewBox="0 0 70 110">
+        <g stroke="#e8590c" stroke-width="4" stroke-linecap="round" fill="none">
+          <circle cx="35" cy="24" r="18" fill="#ffd9b8"></circle>
+          <circle cx="35" cy="64" r="19" fill="#ffc9de"></circle>
+          <path d="M17 56 L4 40 M53 56 L66 44"></path>
+          <path d="M27 82 L23 106 M43 82 L47 106"></path>
+        </g>
+        <circle cx="29" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <circle cx="41" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <path d="M30 31 Q35 36 40 31" stroke="#4a3f35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#d6336c">はなちゃん</div>
+    </div>
+    <div class="fig loseact" style="position:absolute;left:295px;top:456px;width:70px">
+      <svg width="70" height="110" viewBox="0 0 70 110">
+        <g stroke="#e8590c" stroke-width="4" stroke-linecap="round" fill="none">
+          <circle cx="35" cy="24" r="18" fill="#ffd9b8"></circle>
+          <circle cx="35" cy="64" r="19" fill="#ffc9de"></circle>
+          <path d="M17 56 L4 40 M53 56 L66 44"></path>
+          <path d="M27 82 L23 106 M43 82 L47 106"></path>
+        </g>
+        <circle cx="29" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <circle cx="41" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <path d="M30 31 Q35 36 40 31" stroke="#4a3f35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#d6336c">たろう</div>
+    </div>
+    <div class="fig loseact" style="position:absolute;left:435px;top:382px;width:70px">
+      <svg width="70" height="110" viewBox="0 0 70 110">
+        <g stroke="#e8590c" stroke-width="4" stroke-linecap="round" fill="none">
+          <circle cx="35" cy="24" r="18" fill="#ffd9b8"></circle>
+          <circle cx="35" cy="64" r="19" fill="#ffc9de"></circle>
+          <path d="M17 56 L4 40 M53 56 L66 44"></path>
+          <path d="M27 82 L23 106 M43 82 L47 106"></path>
+        </g>
+        <circle cx="29" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <circle cx="41" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <path d="M30 31 Q35 36 40 31" stroke="#4a3f35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#d6336c">みーくん</div>
+    </div>
+    <div class="fig winact" style="position:absolute;left:755px;top:390px;width:70px">
+      <svg width="70" height="110" viewBox="0 0 70 110">
+        <g stroke="#1c7ed6" stroke-width="4" stroke-linecap="round" fill="none">
+          <circle cx="35" cy="24" r="18" fill="#ffd9b8"></circle>
+          <circle cx="35" cy="64" r="19" fill="#a5d8ff"></circle>
+          <path d="M17 56 L4 40 M53 56 L66 44"></path>
+          <path d="M27 82 L23 106 M43 82 L47 106"></path>
+        </g>
+        <circle cx="29" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <circle cx="41" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <path d="M30 31 Q35 36 40 31" stroke="#4a3f35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#1c7ed6">さくら</div>
+    </div>
+    <div class="fig winact" style="position:absolute;left:925px;top:464px;width:70px">
+      <svg width="70" height="110" viewBox="0 0 70 110">
+        <g stroke="#1c7ed6" stroke-width="4" stroke-linecap="round" fill="none">
+          <circle cx="35" cy="24" r="18" fill="#ffd9b8"></circle>
+          <circle cx="35" cy="64" r="19" fill="#a5d8ff"></circle>
+          <path d="M17 56 L4 40 M53 56 L66 44"></path>
+          <path d="M27 82 L23 106 M43 82 L47 106"></path>
+        </g>
+        <circle cx="29" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <circle cx="41" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <path d="M30 31 Q35 36 40 31" stroke="#4a3f35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#1c7ed6">けんと</div>
+    </div>
+    <div class="fig winact" style="position:absolute;left:1085px;top:418px;width:70px">
+      <svg width="70" height="110" viewBox="0 0 70 110">
+        <g stroke="#1c7ed6" stroke-width="4" stroke-linecap="round" fill="none">
+          <circle cx="35" cy="24" r="18" fill="#ffd9b8"></circle>
+          <circle cx="35" cy="64" r="19" fill="#a5d8ff"></circle>
+          <path d="M17 56 L4 40 M53 56 L66 44"></path>
+          <path d="M27 82 L23 106 M43 82 L47 106"></path>
+        </g>
+        <circle cx="29" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <circle cx="41" cy="22" r="2.6" fill="#4a3f35"></circle>
+        <path d="M30 31 Q35 36 40 31" stroke="#4a3f35" stroke-width="2.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div style="position:absolute;left:-30px;top:112px;width:130px;text-align:center;font:800 19px sans-serif;color:#1c7ed6">ゆい</div>
+    </div>
+  </div>
+    <!-- 白フラッシュ(決まった しゅんかん) -->
+    <div class="anim" style="position:absolute;left:0;top:0;width:1280px;height:720px;animation-name:flash;background:#fff;z-index:55"></div>
+<div class="anim" style="position:absolute;left:70px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ff6b9d;animation-name:conf1;z-index:60"></div><div class="anim" style="position:absolute;left:150px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ffd43b;animation-name:conf3;z-index:60"></div><div class="anim" style="position:absolute;left:230px;top:-40px;width:14px;height:20px;border-radius:3px;background:#4dabf7;animation-name:conf2;z-index:60"></div><div class="anim" style="position:absolute;left:310px;top:-40px;width:14px;height:20px;border-radius:3px;background:#51cf66;animation-name:conf4;z-index:60"></div><div class="anim" style="position:absolute;left:390px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ff922b;animation-name:conf1;z-index:60"></div><div class="anim" style="position:absolute;left:470px;top:-40px;width:14px;height:20px;border-radius:3px;background:#9775fa;animation-name:conf3;z-index:60"></div><div class="anim" style="position:absolute;left:560px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ff6b9d;animation-name:conf2;z-index:60"></div><div class="anim" style="position:absolute;left:640px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ffd43b;animation-name:conf4;z-index:60"></div><div class="anim" style="position:absolute;left:720px;top:-40px;width:14px;height:20px;border-radius:3px;background:#4dabf7;animation-name:conf1;z-index:60"></div><div class="anim" style="position:absolute;left:800px;top:-40px;width:14px;height:20px;border-radius:3px;background:#51cf66;animation-name:conf3;z-index:60"></div><div class="anim" style="position:absolute;left:880px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ff922b;animation-name:conf2;z-index:60"></div><div class="anim" style="position:absolute;left:950px;top:-40px;width:14px;height:20px;border-radius:3px;background:#4dabf7;animation-name:conf4;z-index:60"></div><div class="anim" style="position:absolute;left:1020px;top:-40px;width:14px;height:20px;border-radius:3px;background:#9775fa;animation-name:conf1;z-index:60"></div><div class="anim" style="position:absolute;left:1090px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ffd43b;animation-name:conf3;z-index:60"></div><div class="anim" style="position:absolute;left:1160px;top:-40px;width:14px;height:20px;border-radius:3px;background:#4dabf7;animation-name:conf2;z-index:60"></div><div class="anim" style="position:absolute;left:1230px;top:-40px;width:14px;height:20px;border-radius:3px;background:#ff6b9d;animation-name:conf4;z-index:60"></div>
+
+    <!-- スコア(あか):区切りで 消える -->
+    <div class="anim" style="position:absolute;left:36px;top:36px;display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff;animation-name:untilbreak;z-index:30">
+      <span style="font-size:17px;font-weight:800;opacity:.92">あか</span>
+      <span style="font-size:52px;font-weight:800;line-height:1">5</span>
+    </div>
+    <!-- のこり じかん -->
+    <div class="anim" style="position:absolute;left:576px;top:40px;width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px;animation-name:timer0;z-index:30">
+      <div style="font-size:40px;font-weight:800;line-height:1.05;color:#4a3f35">3</div>
+      <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
+    </div>
+    <!-- スコア(あお):ポップ と リング。区切りで 消える -->
+    <div class="anim" style="position:absolute;left:1064px;top:36px;animation-name:untilbreak;z-index:30">
+      <div class="anim" style="position:absolute;left:-16px;top:-16px;width:220px;height:96px;border-radius:999px;border:6px solid #4dabf7;animation-name:ring"></div>
+      <div class="anim" style="display:flex;align-items:center;gap:12px;background:#4dabf7;border:4px solid #1c7ed6;border-radius:22px;box-shadow:0 6px 0 #1c7ed6;padding:6px 22px 8px;color:#fff;animation-name:bluepop;transform-origin:50% 50%">
+        <span style="position:relative;width:34px;height:52px;display:inline-block">
+          <span class="anim" style="position:absolute;left:0;top:0;font-size:52px;font-weight:800;line-height:1;animation-name:swap5">5</span>
+          <span class="anim" style="position:absolute;left:0;top:0;font-size:52px;font-weight:800;line-height:1;animation-name:swap6">6</span>
+        </span>
+        <span style="font-size:17px;font-weight:800;opacity:.92">あお</span>
+      </div>
+    </div>
+    <!-- +1 の フロート(かごの よこ) -->
+    <div class="anim" style="position:absolute;left:1030px;top:204px;font-size:44px;font-weight:800;color:#1c7ed6;-webkit-text-stroke:5px #fff;paint-order:stroke fill;animation-name:plusone;z-index:30">+1</div>
+    <!-- テロップ -->
+    <div class="anim" style="position:absolute;left:340px;top:642px;width:600px;text-align:center;background:rgba(255,253,245,.94);border:4px solid #4dabf7;border-radius:999px;box-shadow:0 6px 0 rgba(28,126,214,.28);padding:8px 24px 10px;font-size:26px;font-weight:800;color:#1c7ed6;animation-name:telop;z-index:30">さくら、ナイスシュート!</div>
+    <!-- 勝ったチームの カード(上1/3) -->
+    <div class="anim" style="position:absolute;left:340px;top:120px;width:600px;box-sizing:border-box;background:rgba(255,255,255,.96);border:5px solid #4dabf7;border-radius:26px;box-shadow:0 8px 0 #1c7ed6;padding:16px 30px 20px;text-align:center;animation-name:card;z-index:58">
+      <div style="font-size:21px;font-weight:800;color:#8a7a68">たまいれ</div>
+      <div style="font-size:50px;font-weight:800;color:#1c7ed6;line-height:1.15">あおチーム の かち!</div>
+      <div style="font-size:22px;font-weight:800;color:#6a5c4c">3 - 6</div>
+    </div>
+    <!-- 負けたチームにも ひとこと(暗くしない・ちゃんと 見せる) -->
+    <div class="anim" style="position:absolute;left:56px;top:612px;width:330px;text-align:center;background:rgba(255,253,245,.96);border:4px solid #ff6b9d;border-radius:999px;box-shadow:0 6px 0 rgba(214,51,108,.28);padding:6px 18px 8px;font-size:23px;font-weight:800;color:#d6336c;animation-name:bubble;z-index:58">よく がんばった!</div>
+  </div>
+
+  <div style="position:absolute;left:0;top:720px;width:1280px;height:160px;padding:16px 28px;box-sizing:border-box;background:#fffdf5;border-top:4px solid #e8cbae">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span class="tag good">動き</span>
+      <div style="font-size:22px;font-weight:800">目を連れていく5つの動き(自動再生・速度も変えられます)</div>
+    </div>
+    <div class="cap" style="margin-top:8px">
+      <b>1. ポップ+リング</b>(0.9s) 入った瞬間に数字が跳ね、チーム色の輪が広がる。どちらが入れたか一目で分かる。 /
+      <b>2. テロップ</b>(1.0-2.5s) 下から出て下へ消える。目がステージへ戻る。<br>
+      <b>3. 白フラッシュ → 間</b>(2.9s) 0.2秒光ったあと、<b>UIを全部消して0.3秒の間</b>を作る。これが競技の区切りになる。 /
+      <b>4. お祝い</b>(3.4s-) 勝った側は跳ねて紙吹雪と光。<b>5. 負けた側も暗くしない</b> — 拍手のしぐさと「よく がんばった!」を出す。差は明るさではなく派手さでつける。
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"speed":{"editor":"range","default":1,"min":0.5,"max":2,"step":0.25,"unit":"x","section":"うごき"},"$preview":{"width":1280,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sp = this.props.speed ?? 1;
+    return { dur: (7.5 / sp).toFixed(2) + 's' };
+  }
+}
+</script>
+</body>
+</html>
