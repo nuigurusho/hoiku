@@ -142,22 +142,12 @@
   </div>
 
   <!-- ===== あたらしい UI:上の おび だけ ===== -->
-  <!-- しんこうドット -->
-  <div style="position:absolute;left:0;top:14px;width:1280px;display:flex;justify-content:center;gap:7px;z-index:20">
-    <div style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(150,110,70,.22)"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:#ffd43b;box-shadow:0 0 0 3px #e8a805"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-  </div>
+  <!-- 進行:競技のアイコンそのもの。今の競技だけ台座つきで、残り時間も中に入れる -->
+<div style="position:absolute;left:0;top:14px;width:1280px;display:flex;justify-content:center;align-items:center;gap:7px;z-index:30;"><div style="position:relative;width:30px;height:30px;flex:0 0 auto"><img src="race.png" alt="かけっこ" style="width:30px;height:30px;object-fit:contain"><svg width="17" height="17" viewBox="0 0 16 16" style="position:absolute;right:-4px;bottom:-4px"><circle cx="8" cy="8" r="7" fill="#51cf66" stroke="#fff" stroke-width="2"></circle><path d="M4.6 8.2 L7 10.6 L11.4 5.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45;flex:0 0 auto"><path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;background:#fff;border:4px solid #ffd43b;border-radius:999px;box-shadow:0 4px 0 #e8a805;padding:5px 18px 7px"><img src="tamaire.png" alt="たまいれ" style="width:36px;height:36px;object-fit:contain"><span style="font-size:32px;font-weight:800;line-height:1;color:#4a3f35">12</span><span style="font-size:12px;font-weight:800;color:#8a7a68;align-self:flex-end;padding-bottom:3px">びょう</span></div><svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45;flex:0 0 auto"><path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><img src="dodgeball.png" alt="ドッヂボール" style="width:30px;height:30px;object-fit:contain;opacity:.42;flex:0 0 auto"><svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45;flex:0 0 auto"><path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><img src="relay.png" alt="リレー" style="width:30px;height:30px;object-fit:contain;opacity:.42;flex:0 0 auto"></div>
   <!-- あかの てん -->
   <div style="position:absolute;left:36px;top:36px;display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff;z-index:20">
     <span style="font-size:17px;font-weight:800;opacity:.92">あか</span>
     <span style="font-size:52px;font-weight:800;line-height:1">3</span>
-  </div>
-  <!-- のこり じかん -->
-  <div style="position:absolute;left:576px;top:40px;width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px;z-index:20">
-    <div style="font-size:40px;font-weight:800;line-height:1.05;color:#4a3f35">12</div>
-    <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
   </div>
   <!-- あおの てん -->
   <div style="position:absolute;left:1064px;top:36px;display:flex;align-items:center;gap:12px;background:#4dabf7;border:4px solid #1c7ed6;border-radius:22px;box-shadow:0 6px 0 #1c7ed6;padding:6px 22px 8px;color:#fff;z-index:20">
@@ -175,7 +165,8 @@
       <div style="font-size:22px;font-weight:800">プレー中に常に出るのは「2つの数字」だけ</div>
     </div>
     <div class="cap" style="margin-top:8px">
-      チーム名は<b>色そのもの</b>に任せて文字をやめる(「あか」「あお」の2文字だけ残す)。<b>総合点は競技中は一切出さず、最後の総合結果で1回だけ</b>見せる。今が何競技目かは上の4つのドットだけで示す。<br>
+      チーム名は<b>色そのもの</b>に任せて文字をやめる(「あか」「あお」の2文字だけ残す)。<b>総合点は競技中は一切出さず、最後の総合結果で1回だけ</b>見せる。<br>
+      今どこかは<b>競技のアイコンそのもの</b>で示す。紹介カードと支度画面で見たのと同じ絵なので、字が読めなくても「今はたまいれ」と分かる。済んだ競技にはチェック、次はうすく、間は矢印。残り時間は今の競技の台座に入れて、時間のピルを別に置かない。<br>
       テロップは出来事が起きたときだけ下から出て2.4秒で消える。黒帯をやめ、丸い白フキダシ + チーム色のフチにして、地面が透けて見えるようにする。
     </div>
   </div>
