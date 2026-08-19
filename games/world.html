@@ -194,7 +194,11 @@ const FL_TOTAL = 13;                // 画面に だす キャラの かず
 
 /* かさねる じゅんばん用の たて位置。
    花に とまっている ちょうちょは、その 花の すぐ てまえに えがく */
-function actorY(a) { return a.rest > 0 ? a.perch.y + 1 : a.puppet.y; }
+function actorY(a) {
+  if (a.rest > 0) return a.perch.y + 1;   // 花に とまっている … その 花の すぐ てまえ
+  if (a.gy != null) return a.gy;          // とんでいる … かげが おちる じめんの いち
+  return a.puppet.y;
+}
 
 /* たて位置 → 大きさ。おく(上)は 小さく、てまえ(下)は 大きく */
 function flowerDepth(y) {
@@ -275,25 +279,35 @@ function flowerHead(f) {
   return { x: f.x + Math.sin(rot) * len, y: f.y - Math.cos(rot) * len, s };
 }
 
-/* ちょうちょ・ふわふわ … 花の うえを ひらひら */
+/* ちょうちょ・ふわふわ … 花の うえを ひらひら。
+   ・gy  … かげが おちる じめんの いち。おくゆき(大きさ・かさねる じゅん)は これで きめる
+   ・alt … その じめんから うきあがっている たかさ(画面上のpx)
+   画面に えがく たかさは gy - alt。たかく とんでも おくには いかないので、
+   花の うしろに かくれてしまわない。 */
+const FLY_ALT = 130;                // てまえ(おくゆき1.0)での とぶ たかさの めやす
+
 function makeFlutter(c) {
-  const y = Util.rand(FL_FAR - 30, FL_NEAR - 30);
+  const gy = Util.rand(FL_FAR + 20, FL_NEAR);
   // 大きさは ばらばらに(ちょうちょは じどうで はんぶんに なる)
   const hBase = c.kind === "fly" ? Util.rand(84, 168) : Util.rand(78, 126);
   const a = {
-    puppet: new Puppet(c.parts, { x: Util.rand(0, W), y, h: hBase * flowerDepth(y), facing: 1 }),
+    puppet: new Puppet(c.parts, { x: Util.rand(0, W), y: gy, h: hBase * flowerDepth(gy), facing: 1 }),
     name: c.rec.name || "",
     voices: c.rec.voices || null,
-    hBase, hCur: hBase * flowerDepth(y),
+    hBase, hCur: hBase * flowerDepth(gy),
     wob: Math.random() * 6,
     speed: Util.rand(38, 78),
     perch: null,                    // とまっている(むかっている)ひまわり
+    perchFacing: 1,                 // とまるときの むき(はねを どちらに ひろげるか)
     rest: 0,                        // とまっている のこり時間
     canPerch: c.kind === "fly",     // 花に とまるのは ちょうちょだけ
-    tx: 0, ty: 0,
+    gy, alt: 0,
+    tx: 0, tgy: gy, talt: 0,
     bubbleT: 0, airY: 0,
   };
   flutterTarget(a);
+  a.alt = a.talt;                   // さいしょから とんでいる たかさに
+  a.puppet.y = a.gy - a.alt;
   return a;
 }
 
@@ -303,24 +317,38 @@ function flutterTarget(a) {
   const pool = a.canPerch ? flowers.filter((f) => f.x > 30 && f.x < W - 30) : [];
   if (pool.length && Math.random() < 0.6) {
     a.perch = pool[Math.floor(Math.random() * pool.length)];
-    const head = flowerHead(a.perch);
-    a.tx = head.x;
-    a.ty = head.y;
+    a.perchFacing = Math.random() < 0.5 ? 1 : -1;
+    aimAtPerch(a);
     return;
   }
   a.perch = null;
   a.tx = Util.rand(-40, W + 40);
-  a.ty = Util.rand(FL_FAR - 30, FL_NEAR - 30);
+  a.tgy = Util.rand(FL_FAR + 20, FL_NEAR);
+  a.talt = FLY_ALT * flowerDepth(a.tgy) * Util.rand(0.7, 1.5);   // 花より 上を とぶ
 }
 
-/* とまっている ときの 足もとの たかさ。
+/* とまる いちを ゆきさきに する(花は かぜで ゆれるので まいかい きめなおす) */
+function aimAtPerch(a) {
+  a.tx = perchX(a);
+  a.tgy = a.perch.y;
+  a.talt = a.perch.y - perchY(a);
+}
+
+/* とまる よこの いち … むいている ほうと はんたいがわ。
+   はねが まんなかの 丸の うえに かかるように、ひだりむきなら 丸の みぎうえ */
+function perchX(a) {
+  const head = flowerHead(a.perch);
+  return head.x - a.perchFacing * a.perch.sun.headR * head.s * 0.55;
+}
+
+/* とまる ときの 足もとの たかさ。
    ちょうちょの じく(からだの まんなかの 線・下から 1/3)が
-   はなの まんなかに くるように おく。
+   はなの まんなかの 丸の すこし うえに くるように おく。
    じくは えがくとき 足もとより h/3 うえに くるので、その ぶんを たす */
 function perchY(a) {
   const head = flowerHead(a.perch);
   const pp = a.puppet;
-  return head.y - a.perch.sun.headR * head.s * 0.15 + pp.lift + pp.h / 3;
+  return head.y - a.perch.sun.headR * head.s * 0.4 + pp.lift + pp.h / 3;
 }
 
 function updateFlutter(a, dt) {
@@ -330,13 +358,16 @@ function updateFlutter(a, dt) {
   if (a.rest > 0) {
     /* ひまわりに とまって ひとやすみ。花が ゆれると いっしょに ゆれる */
     a.rest -= dt;
-    pp.x = flowerHead(a.perch).x;
-    pp.y = perchY(a);
+    a.gy = a.perch.y;
+    a.alt = a.perch.y - perchY(a);
+    pp.x = perchX(a);
+    pp.facing = a.perchFacing;
     pp.walking = false;                            // はねは ゆっくり ひらいたり とじたり
     if (a.rest <= 0) flutterTarget(a);
   } else {
-    const goalY = a.perch ? perchY(a) : a.ty;
-    const dx = (a.perch ? flowerHead(a.perch).x : a.tx) - pp.x, dy = goalY - pp.y;
+    if (a.perch) aimAtPerch(a);
+    const dx = a.tx - pp.x;
+    const dy = (a.tgy - a.talt) - (a.gy - a.alt);  // 画面上の たかさの さ
     const d = Math.hypot(dx, dy) || 1;
     if (d < 14) {
       /* 花に ついたら しばらく とまる。そうでなければ つぎの ばしょへ */
@@ -344,18 +375,22 @@ function updateFlutter(a, dt) {
       else flutterTarget(a);
     } else {
       pp.x += dx / d * a.speed * dt;
-      pp.y += dy / d * a.speed * 0.8 * dt;
-      pp.facing = dx >= 0 ? 1 : -1;
-      pp.y += Math.sin(a.wob) * 16 * dt;           // ひらひら たてに ゆれる
-      pp.y = Util.clamp(pp.y, FL_FAR - 40, FL_NEAR - 10);
+      const k = Math.min(1, dt * 1.3);             // おくゆきと たかさは なめらかに
+      a.gy += (a.tgy - a.gy) * k;
+      a.alt += (a.talt - a.alt) * k;
+      a.alt += Math.sin(a.wob) * 16 * dt;          // ひらひら たてに ゆれる
+      /* とまりに いくときは 花の ちかくで むきを そろえる */
+      pp.facing = a.perch && d < 60 ? a.perchFacing : (dx >= 0 ? 1 : -1);
     }
     pp.walking = true;
   }
 
+  a.gy = Util.clamp(a.gy, FL_FAR, FL_NEAR);
+  pp.y = a.gy - a.alt;
   pp.perched = a.rest > 0;                         // とまっているときは はねを たたむ
 
-  /* 大きさ … とまっている あいだは その ひまわりの おくゆきに あわせる */
-  const want = a.hBase * flowerDepth(a.rest > 0 ? a.perch.y : pp.y);
+  /* 大きさ … かげが おちる じめんの いちで きめる(たかく とんでも かわらない) */
+  const want = a.hBase * flowerDepth(a.gy);
   a.hCur += (want - a.hCur) * Math.min(1, dt * 4);
   pp.h = a.hCur;
 }
@@ -1014,7 +1049,8 @@ cv.addEventListener("pointerdown", (e) => {
         else {                                           // ちょうちょは びっくりして とびのく
           a.rest = 0; a.perch = null;
           a.tx = a.puppet.x + Util.rand(-200, 200);
-          a.ty = Util.clamp(a.puppet.y - Util.rand(50, 150), FL_FAR - 30, FL_NEAR - 30);
+          a.tgy = Util.clamp(a.gy + Util.rand(-60, 60), FL_FAR + 20, FL_NEAR);
+          a.talt = a.alt + Util.rand(50, 140);           // 上に ふわっと にげる
           a.speed = Util.rand(90, 150);
           a.puppet.jumpT = 0.4;
         }
