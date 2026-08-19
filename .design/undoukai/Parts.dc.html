@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "M PLUS Rounded 1c", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      color: #4a3f35;
+      background: #fffdf5;
+    }
+    a { color: #d6336c; }
+    a:hover { color: #b02a54; }
+    .cap { font-size: 15px; line-height: 1.65; color: #6a5c4c; }
+    .tag {
+      display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: .04em;
+      border-radius: 999px; padding: 3px 12px;
+    }
+    .bad { background: #ffe3ee; color: #c92a5f; }
+    .good { background: #e6f7e9; color: #2f9e44; }
+
+    .pcard { background: #fff; border: 4px solid #e8cbae; border-radius: 20px; box-shadow: 0 6px 0 #e8cbae; padding: 16px 18px 18px; }
+    .pcard h3 { margin: 0 0 4px; font-size: 18px; }
+    .pcard .spec { margin: 10px 0 0; font-size: 13px; line-height: 1.65; color: #6a5c4c; }
+    .pcard .spec b { color: #4a3f35; }
+    .demo { display: flex; align-items: center; justify-content: center; min-height: 96px; border-radius: 14px; background: linear-gradient(#a5d8ff,#a9dd7e); margin-top: 10px; }
+
+  </style>
+</helmet>
+<div style="position:relative;width:1280px;height:900px;background:#fffdf5;padding:26px 28px;box-sizing:border-box">
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:16px">
+    <span class="tag good">ぶひん</span>
+    <span style="font-size:24px;font-weight:800">つかう ぶひんは 5つだけ</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+    <div class="pcard">
+      <h3>スコアチップ</h3>
+      <div class="demo">
+        <div style="display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff">
+          <span style="font-size:17px;font-weight:800">あか</span><span style="font-size:52px;font-weight:800;line-height:1">3</span>
+        </div>
+      </div>
+      <p class="spec"><b>いち</b> 左上 36,36 / 右上 1064,36<br><b>色</b> チーム色ベタ + 濃い色の ふち(既存の .btn と 同じ 立体)<br><b>やめる</b> 🔴🔵マーク・フルのチーム名</p>
+    </div>
+    <div class="pcard">
+      <h3>のこり じかん</h3>
+      <div class="demo">
+        <div style="width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px">
+          <div style="font-size:40px;font-weight:800;line-height:1.05">12</div>
+          <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
+        </div>
+      </div>
+      <p class="spec"><b>いち</b> 上ちゅうおう 576,40<br><b>10びょうを きったら</b> 数字を #d6336c に して 1びょうごとに 1.12ばい ふくらむ<br><b>ないとき</b> 出さない(かけっこ・リレー)</p>
+    </div>
+    <div class="pcard">
+      <h3>しんこうドット</h3>
+      <div class="demo">
+        <div style="display:flex;gap:7px">
+          <div style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(150,110,70,.22)"></div>
+          <div style="width:11px;height:11px;border-radius:50%;background:#ffd43b;box-shadow:0 0 0 3px #e8a805"></div>
+          <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
+          <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
+        </div>
+      </div>
+      <p class="spec"><b>かわり</b> 「だい2きょうぎ / ぜん4きょうぎ」の 文字を なくす<br><b>すんだ きょうぎ</b> は 白、いまは 黄、これから は うすい<br><b>おきかえ先</b> undoukai.html の #progLbl</p>
+    </div>
+    <div class="pcard">
+      <h3>テロップ(2.4びょう)</h3>
+      <div class="demo">
+        <div style="text-align:center;background:rgba(255,253,245,.94);border:4px solid #4dabf7;border-radius:999px;box-shadow:0 6px 0 rgba(28,126,214,.28);padding:8px 24px 10px;font-size:22px;font-weight:800;color:#1c7ed6">さくら、ナイスシュート!</div>
+      </div>
+      <p class="spec"><b>いち</b> 下から 72px せり上がり、y=642<br><b>ふち</b> しゃべった チームの 色<br><b>きえかた</b> 2.4びょう後に 下へ / つぎが 来たら すぐ 入れかえ<br><b>やめる</b> 黒おび(.mt-banner の 出っぱなし)</p>
+    </div>
+    <div class="pcard">
+      <h3>かちカード</h3>
+      <div class="demo" style="min-height:120px">
+        <div style="width:300px;background:rgba(255,255,255,.96);border:4px solid #4dabf7;border-radius:20px;box-shadow:0 6px 0 #1c7ed6;padding:8px 14px 12px;text-align:center">
+          <div style="font-size:14px;font-weight:800;color:#8a7a68">たまいれ</div>
+          <div style="font-size:28px;font-weight:800;color:#1c7ed6">あおチーム の かち!</div>
+          <div style="font-size:15px;font-weight:800;color:#6a5c4c">3 - 6</div>
+        </div>
+      </div>
+      <p class="spec"><b>いち</b> 上1/3(y=120)。まんなかに 出さない<br><b>中身</b> きょうぎ名・かち・すうじ の 3つだけ(せつめい文は 入れない)<br><b>出かた</b> 下から せり上がり + 3%の いきすぎ</p>
+    </div>
+    <div class="pcard" style="background:#fff9e8;border-color:#ffd43b;box-shadow:0 6px 0 #e8a805">
+      <h3>とる もの</h3>
+      <p class="spec" style="margin-top:6px">
+        <b>.mt-score</b>(そうごう点)… きょうぎ中は 出さない。きょうぎと きょうぎの あいだ だけ、大きく 1回。<br>
+        <b>#progLbl</b> … ドットに おきかえ。<br>
+        <b>.mt-hud</b> の チーム名 … スコアチップに 統合。<br>
+        <b>.mt-banner</b> の 黒おび … まるい テロップに。<br>
+        <b>けっかカードの sub</b>(「あか3こ-あお5こ / +2てん」)… 数字だけ のこす。
+      </p>
+    </div>
+  </div>
+  <div class="cap" style="position:absolute;left:28px;bottom:22px;width:1224px">
+    ぜんぶ 既存の トークンの まま:チーム色 #ff6b9d / #4dabf7、ふちは 濃い色 #d6336c / #1c7ed6、立体は box-shadow 0 6px 0、まるみ 22px、フォントは そのまま。<b>あたらしい 色や フォントは 1つも ふやしていない。</b>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
