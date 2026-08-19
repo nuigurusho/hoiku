@@ -306,6 +306,7 @@ window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
    レコード: { id, name, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
+               diffVariants:[{dataURL,spots:[{x,y,r}]}],
                fukuParts:[{kind,x,y,w,h}],
                voices:{joy,greet,ouch,fail}(dataURL・キャラの声), created } */
 const Store = {
@@ -399,9 +400,21 @@ const Store = {
       return this.all();
     }
 
-    const ids = new Set(list.map((r) => r.id));
+    const ids = new Set(list.flatMap((r) => [r.id, r.sampleKey].filter(Boolean)));
     for (const def of Samples.ASSET_SAMPLES) {
-      if (!ids.has(def.id)) await this.put(await Samples.assetRecord(def));
+      if (ids.has(def.id)) continue;
+      const rec = await Samples.assetRecord(def);
+      const legacy = def.replaceLegacy && list.find((r) =>
+        r.name === def.replaceLegacy.name &&
+        !r.diffVariants &&
+        r.diffSpots && r.diffSpots.length === def.replaceLegacy.spots &&
+        Math.abs(r.diffSpots[0].x - def.replaceLegacy.firstX) < 0.001);
+      if (legacy) {
+        rec.id = legacy.id;
+        rec.created = legacy.created;
+        rec.sampleKey = def.id;
+      }
+      await this.put(rec);
     }
     return this.all();
   },
@@ -414,6 +427,30 @@ const Samples = {
     {
       id: "sample-bg-crayon-hills-v1", name: "おかの せかい", cat: "bg",
       path: "backgrounds/world-land.jpg",
+    },
+    {
+      id: "sample-pic-house-official-v1", name: "おうちのえ", cat: "pic",
+      path: "samples/diff-house-base.jpg",
+      replaceLegacy: { name: "おうちのえ", spots: 5, firstX: 0.88 },
+      diffVariants: [
+        { path: "samples/diff-house-v1.jpg", spots: [{ x: 0.325, y: 0.14, r: 0.055 }, { x: 0.685, y: 0.215, r: 0.045 }, { x: 0.858, y: 0.79, r: 0.060 }] },
+        { path: "samples/diff-house-v2.jpg", spots: [{ x: 0.48, y: 0.25, r: 0.060 }, { x: 0.85, y: 0.33, r: 0.045 }, { x: 0.14, y: 0.86, r: 0.070 }] },
+        { path: "samples/diff-house-v3.jpg", spots: [{ x: 0.54, y: 0.13, r: 0.090 }, { x: 0.85, y: 0.65, r: 0.075 }, { x: 0.11, y: 0.68, r: 0.050 }] },
+        { path: "samples/diff-house-v4.jpg", spots: [{ x: 0.555, y: 0.405, r: 0.070 }, { x: 0.84, y: 0.83, r: 0.090 }, { x: 0.53, y: 0.875, r: 0.040 }] },
+        { path: "samples/diff-house-v5.jpg", spots: [{ x: 0.72, y: 0.17, r: 0.055 }, { x: 0.14, y: 0.82, r: 0.055 }, { x: 0.64, y: 0.46, r: 0.045 }] },
+      ],
+    },
+    {
+      id: "sample-pic-fruit-orchard-official-v1", name: "くだものだいしゅうごう", cat: "pic",
+      path: "samples/diff-fruit-base.jpg",
+      replaceLegacy: { name: "くだものだいしゅうごう", spots: 5, firstX: 0.16 },
+      diffVariants: [
+        { path: "samples/diff-fruit-v1.jpg", spots: [{ x: 0.16, y: 0.52, r: 0.060 }, { x: 0.66, y: 0.11, r: 0.055 }, { x: 0.76, y: 0.88, r: 0.070 }] },
+        { path: "samples/diff-fruit-v2.jpg", spots: [{ x: 0.22, y: 0.79, r: 0.055 }, { x: 0.45, y: 0.08, r: 0.065 }, { x: 0.73, y: 0.81, r: 0.070 }] },
+        { path: "samples/diff-fruit-v3.jpg", spots: [{ x: 0.50, y: 0.49, r: 0.055 }, { x: 0.75, y: 0.85, r: 0.100 }, { x: 0.75, y: 0.06, r: 0.090 }] },
+        { path: "samples/diff-fruit-v4.jpg", spots: [{ x: 0.67, y: 0.77, r: 0.055 }, { x: 0.32, y: 0.91, r: 0.080 }, { x: 0.54, y: 0.84, r: 0.045 }] },
+        { path: "samples/diff-fruit-v5.jpg", spots: [{ x: 0.20, y: 0.27, r: 0.055 }, { x: 0.68, y: 0.49, r: 0.080 }, { x: 0.73, y: 0.89, r: 0.065 }] },
+      ],
     },
     {
       id: "sample-pic-crayon-picnic-v1", name: "ピクニックこうえん", cat: "pic",
@@ -466,8 +503,15 @@ const Samples = {
   },
 
   async assetRecord(def) {
-    const { path, ...meta } = def;
-    return { ...meta, dataURL: await this._assetDataURL(path) };
+    const { path, diffVariants, replaceLegacy, ...meta } = def;
+    const rec = { ...meta, dataURL: await this._assetDataURL(path) };
+    if (diffVariants) {
+      rec.diffVariants = await Promise.all(diffVariants.map(async (v) => ({
+        dataURL: await this._assetDataURL(v.path),
+        spots: (v.spots || []).map((s) => ({ ...s })),
+      })));
+    }
+    return rec;
   },
 
   /* 手ぶれ風の線 */
@@ -849,8 +893,7 @@ const Samples = {
   async makeAll() {
     const assets = await Promise.all(this.ASSET_SAMPLES.map((def) => this.assetRecord(def)));
     return [this.charA(), this.charB(), this.charC(), this.charSkirt(), this.charFloat(),
-            this.charButterfly(),
-            this.picA(), this.picB(), this.fukuFace(), ...assets];
+            this.charButterfly(), this.fukuFace(), ...assets];
   },
 };
 
@@ -1352,8 +1395,20 @@ const Backup = {
       const file = "images/" + String(i).padStart(4, "0") + "." + ext;
       files.push({ name: file, data: bytes });
       const meta = { file, mime, id: r.id, name: r.name, cat: r.cat, created: r.created };
+      if (r.sampleKey) meta.sampleKey = r.sampleKey;
       if (r.rig) meta.rig = r.rig;
       if (r.diffSpots) meta.diffSpots = r.diffSpots;
+      if (r.diffVariants) {
+        meta.diffVariants = [];
+        r.diffVariants.forEach((v, vi) => {
+          if (!v.dataURL) return;
+          const vd = this._dataURLtoBytes(v.dataURL);
+          const vext = vd.mime.indexOf("png") >= 0 ? "png" : "jpg";
+          const vfile = "diffs/" + String(i).padStart(4, "0") + "_" + String(vi).padStart(2, "0") + "." + vext;
+          files.push({ name: vfile, data: vd.bytes });
+          meta.diffVariants.push({ file: vfile, mime: vd.mime, spots: v.spots || [] });
+        });
+      }
       if (r.fukuParts) meta.fukuParts = r.fukuParts;
       // キャラの声(joy/greet/ouch/fail)も別ファイルとして同梱する
       if (r.voices) {
@@ -1420,8 +1475,15 @@ const Backup = {
         id: m.id, name: m.name, cat: m.cat, created: m.created,
         dataURL: this._bytesToDataURL(m.mime, bytes),
       };
+      if (m.sampleKey) rec.sampleKey = m.sampleKey;
       if (m.rig) rec.rig = m.rig;
       if (m.diffSpots) rec.diffSpots = m.diffSpots;
+      if (m.diffVariants) {
+        rec.diffVariants = m.diffVariants.map((v) => ({
+          dataURL: map[v.file] ? this._bytesToDataURL(v.mime, map[v.file]) : "",
+          spots: v.spots || [],
+        })).filter((v) => v.dataURL);
+      }
       if (m.fukuParts) rec.fukuParts = m.fukuParts;
       if (m.voices) {
         rec.voices = {};

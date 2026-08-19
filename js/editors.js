@@ -51,10 +51,19 @@ document.body.insertAdjacentHTML("beforeend", `
 
 <!-- まちがいスポット編集モーダル -->
 <div class="modal hidden" id="spotModal">
-  <div class="panel">
-    <h2>まちがいスポット設定</h2>
-    <p class="note">タップで「まちがい」を作る場所を追加(最大8個)。もう一度タップで削除。</p>
-    <canvas id="spotCanvas" class="edit-canvas" width="640" height="440"></canvas>
+  <div class="panel" style="max-width:1180px">
+    <h2>差分画像と まちがいスポット</h2>
+    <p class="note">差分画像を追加し、右の絵で違う場所をタップします。画像ごとに最大8個まで設定できます。</p>
+    <div id="spotVariants" style="display:flex;gap:8px;overflow-x:auto;margin:8px 0"></div>
+    <div class="row">
+      <button class="btn blue" id="spotAdd">＋ 差分画像を追加</button>
+      <button class="btn gray hidden" id="spotRemove">この差分を外す</button>
+      <input id="spotFiles" type="file" accept="image/*" multiple hidden>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap">
+      <div><p style="text-align:center;margin:4px"><b>もとの絵</b></p><canvas id="spotBaseCanvas" class="edit-canvas" width="520" height="360"></canvas></div>
+      <div><p style="text-align:center;margin:4px"><b id="spotDiffLabel">差分の絵</b></p><canvas id="spotCanvas" class="edit-canvas" width="520" height="360"></canvas></div>
+    </div>
     <div class="row">
       <button class="btn green" id="spotSave">✔ 保存する</button>
       <button class="btn gray" id="spotCancel">キャンセル</button>
@@ -489,31 +498,72 @@ $("rigSave").onclick = async () => {
 };
 $("rigCancel").onclick = () => $("rigModal").classList.add("hidden");
 
-/* ---------- まちがいスポット編集 ---------- */
-const spotEd = { rec: null, img: null, spots: [] };
+/* ---------- 差分画像・まちがいスポット編集 ---------- */
+const spotEd = { rec: null, img: null, diffImg: null, variants: [], legacySpots: [], selected: -1 };
 
 async function openSpot(rec) {
   spotEd.rec = rec;
-  spotEd.spots = (rec.diffSpots || []).map((s) => ({ ...s }));
+  spotEd.legacySpots = (rec.diffSpots || []).map((s) => ({ ...s }));
+  spotEd.variants = (rec.diffVariants || []).map((v) => ({
+    dataURL: v.dataURL,
+    spots: (v.spots || []).map((s) => ({ ...s })),
+  }));
   spotEd.img = await Util.loadImage(rec.dataURL);
-  const cv = $("spotCanvas");
-  const maxW = Math.min(660, innerWidth - 70);
-  const sc = Math.min(maxW / spotEd.img.width, 460 / spotEd.img.height);
-  cv.width = Math.round(spotEd.img.width * sc);
-  cv.height = Math.round(spotEd.img.height * sc);
+  const maxW = Math.min(520, innerWidth - 70);
+  const sc = Math.min(maxW / spotEd.img.width, 350 / spotEd.img.height);
+  for (const cv of [$("spotBaseCanvas"), $("spotCanvas")]) {
+    cv.width = Math.round(spotEd.img.width * sc);
+    cv.height = Math.round(spotEd.img.height * sc);
+  }
+  spotEd.selected = spotEd.variants.length ? 0 : -1;
+  spotEd.diffImg = spotEd.selected >= 0 ? await Util.loadImage(spotEd.variants[0].dataURL) : spotEd.img;
   $("spotModal").classList.remove("hidden");
+  renderSpotVariants();
   drawSpots();
 }
 
+function currentSpots() {
+  return spotEd.selected >= 0 ? spotEd.variants[spotEd.selected].spots : spotEd.legacySpots;
+}
+
+async function selectSpotVariant(index) {
+  spotEd.selected = index;
+  spotEd.diffImg = index >= 0 ? await Util.loadImage(spotEd.variants[index].dataURL) : spotEd.img;
+  renderSpotVariants();
+  drawSpots();
+}
+
+function renderSpotVariants() {
+  const box = $("spotVariants");
+  box.innerHTML = "";
+  spotEd.variants.forEach((v, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn " + (i === spotEd.selected ? "pink" : "gray");
+    b.style.cssText = "min-width:110px;padding:5px";
+    b.innerHTML = `<img src="${v.dataURL}" alt="" style="width:92px;height:62px;object-fit:cover;border-radius:8px;display:block"><span>差分${i + 1}・${v.spots.length}こ</span>`;
+    b.onclick = () => { Sound.tap(); selectSpotVariant(i); };
+    box.appendChild(b);
+  });
+  if (!spotEd.variants.length) box.innerHTML = '<p class="note">差分画像はまだありません。「＋ 差分画像を追加」から登録してください。</p>';
+  $("spotRemove").classList.toggle("hidden", spotEd.selected < 0);
+  $("spotDiffLabel").textContent = spotEd.selected >= 0 ? `差分の絵 ${spotEd.selected + 1}` : "差分の絵(旧形式プレビュー)";
+}
+
 function drawSpots() {
+  const base = $("spotBaseCanvas"), bctx = base.getContext("2d");
+  bctx.clearRect(0, 0, base.width, base.height);
+  bctx.drawImage(spotEd.img, 0, 0, base.width, base.height);
   const cv = $("spotCanvas"), ctx = cv.getContext("2d");
   ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.drawImage(spotEd.img, 0, 0, cv.width, cv.height);
-  spotEd.spots.forEach((s, i) => {
-    ctx.strokeStyle = "#ff6b9d"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(s.x * cv.width, s.y * cv.height, s.r * cv.width, 0, 7); ctx.stroke();
-    ctx.fillStyle = "#ff6b9d"; ctx.font = "bold 18px sans-serif";
-    ctx.fillText(i + 1, s.x * cv.width - 5, s.y * cv.height + 6);
+  ctx.drawImage(spotEd.diffImg || spotEd.img, 0, 0, cv.width, cv.height);
+  currentSpots().forEach((s, i) => {
+    for (const [c, cctx] of [[base, bctx], [cv, ctx]]) {
+      cctx.strokeStyle = "#ff6b9d"; cctx.lineWidth = 4;
+      cctx.beginPath(); cctx.arc(s.x * c.width, s.y * c.height, s.r * c.width, 0, 7); cctx.stroke();
+      cctx.fillStyle = "#ff6b9d"; cctx.font = "bold 18px sans-serif";
+      cctx.fillText(i + 1, s.x * c.width - 5, s.y * c.height + 6);
+    }
   });
 }
 
@@ -521,15 +571,43 @@ $("spotCanvas").addEventListener("pointerdown", (e) => {
   const cv = $("spotCanvas");
   const p = Util.canvasPos(cv, e);
   const rx = p.x / cv.width, ry = p.y / cv.height;
-  const hit = spotEd.spots.findIndex((s) => Math.hypot((s.x - rx) * cv.width, (s.y - ry) * cv.height) < s.r * cv.width);
-  if (hit >= 0) spotEd.spots.splice(hit, 1);
-  else if (spotEd.spots.length < 8) spotEd.spots.push({ x: rx, y: ry, r: 0.06 });
+  const spots = currentSpots();
+  const hit = spots.findIndex((s) => Math.hypot((s.x - rx) * cv.width, (s.y - ry) * cv.height) < s.r * cv.width);
+  if (hit >= 0) spots.splice(hit, 1);
+  else if (spots.length < 8) spots.push({ x: rx, y: ry, r: 0.06 });
   Sound.tap();
+  renderSpotVariants();
   drawSpots();
 });
 
+$("spotAdd").onclick = () => $("spotFiles").click();
+$("spotFiles").onchange = async (e) => {
+  const files = Array.from(e.target.files || []).slice(0, 8 - spotEd.variants.length);
+  if (!files.length) return;
+  for (const file of files) {
+    spotEd.variants.push({ dataURL: await Util.fileToDataURL(file, 1100), spots: [] });
+  }
+  e.target.value = "";
+  Sound.good();
+  await selectSpotVariant(spotEd.variants.length - 1);
+};
+
+$("spotRemove").onclick = async () => {
+  if (spotEd.selected < 0) return;
+  spotEd.variants.splice(spotEd.selected, 1);
+  const next = spotEd.variants.length ? Math.min(spotEd.selected, spotEd.variants.length - 1) : -1;
+  Sound.tap();
+  await selectSpotVariant(next);
+};
+
 $("spotSave").onclick = async () => {
-  spotEd.rec.diffSpots = spotEd.spots;
+  if (spotEd.variants.some((v) => !v.spots.length)) {
+    Ui.msg("スポットが0この差分画像があります", 1800, "#f59f00");
+    return;
+  }
+  spotEd.rec.diffSpots = spotEd.legacySpots;
+  if (spotEd.variants.length) spotEd.rec.diffVariants = spotEd.variants;
+  else delete spotEd.rec.diffVariants;
   await Store.put(spotEd.rec);
   $("spotModal").classList.add("hidden");
   Sound.good();

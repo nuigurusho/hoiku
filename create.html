@@ -62,7 +62,7 @@
   <!-- ============ まちがいさがし ============ -->
   <div class="make-sec">
     <h2>まちがいさがし<button class="info-btn" type="button" id="picInfo" aria-label="まちがいさがしの説明">i</button></h2>
-    <h3>しゃしん・え<span class="make-tag">まちがいスポットを きめると あそべます</span></h3>
+    <h3>しゃしん・え<span class="make-tag">差分画像とスポットを設定すると あそべます</span></h3>
     <div id="listPic"></div>
   </div>
 
@@ -73,7 +73,7 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=13"></script>
+<script src="js/core.js?v=14"></script>
 <script src="js/rig.js?v=15"></script>
 <script src="js/editors.js?v=12"></script>
 <script>
@@ -123,7 +123,7 @@ function row(r, L) {
   if (L.btns.includes("rig")) mk("うごきせってい", "purple", () => Editors.openRig(r));
   if (L.btns.includes("voice")) mk("こえ", "orange", () => Editors.openVoice(r));
   if (L.btns.includes("fuku")) mk("ふくわらいパーツ", "green", () => Editors.openFuku(r));
-  if (L.btns.includes("spot")) mk("まちがいスポット", "orange", () => Editors.openSpot(r));
+  if (L.btns.includes("spot")) mk("差分画像・スポット", "orange", () => Editors.openSpot(r));
   return d;
 }
 
@@ -213,9 +213,10 @@ $("picInfo").onclick = () => {
   Sound.tap();
   Ui.info("まちがいさがしの つくりかた", `
     <ul class="info-list">
-      <li>写真や絵をふやして、<b>まちがいスポット</b> で消したい場所をタップします(最大8個)</li>
-      <li>右の絵から その場所が消えるので、それを探して遊びます</li>
-      <li>スポットを決めていない絵は、<b>自動で5か所</b> 作って遊べます</li>
+      <li>元の写真や絵をふやし、<b>差分画像・スポット</b> から2枚目以降の画像を登録します</li>
+      <li>差分画像は複数登録でき、遊ぶたびにどれか1枚がランダムで出ます</li>
+      <li>差分画像ごとに、右の絵で違う場所をタップします(1枚につき最大8個)</li>
+      <li>登録した差分画像は、パズルなどほかのコンテンツの画像一覧には出ません</li>
       <li>園の写真もそのまま使えます(端末の中だけに保存されます)</li>
       <li>大きさは自動で縮小(長辺 <b>1100px</b>)。<b>よこ長</b> が2枚ならべて見やすいです</li>
     </ul>
