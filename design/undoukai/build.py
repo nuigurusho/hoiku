@@ -125,6 +125,55 @@ def stage(act=False, glow=False):
   </div>"""
 
 # ---------------------------------------------------------------
+# 進行の しるし:ただの丸ではなく、その競技のアイコンそのものを使う。
+# assets/buttons/*.png は しょうかいカード(card({icon})) と したく画面で
+# すでに 出ているものと 同じ絵なので、子供は 見たことのある絵で今どこかが分かる。
+# 今の競技だけ 台座つきで 大きく し、そこに 残り時間を いっしょに入れる
+# (時間の ピルを 別に 置かなくて よくなる)。
+# ---------------------------------------------------------------
+EVENTS_ICON = [("race.png", "かけっこ"), ("tamaire.png", "たまいれ"),
+               ("dodgeball.png", "ドッヂボール"), ("relay.png", "リレー")]
+
+CHEVRON = ('<svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45;flex:0 0 auto">'
+           '<path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" '
+           'stroke-linecap="round" stroke-linejoin="round"></path></svg>')
+
+CHECK = ('<svg width="17" height="17" viewBox="0 0 16 16" style="position:absolute;right:-4px;bottom:-4px">'
+         '<circle cx="8" cy="8" r="7" fill="#51cf66" stroke="#fff" stroke-width="2"></circle>'
+         '<path d="M4.6 8.2 L7 10.6 L11.4 5.6" fill="none" stroke="#fff" stroke-width="2.2" '
+         'stroke-linecap="round" stroke-linejoin="round"></path></svg>')
+
+def progress_row(cur=1, secs="12", top=14, anim=False):
+    """cur = 今の競技(0はじまり)。secs=None で 時間なしの競技(かけっこ・リレー)。
+       anim=True で 区切りのときに いっしょに 消える(Motion 用)"""
+    parts = []
+    for i, (src, name) in enumerate(EVENTS_ICON):
+        if i:
+            parts.append(CHEVRON)
+        if i < cur:
+            parts.append(
+                f'<div style="position:relative;width:30px;height:30px;flex:0 0 auto">'
+                f'<img src="{src}" alt="{name}" style="width:30px;height:30px;object-fit:contain">{CHECK}</div>')
+        elif i == cur:
+            time_html = ""
+            if secs:
+                time_html = (f'<span style="font-size:32px;font-weight:800;line-height:1;color:#4a3f35">{secs}</span>'
+                             f'<span style="font-size:12px;font-weight:800;color:#8a7a68;align-self:flex-end;'
+                             f'padding-bottom:3px">びょう</span>')
+            parts.append(
+                f'<div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;background:#fff;'
+                f'border:4px solid #ffd43b;border-radius:999px;box-shadow:0 4px 0 #e8a805;padding:5px 18px 7px">'
+                f'<img src="{src}" alt="{name}" style="width:36px;height:36px;object-fit:contain">{time_html}</div>')
+        else:
+            parts.append(
+                f'<img src="{src}" alt="{name}" style="width:30px;height:30px;object-fit:contain;opacity:.42;flex:0 0 auto">')
+    cls = ' class="anim"' if anim else ""
+    hide = "animation-name:untilbreak;" if anim else ""
+    return (f'<div{cls} style="position:absolute;left:0;top:{top}px;width:1280px;display:flex;'
+            f'justify-content:center;align-items:center;gap:7px;z-index:30;{hide}">'
+            + "".join(parts) + '</div>')
+
+# ---------------------------------------------------------------
 # 1. Main:いまの がめん(もんだい)
 # ---------------------------------------------------------------
 main_css = """
@@ -201,22 +250,12 @@ play_body = f"""<div style="position:relative;width:1280px;height:880px;backgrou
 {stage()}
 
   <!-- ===== あたらしい UI:上の おび だけ ===== -->
-  <!-- しんこうドット -->
-  <div style="position:absolute;left:0;top:14px;width:1280px;display:flex;justify-content:center;gap:7px;z-index:20">
-    <div style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(150,110,70,.22)"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:#ffd43b;box-shadow:0 0 0 3px #e8a805"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-    <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-  </div>
+  <!-- 進行:競技のアイコンそのもの。今の競技だけ台座つきで、残り時間も中に入れる -->
+{progress_row(cur=1, secs='12', top=14)}
   <!-- あかの てん -->
   <div style="position:absolute;left:36px;top:36px;display:flex;align-items:center;gap:12px;background:#ff6b9d;border:4px solid #d6336c;border-radius:22px;box-shadow:0 6px 0 #d6336c;padding:6px 22px 8px;color:#fff;z-index:20">
     <span style="font-size:17px;font-weight:800;opacity:.92">あか</span>
     <span style="font-size:52px;font-weight:800;line-height:1">3</span>
-  </div>
-  <!-- のこり じかん -->
-  <div style="position:absolute;left:576px;top:40px;width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px;z-index:20">
-    <div style="font-size:40px;font-weight:800;line-height:1.05;color:#4a3f35">12</div>
-    <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
   </div>
   <!-- あおの てん -->
   <div style="position:absolute;left:1064px;top:36px;display:flex;align-items:center;gap:12px;background:#4dabf7;border:4px solid #1c7ed6;border-radius:22px;box-shadow:0 6px 0 #1c7ed6;padding:6px 22px 8px;color:#fff;z-index:20">
@@ -234,7 +273,8 @@ play_body = f"""<div style="position:relative;width:1280px;height:880px;backgrou
       <div style="font-size:22px;font-weight:800">プレー中に常に出るのは「2つの数字」だけ</div>
     </div>
     <div class="cap" style="margin-top:8px">
-      チーム名は<b>色そのもの</b>に任せて文字をやめる(「あか」「あお」の2文字だけ残す)。<b>総合点は競技中は一切出さず、最後の総合結果で1回だけ</b>見せる。今が何競技目かは上の4つのドットだけで示す。<br>
+      チーム名は<b>色そのもの</b>に任せて文字をやめる(「あか」「あお」の2文字だけ残す)。<b>総合点は競技中は一切出さず、最後の総合結果で1回だけ</b>見せる。<br>
+      今どこかは<b>競技のアイコンそのもの</b>で示す。紹介カードと支度画面で見たのと同じ絵なので、字が読めなくても「今はたまいれ」と分かる。済んだ競技にはチェック、次はうすく、間は矢印。残り時間は今の競技の台座に入れて、時間のピルを別に置かない。<br>
       テロップは出来事が起きたときだけ下から出て2.4秒で消える。黒帯をやめ、丸い白フキダシ + チーム色のフチにして、地面が透けて見えるようにする。
     </div>
   </div>
@@ -462,7 +502,6 @@ motion_css = """
       60%, 86% { opacity: 1; transform: translateY(0) scale(1); }
       92%, 100% { opacity: 0; transform: translateY(20px) scale(.9); }
     }
-    @keyframes timer0 { 0%, 36% { opacity: 1; } 38%, 94% { opacity: 0; } 98%, 100% { opacity: 1; } }
     @keyframes conf1 { 0%, 46% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 49% { opacity: 1; } 84%, 100% { opacity: 0; transform: translateY(560px) rotate(420deg); } }
     @keyframes conf2 { 0%, 49% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 52% { opacity: 1; } 88%, 100% { opacity: 0; transform: translateY(600px) rotate(-380deg); } }
     @keyframes conf3 { 0%, 52% { opacity: 0; transform: translateY(-40px) rotate(0deg); } 55% { opacity: 1; } 90%, 100% { opacity: 0; transform: translateY(520px) rotate(300deg); } }
@@ -488,11 +527,8 @@ motion_body = f"""<div style="position:relative;width:1280px;height:880px;backgr
       <span style="font-size:17px;font-weight:800;opacity:.92">あか</span>
       <span style="font-size:52px;font-weight:800;line-height:1">5</span>
     </div>
-    <!-- のこり じかん -->
-    <div class="anim" style="position:absolute;left:576px;top:40px;width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px;animation-name:timer0;z-index:30">
-      <div style="font-size:40px;font-weight:800;line-height:1.05;color:#4a3f35">3</div>
-      <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
-    </div>
+    <!-- 進行アイコン + のこり じかん。区切りで いっしょに 消える -->
+{progress_row(cur=1, secs='3', top=14, anim=True)}
     <!-- スコア(あお):ポップ と リング。区切りで 消える -->
     <div class="anim" style="position:absolute;left:1064px;top:36px;animation-name:untilbreak;z-index:30">
       <div class="anim" style="position:absolute;left:-16px;top:-16px;width:220px;height:96px;border-radius:999px;border:6px solid #4dabf7;animation-name:ring"></div>
@@ -560,25 +596,42 @@ parts_body = """<div style="position:relative;width:1280px;height:1000px;backgro
     </div>
     <div class="pcard">
       <h3>残り時間</h3>
-      <div class="demo">
-        <div style="width:128px;text-align:center;background:#fff;border-radius:999px;box-shadow:0 3px 0 rgba(150,110,70,.16);padding:4px 0 6px">
-          <div style="font-size:40px;font-weight:800;line-height:1.05">12</div>
-          <div style="font-size:12px;font-weight:800;color:#8a7a68;letter-spacing:.08em">のこり びょう</div>
+      <div class="demo" style="min-height:110px;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;background:#fff;border:4px solid #ffd43b;border-radius:999px;box-shadow:0 4px 0 #e8a805;padding:5px 18px 7px">
+          <img src="tamaire.png" alt="たまいれ" style="width:36px;height:36px;object-fit:contain">
+          <span style="font-size:32px;font-weight:800;line-height:1;color:#d6336c">8</span>
+          <span style="font-size:12px;font-weight:800;color:#8a7a68;align-self:flex-end;padding-bottom:3px">びょう</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;background:#fff;border:4px solid #ffd43b;border-radius:999px;box-shadow:0 4px 0 #e8a805;padding:5px 18px 7px">
+          <img src="relay.png" alt="リレー" style="width:36px;height:36px;object-fit:contain">
         </div>
       </div>
-      <p class="spec"><b>位置</b> 上中央 576,40<br><b>10秒を切ったら</b> 数字を #d6336c にして1秒ごとに1.12倍ふくらむ<br><b>無いとき</b> 出さない(かけっこ・リレー)</p>
+      <p class="spec"><b>置き場所</b> 単独のピルをやめ、今の競技の台座の中へ<br><b>10秒を切ったら</b> 数字を #d6336c にして1秒ごとに1.12倍ふくらむ<br><b>無い競技</b>(かけっこ・リレー)はアイコンだけ。台座の形は変えない</p>
     </div>
     <div class="pcard">
-      <h3>進行ドット</h3>
-      <div class="demo">
-        <div style="display:flex;gap:7px">
-          <div style="width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(150,110,70,.22)"></div>
-          <div style="width:11px;height:11px;border-radius:50%;background:#ffd43b;box-shadow:0 0 0 3px #e8a805"></div>
-          <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
-          <div style="width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.5);box-shadow:0 0 0 3px rgba(150,110,70,.16)"></div>
+      <h3>進行アイコン</h3>
+      <div class="demo" style="min-height:110px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="position:relative;width:30px;height:30px">
+            <img src="race.png" alt="かけっこ" style="width:30px;height:30px;object-fit:contain">
+            <svg width="17" height="17" viewBox="0 0 16 16" style="position:absolute;right:-4px;bottom:-4px">
+              <circle cx="8" cy="8" r="7" fill="#51cf66" stroke="#fff" stroke-width="2"></circle>
+              <path d="M4.6 8.2 L7 10.6 L11.4 5.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45"><path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="display:flex;align-items:center;gap:8px;background:#fff;border:4px solid #ffd43b;border-radius:999px;box-shadow:0 4px 0 #e8a805;padding:5px 18px 7px">
+            <img src="tamaire.png" alt="たまいれ" style="width:36px;height:36px;object-fit:contain">
+            <span style="font-size:32px;font-weight:800;line-height:1">12</span>
+            <span style="font-size:12px;font-weight:800;color:#8a7a68;align-self:flex-end;padding-bottom:3px">びょう</span>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45"><path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <img src="dodgeball.png" alt="ドッヂボール" style="width:30px;height:30px;object-fit:contain;opacity:.42">
+          <svg width="13" height="13" viewBox="0 0 12 12" style="opacity:.45"><path d="M4 2.4 L8 6 L4 9.6" fill="none" stroke="#8a7a68" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <img src="relay.png" alt="リレー" style="width:30px;height:30px;object-fit:contain;opacity:.42">
         </div>
       </div>
-      <p class="spec"><b>代わり</b>「だい2きょうぎ / ぜん4きょうぎ」の文字をなくす<br><b>済んだ競技</b>は白、今は黄、これからは薄い<br><b>置き換え先</b> undoukai.html の #progLbl</p>
+      <p class="spec"><b>絵</b> assets/buttons/*.png(紹介カードと支度画面と同じ絵)<br><b>済んだ</b> そのまま + 緑のチェック / <b>今</b> 黄色い台座で大きく / <b>次</b> 不透明度42%<br><b>間</b> 小さい矢印で進む向きを出す<br><b>置き換え先</b> undoukai.html の #progLbl</p>
     </div>
     <div class="pcard">
       <h3>テロップ(2.4秒)</h3>
@@ -622,7 +675,7 @@ parts_body = """<div style="position:relative;width:1280px;height:1000px;backgro
       <h3>取るもの</h3>
       <p class="spec" style="margin-top:6px">
         <b>.mt-score</b>(総合点)… 競技中は出さない。<b>全競技が終わった最後の総合結果で1回だけ</b>大きく見せる。<br>
-        <b>#progLbl</b> … 進行ドットに置き換え。<br>
+        <b>#progLbl</b> … 競技アイコンの列に置き換え。<br>
         <b>.mt-hud</b> のチーム名 … スコアチップに統合。<br>
         <b>.mt-banner</b> の黒帯 … 丸いテロップに。<br>
         <b>結果カードの sub</b>(「あか3こ-あお5こ / +2てん」)… 数字だけ残す。
