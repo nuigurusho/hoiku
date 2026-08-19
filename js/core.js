@@ -973,11 +973,18 @@ const Ui = {
     })(t0);
   },
 
-  msg(text, ms = 1300, color) {
+  /* sub をわたすと、2行目に さりげなく 小さめの文字を そえる */
+  msg(text, ms = 1300, color, sub) {
     const d = document.createElement("div");
     d.className = "bigmsg";
     d.textContent = text;
     if (color) d.style.color = color;
+    if (sub) {
+      const s = document.createElement("div");
+      s.className = "bigmsg-sub";
+      s.textContent = sub;
+      d.appendChild(s);
+    }
     document.body.appendChild(d);
     setTimeout(() => d.classList.add("out"), ms - 300);
     setTimeout(() => d.remove(), ms);

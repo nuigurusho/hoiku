@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>４たくクイズ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -33,22 +33,16 @@
   <div id="startScreen" class="panel">
     <h2>クイズたいかい!</h2>
     <p class="note hidden" id="customNote"></p>
-    <p style="font-size:22px">4つのなかから こたえを えらんでね</p>
+    <p style="font-size:22px">4つのなかから こたえは どれかな?</p>
 
-    <div class="mode-sec" data-tier="yuru">👀 みる<span class="tag">えらばずに ながめるだけ・「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">えらばずに ながめて、「こたえを みる」で こたえが 出るよ</span></div>
     <div class="row" data-tier="yuru">
-      <button class="btn big yellow" data-mode="miru">みんなで かんがえる</button>
-    </div>
-
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">スコアを ためるだけ・まちがえても へいき</span></div>
-    <div class="row">
-      <button class="btn big pink" data-mode="ren5">5もん</button>
-      <button class="btn big blue" data-mode="renAll">ぜんぶ</button>
+      <button class="btn big yellow" data-mode="miru">みんなで</button>
     </div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">5もん れんぞく</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">5もん れんぞく</span></button>
       <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">8もん れんぞく</span></button>
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">10もん れんぞく</span></button>
     </div>
@@ -63,8 +57,8 @@
     <div class="choices" id="choices"></div>
     <div class="answer-big hidden" id="answerBig"></div>
     <div class="row hidden" id="viewRow">
-      <button class="btn big yellow" id="revealBtn">こたえを みる!</button>
-      <button class="btn big green hidden" id="nextQBtn">つぎの もんだい ▶</button>
+      <button class="btn big yellow" id="revealBtn">こたえを みる</button>
+      <button class="btn big green hidden" id="nextQBtn">つぎ ▶</button>
     </div>
   </div>
 
@@ -78,7 +72,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script src="../js/quiz-data.js?v=11"></script>
 <script>
 "use strict";
@@ -86,9 +80,7 @@ const $ = (id) => document.getElementById(id);
 const GAME = "quiz";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  miru:   { label: "みる", n: 0, view: true },
-  ren5:   { label: "ゆるふわ", n: 5 },
-  renAll: { label: "ゆるふわ", n: 0 },
+  miru:   { label: "みんなで", n: 0, view: true },
   g1: { label: "かんたん",   goal: 5,  missLimit: 3, lv: 1 },
   g2: { label: "ふつう",     goal: 8,  missLimit: 3, lv: 2 },
   g3: { label: "むずかしい", goal: 10, missLimit: 3, lv: 3 },
@@ -206,7 +198,7 @@ $("revealBtn").onclick = () => {
   Sound.pon();
   Ui.confetti(1500, 60);
   $("revealBtn").classList.add("hidden");
-  $("nextQBtn").textContent = idx + 1 < queue.length ? "つぎの もんだい ▶" : "おしまい ▶";
+  $("nextQBtn").textContent = idx + 1 < queue.length ? "つぎ ▶" : "おしまい ▶";
   $("nextQBtn").classList.remove("hidden");
 };
 
@@ -250,29 +242,12 @@ function answer(ci, btn) {
   if (mode.goal) updateGachiHud();
 
   setTimeout(() => {
-    if (mode.goal) {
-      if (streak >= mode.goal) return clearGachi();
-      if (miss >= mode.missLimit) return failGachi();
-      idx = (idx + 1) % queue.length;   // つぎつぎ 出しつづける
-      if (idx === 0) queue = Util.shuffle(queue);
-      show();
-    } else {
-      idx++;
-      if (idx < queue.length) show();
-      else finish();
-    }
+    if (streak >= mode.goal) return clearGachi();
+    if (miss >= mode.missLimit) return failGachi();
+    idx = (idx + 1) % queue.length;   // つぎつぎ 出しつづける
+    if (idx === 0) queue = Util.shuffle(queue);
+    show();
   }, 1500);
-}
-
-/* ゆるふわ:1周おわり */
-function finish() {
-  $("quizScreen").classList.add("hidden");
-  $("endScreen").classList.remove("hidden");
-  const rate = score / queue.length;
-  $("stars").textContent = rate === 1 ? "⭐⭐⭐" : rate >= 0.6 ? "⭐⭐" : "⭐";
-  $("scoreText").textContent = `${queue.length}もん中 ${score}もん せいかい!`;
-  Sound.fanfare();
-  if (rate >= 0.6) Ui.confetti();
 }
 
 /* ガチンコ:ノルマたっせい */

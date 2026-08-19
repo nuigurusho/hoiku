@@ -419,6 +419,14 @@ canvas.stage {
   white-space: nowrap;
 }
 @keyframes bigpop { to { transform: translate(-50%,-50%) scale(1); } }
+/* おおきい メッセージの 2行目(クリアタイムなどを さりげなく) */
+.bigmsg-sub {
+  font-size: .34em;
+  color: #8a7a68;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  margin-top: .12em;
+}
 .bigmsg.out { animation: bigout .3s forwards; }
 @keyframes bigout { to { opacity: 0; transform: translate(-50%,-60%) scale(1.2); } }
 

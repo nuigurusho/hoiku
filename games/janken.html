@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>じゃんけん</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 <style>
   .hands { display: flex; gap: 18px; justify-content: center; margin: 10px 0 4px; }
   .hbtn {
@@ -33,13 +33,12 @@
   <div id="selectScreen" class="panel">
     <h2>あそびかたを えらんでね</h2>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">かちまけなし・れんしょうを ためるだけ(1〜2さいから)</span></div>
-    <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="crowd">みんなで じゃんけん</button></div>
-    <div class="row"><button class="btn big green" data-mode="vs">たいせん(れんしょう)</button></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">かちまけなし・「ぽん!」で みんな いっしょに(1〜2さいから)</span></div>
+    <div class="row" data-tier="yuru"><button class="btn big yellow" data-mode="crowd">みんなで</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">れんしょうノルマ&ランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">2れんしょう</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">2れんしょう</span></button>
       <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">3れんしょう</span></button>
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">5れんしょう</span></button>
     </div>
@@ -63,7 +62,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -82,7 +81,6 @@ const GAME = "janken";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
   crowd: { label: "みんなで", crowd: true },
-  vs:    { label: "たいせん" },   /* キャラとの 1たい1(2人そうさは いらない) */
   g1: { label: "かんたん",   goal: 2, missLimit: 3, lv: 1 },
   g2: { label: "ふつう",     goal: 3, missLimit: 3, lv: 2 },
   g3: { label: "むずかしい", goal: 5, missLimit: 3, lv: 3 },

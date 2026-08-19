@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>まちがいさがし</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 <style>
   .pair {
     display: flex;
@@ -48,15 +48,12 @@
   <div id="selectScreen" class="panel">
     <h2>あそびかたを えらんでね</h2>
 
-    <div class="mode-sec" data-tier="yuru">👀 みる<span class="tag">タッチしないで ながめるだけ・「こたえを みる」で こたえが 出るよ</span></div>
-    <div class="row" data-tier="yuru"><button class="btn big yellow" data-mode="miru">みんなで かんがえる</button></div>
-
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげん・のんびり さがす</span></div>
-    <div class="row"><button class="btn big blue" data-mode="ren">れんしゅう</button></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">タッチしないで ながめて、「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="row" data-tier="yuru"><button class="btn big yellow" data-mode="miru">みんなで</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・はやさランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">40びょう</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">40びょう</span></button>
       <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">25びょう</span></button>
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">15びょう</span></button>
     </div>
@@ -78,22 +75,20 @@
     <div class="choices one hidden" id="countFrame"></div>
     <div class="answer-big hidden" id="answerBig"></div>
     <div class="row">
-      <button class="btn yellow hidden" id="revealBtn">こたえを みる!</button>
-      <button class="btn yellow" id="hintBtn">ヒント</button>
+      <button class="btn yellow hidden" id="revealBtn">こたえを みる</button>
       <button class="btn gray" id="againBtn">えらびなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const GAME = "diff";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  miru: { label: "みる", view: true },
-  ren: { label: "れんしゅう" },
+  miru: { label: "みんなで", view: true },
   g1: { label: "かんたん",   limit: 40, lv: 1 },
   g2: { label: "ふつう",     limit: 25, lv: 2 },
   g3: { label: "むずかしい", limit: 15, lv: 3 },
@@ -206,7 +201,6 @@ async function startGame(rec, mode) {
     ? "どこが ちがうかな? 2まいの えを みくらべてみよう!"
     : "みぎの えを タッチして まちがいを さがしてね!";
   if (view) {
-    $("hintBtn").classList.add("hidden");
     $("countFrame").innerHTML = "";
     const f = document.createElement("div");
     f.className = "choice frame c1";
@@ -218,7 +212,6 @@ async function startGame(rec, mode) {
 
   // ガチンコ:せいげんじかんの カウントダウン
   if (mode.limit) {
-    $("hintBtn").classList.add("hidden");   // ガチンコは ヒントなし
     let last = performance.now();
     (function tick(now) {
       if (G.stop || G.done) return;
@@ -228,8 +221,6 @@ async function startGame(rec, mode) {
       if (rem <= 0) return failGame();
       requestAnimationFrame(tick);
     })(last);
-  } else {
-    $("hintBtn").classList.remove("hidden");
   }
 
   cvR.onpointerdown = (e) => {
@@ -328,22 +319,6 @@ function updateHud() {
   $("found").textContent = `みつけた: ${f}`;
   $("left").textContent = `のこり: ${G.spots.length - f}`;
 }
-
-$("hintBtn").onclick = () => {
-  if (!G || G.done) return;
-  const s = G.spots.find((q) => !q.found);
-  if (!s) return;
-  Sound.tick();
-  const ctx = $("cvR").getContext("2d");
-  ctx.save();
-  ctx.strokeStyle = "rgba(77,171,247,.8)";
-  ctx.setLineDash([12, 10]);
-  ctx.lineWidth = Math.max(5, G.W * 0.008);
-  ctx.beginPath();
-  ctx.arc(s.x * G.W, s.y * G.H, s.r * G.W * 2.2, 0, 7);
-  ctx.stroke();
-  ctx.restore();
-};
 </script>
 </body>
 </html>

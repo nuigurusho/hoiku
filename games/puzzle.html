@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきパズル</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 </head>
 <body>
 <header class="bar">
@@ -20,30 +20,19 @@
     <div class="panel">
       <h2>あそびかたを えらんでね</h2>
 
-      <div class="mode-sec">🧩 ピースの かたち<span class="tag">えらんでね</span></div>
-      <div class="row" id="shapeRow">
-        <button class="btn big green"  data-shape="wavy">なみなみ</button>
-        <button class="btn big orange" data-shape="classic">パズル</button>
-      </div>
-
-      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんむせいげん(1〜2さいから)</span></div>
+      <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">6ピース・じかんむせいげん(1〜2さいから)</span></div>
       <div class="row" id="countRow">
-        <button class="btn big blue"   data-mode="ren4">4</button>
-        <button class="btn big green"  data-mode="ren6">6</button>
-        <button class="btn big orange" data-mode="ren9">9</button>
-        <button class="btn big purple" data-mode="ren12">12</button>
-        <button class="btn big pink"   data-mode="ren20">20</button>
+        <button class="btn big blue" data-mode="ren6">れんしゅう</button>
       </div>
-      <p class="note">すうじは ピースの かずだよ</p>
 
-      <div class="mode-sec">🔥 ガチンコ<span class="tag">タイムアタック・はやさランキング・クリアで つぎが とけるよ</span></div>
+      <div class="mode-sec">🔥 ガチンコ<span class="tag">じかんむせいげん・はやさランキング・クリアで つぎが とけるよ</span></div>
       <div class="row" id="gachiRow">
-        <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">12ピース・90びょう</span></button>
-        <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">20ピース・120びょう</span></button>
-        <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30ピース・180びょう</span></button>
+        <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">12ピース</span></button>
+        <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">20ピース</span></button>
+        <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">30ピース</span></button>
       </div>
       <div class="rank" id="rankView"></div>
-      <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます(小さい子は 4 がおすすめ)</p>
+      <p class="note">あそびかたを おすと、つぎの がめんで えを えらべます</p>
     </div>
   </div>
 
@@ -51,11 +40,13 @@
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="progress"></span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="800"></canvas></div>
-    <div class="row"><button class="btn gray" id="againBtn">えらびなおす</button></div>
+    <div class="row hidden" id="endRow">
+      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+    </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -63,19 +54,14 @@ const GRID = { 4: [2, 2], 6: [3, 2], 9: [3, 3], 12: [4, 3], 20: [5, 4], 30: [6, 
 const GAME = "puzzle";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  ren4:  { label: "ゆるふわ", count: 4 },
-  ren6:  { label: "ゆるふわ", count: 6 },
-  ren9:  { label: "ゆるふわ", count: 9 },
-  ren12: { label: "ゆるふわ", count: 12 },
-  ren20: { label: "ゆるふわ", count: 20 },
-  g1: { label: "かんたん",   count: 12, limit: 90,  lv: 1 },
-  g2: { label: "ふつう",     count: 20, limit: 120, lv: 2 },
-  g3: { label: "むずかしい", count: 30, limit: 180, lv: 3 },
+  ren6: { label: "れんしゅう", count: 6 },
+  g1: { label: "かんたん",   count: 12, lv: 1 },
+  g2: { label: "ふつう",     count: 20, lv: 2 },
+  g3: { label: "むずかしい", count: 30, lv: 3 },
 };
 
 let selected = null, allPics = [];
 let game = null;
-let shapeStyle = "wavy";   // "wavy" = なみなみ / "classic" = 一般的なパズル形状
 
 async function initSelect() {
   allPics = await Store.ensureSamples();
@@ -95,16 +81,6 @@ function refreshLocks() {
   $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "びょう" });
 }
 
-// ピースの かたち えらび
-(function initShapePicker() {
-  const btns = document.querySelectorAll("#shapeRow [data-shape]");
-  const paint = () => btns.forEach((b) => b.classList.toggle("sel", b.dataset.shape === shapeStyle));
-  btns.forEach((b) => {
-    b.onclick = () => { shapeStyle = b.dataset.shape; Sound.tap(); paint(); };
-  });
-  paint();
-})();
-
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
   b.onclick = async () => {
     const m = MODES[b.dataset.mode];
@@ -123,11 +99,13 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     await startGame(rec, m);
   };
 });
-$("againBtn").onclick = () => {
+/* れんしゅうを かんせいさせたら そのまま ガチンコの かんたんへ */
+$("honbanBtn").onclick = () => {
   if (game) game.stop = true;
   $("playScreen").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
   refreshLocks();
+  document.querySelector('#gachiRow [data-mode="g1"]').click();
 };
 
 /* ---------------- パズル本体 ---------------- */
@@ -146,23 +124,6 @@ async function startGame(rec, mode) {
   board.getContext("2d").drawImage(img, 0, 0, bw, bh);
 
   const pw = bw / cols, ph = bh / rows;
-  const amp = Math.min(pw, ph) * 0.18;   // なみなみ形状のゆれ幅
-
-  // ふちのランダム曲線(となりあうピースで共有するので ぴったり かみあう)
-  const wavyEdge = (x1, y1, x2, y2) => {
-    const N = 8, pts = [];
-    let off = 0;
-    for (let i = 0; i <= N; i++) {
-      const t = i / N;
-      if (i === 0 || i === N) off = 0;
-      else off = Util.clamp(off + Util.rand(-amp * 0.7, amp * 0.7), -amp, amp);
-      const nx = -(y2 - y1), ny = x2 - x1;                 // 法線方向
-      const nl = Math.hypot(nx, ny) || 1;
-      pts.push([x1 + (x2 - x1) * t + (nx / nl) * off,
-                y1 + (y2 - y1) * t + (ny / nl) * off]);
-    }
-    return pts;
-  };
 
   // 一般的なパズル形状:出っぱり(タブ)と くぼみが かみあう クラシックなジグソー
   // ふち沿いの座標(a=位置 0..1 / p=法線オフセット)を つくって 実座標へ変換する
@@ -189,11 +150,10 @@ async function startGame(rec, mode) {
     ]);
   };
 
-  const interiorEdge = shapeStyle === "classic" ? classicEdge : wavyEdge;
+  const interiorEdge = classicEdge;
   const straightEdge = (x1, y1, x2, y2) => [[x1, y1], [x2, y2]];
-  // タブの はみ出しぶんを見こんだ よゆう(クラシックは 大きめに とる)
-  const protrude = shapeStyle === "classic" ? Math.max(pw, ph) * 0.26 : amp;
-  const margin = Math.ceil(protrude + 8);
+  // タブの はみ出しぶんを見こんだ よゆう
+  const margin = Math.ceil(Math.max(pw, ph) * 0.26 + 8);
 
   // hE[r][c]: 上下方向の境界線(r=0..rows) / vE[c][r]: 左右方向の境界線(c=0..cols)
   const hE = [], vE = [];
@@ -260,29 +220,22 @@ async function startGame(rec, mode) {
            mode, stop: false, elapsed: 0, snapDist };
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
-  $("timeHud").classList.toggle("hidden", !mode.limit);
+  $("endRow").classList.add("hidden");
+  $("timeHud").classList.toggle("hidden", !mode.lv);
   render();
 
   bindPointer();
-  if (mode.limit) startTimer();
+  if (mode.lv) startTimer();
 }
 
-/* ガチンコ:せいげんじかんの カウントダウン */
+/* ガチンコ:じかんを かぞえあげる(せいげんは なし) */
 function startTimer() {
   let last = performance.now();
   (function tick(now) {
     const g = game;
     if (!g || g.stop || g.done) return;
     g.elapsed += (now - last) / 1000; last = now;
-    const rem = Math.max(0, g.mode.limit - g.elapsed);
-    $("timeHud").textContent = `⏰ ${Math.ceil(rem)}`;
-    if (rem <= 0) {
-      g.done = true;
-      Sound.bad();
-      const left = g.pieces.filter((p) => !p.locked).length;
-      Ui.msg(`じかんぎれ!のこり ${left}ピース`, 2400, "#9775fa");
-      return;
-    }
+    $("timeHud").textContent = `⏱ ${Math.floor(g.elapsed)}`;
     requestAnimationFrame(tick);
   })(last);
 }
@@ -364,13 +317,14 @@ function bindPointer() {
         g.done = true;
         Sound.fanfare();
         Ui.confetti();
-        if (g.mode.limit) {
+        if (g.mode.lv) {
           const secs = Math.max(1, Math.round(g.elapsed));
           Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
           Tiers.addRank(GAME, g.mode.lv, "?", secs, { lowerIsBetter: true });
-          Ui.msg(`クリア!🏆 ${secs}びょう`, 2400);
+          Ui.msg("クリア!🏆", 2400, null, `${secs}びょうで クリア`);
         } else {
           Ui.msg("かんせい!", 2200);
+          $("endRow").classList.remove("hidden");   // れんしゅうから ほんばんへ
         }
       }
     }

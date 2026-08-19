@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>カードあわせ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=12">
+<link rel="stylesheet" href="../css/style.css?v=13">
 </head>
 <body>
 <header class="bar">
@@ -18,18 +18,16 @@
   <div id="startScreen" class="panel">
     <h2>おなじ えを 2まい みつけてね!</h2>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じぶんの ペースで(1〜2さいから)</span></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じぶんの ペースで・かいすうは かぞえない(1〜2さいから)</span></div>
     <div class="row">
-      <button class="btn big blue"   data-mode="ren4">やさしい(4くみ)</button>
-      <button class="btn big green"  data-mode="ren6">ふつう(6くみ)</button>
-      <button class="btn big orange" data-mode="ren8">むずかしい(8くみ)</button>
+      <button class="btn big blue" data-mode="ren4">れんしゅう</button>
     </div>
 
-    <div class="mode-sec">🔥 ガチンコ<span class="tag">めくれるかいすうせいげん・すくない手数ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">すくない かいすうランキング・クリアで つぎが とけるよ</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big blue"   data-mode="g1">かんたん<br><span style="font-size:14px">4くみ・7かいまで</span></button>
-      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">6くみ・10かいまで</span></button>
-      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">8くみ・13かいまで</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">4くみ</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">6くみ</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">8くみ</span></button>
     </div>
     <div class="rank" id="rankView"></div>
   </div>
@@ -37,11 +35,14 @@
   <div id="playScreen" class="hidden">
     <div class="hud"><span id="pairHud"></span><span id="tryHud"></span></div>
     <div class="cardgrid" id="grid"></div>
-    <div class="row hidden" id="endRow"><button class="btn big green" id="againBtn">もういちど</button></div>
+    <div class="row hidden" id="endRow">
+      <button class="btn big green" id="againBtn">もういちど</button>
+      <button class="btn big pink hidden" id="honbanBtn">ほんばんへ</button>
+    </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=14"></script>
+<script src="../js/core.js?v=15"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -49,12 +50,10 @@ const EXTRA = ["🍎", "🚌", "🐸", "🌻", "🍙", "🐠", "🎈", "🚀", "
 const GAME = "memory";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
 const MODES = {
-  ren4: { label: "ゆるふわ", pairs: 4 },
-  ren6: { label: "ゆるふわ", pairs: 6 },
-  ren8: { label: "ゆるふわ", pairs: 8 },
-  g1: { label: "かんたん",   pairs: 4, limit: 7,  lv: 1 },
-  g2: { label: "ふつう",     pairs: 6, limit: 10, lv: 2 },
-  g3: { label: "むずかしい", pairs: 8, limit: 13, lv: 3 },
+  ren4: { label: "れんしゅう", pairs: 4 },
+  g1: { label: "かんたん",   pairs: 4, lv: 1 },
+  g2: { label: "ふつう",     pairs: 6, lv: 2 },
+  g3: { label: "むずかしい", pairs: 8, lv: 3 },
 };
 let G = null;
 
@@ -81,6 +80,13 @@ document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
     start(m);
   };
 });
+/* れんしゅうを クリアしたら そのまま ガチンコの かんたんへ */
+$("honbanBtn").onclick = () => {
+  $("playScreen").classList.add("hidden");
+  $("startScreen").classList.remove("hidden");
+  refreshLocks();
+  document.querySelector('#gachiRow [data-mode="g1"]').click();
+};
 $("againBtn").onclick = () => {
   if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
@@ -117,13 +123,14 @@ async function start(mode) {
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  $("honbanBtn").classList.add("hidden");
   updateHud();
 }
 
 function updateHud() {
   $("pairHud").textContent = `みつけた: ${G.matched} / ${G.pairs}`;
-  if (G.mode.limit) $("tryHud").textContent = `めくれる: ${G.tries} / ${G.mode.limit}かい`;
-  else $("tryHud").textContent = `めくった: ${G.tries}かい`;
+  // れんしゅうは かいすうを 気にしないで あそぶ
+  $("tryHud").textContent = G.mode.lv ? `めくった: ${G.tries}かい` : "";
 }
 
 function flip(el, card) {
@@ -146,7 +153,6 @@ function flip(el, card) {
       G.busy = false;
       updateHud();
       if (G.matched === G.pairs) return clearGame();
-      checkLimit();
     }, 450);
   } else {
     setTimeout(() => {
@@ -155,34 +161,23 @@ function flip(el, card) {
       G.open = [];
       G.busy = false;
       updateHud();
-      checkLimit();
     }, 950);
   }
   updateHud();
 }
 
-/* ガチンコ:めくれる回数を つかいきったら おしまい */
-function checkLimit() {
-  if (!G.mode.limit || G.matched === G.pairs) return;
-  if (G.tries >= G.mode.limit) {
-    G.busy = true;
-    Sound.bad();
-    Ui.msg(`ざんねん!みつけた ${G.matched}くみ`, 2400, "#9775fa");
-    $("endRow").classList.remove("hidden");
-  }
-}
-
 function clearGame() {
   Sound.fanfare();
   Ui.confetti();
-  if (G.mode.limit) {
+  if (G.mode.lv) {
     Tiers.setUnlock(GAME, Math.min(3, G.mode.lv + 1));
     Tiers.addRank(GAME, G.mode.lv, "?", G.tries, { lowerIsBetter: true });
-    Ui.msg(`クリア!🏆 ${G.tries}かいで せいかい!`, 2500);
+    Ui.msg("クリア!🏆", 2500, null, `${G.tries}かいで クリア`);
   } else {
     Ui.msg("ぜんぶ みつけた!🎉", 2500);
   }
   $("endRow").classList.remove("hidden");
+  $("honbanBtn").classList.toggle("hidden", !!G.mode.lv);   // れんしゅうから ほんばんへ
 }
 </script>
 </body>
