@@ -34,7 +34,7 @@
 </main>
 
 <script src="../js/core.js?v=13"></script>
-<script src="../js/rig.js?v=14"></script>
+<script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
 const cv = document.getElementById("cv");
@@ -313,10 +313,14 @@ function flutterTarget(a) {
   a.ty = Util.rand(FL_FAR - 30, FL_NEAR - 30);
 }
 
-/* とまっている ときの 足もとの たかさ(はなの まんなかに ちょこんと のせる) */
+/* とまっている ときの 足もとの たかさ。
+   ちょうちょの じく(からだの まんなかの 線・下から 1/3)が
+   はなの まんなかに くるように おく。
+   じくは えがくとき 足もとより h/3 うえに くるので、その ぶんを たす */
 function perchY(a) {
   const head = flowerHead(a.perch);
-  return head.y - a.perch.sun.headR * head.s * 0.45 + a.puppet.lift;
+  const pp = a.puppet;
+  return head.y - a.perch.sun.headR * head.s * 0.15 + pp.lift + pp.h / 3;
 }
 
 function updateFlutter(a, dt) {
