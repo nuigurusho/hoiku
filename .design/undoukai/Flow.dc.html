@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "M PLUS Rounded 1c", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      color: #4a3f35;
+      background: #fffdf5;
+    }
+    a { color: #d6336c; }
+    a:hover { color: #b02a54; }
+    .cap { font-size: 15px; line-height: 1.65; color: #6a5c4c; }
+    .tag {
+      display: inline-block; font-size: 13px; font-weight: 800; letter-spacing: .04em;
+      border-radius: 999px; padding: 3px 12px;
+    }
+    .bad { background: #ffe3ee; color: #c92a5f; }
+    .good { background: #e6f7e9; color: #2f9e44; }
+
+    .fr { position: absolute; width: 280px; }
+    .mini { position: relative; width: 280px; height: 158px; border-radius: 12px; overflow: hidden; border: 4px solid #e8cbae; background: linear-gradient(#a5d8ff,#e3f4ff 66px); }
+    .mini .gr { position: absolute; left: 0; top: 66px; width: 280px; height: 92px; background: #a9dd7e; }
+    .mini .ch { position: absolute; bottom: 18px; width: 14px; height: 26px; border-radius: 7px; }
+    .fr h4 { margin: 10px 0 4px; font-size: 17px; }
+    .fr p { margin: 0; font-size: 13px; line-height: 1.55; color: #6a5c4c; }
+    .cnt { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: #e6f7e9; color: #2f9e44; }
+    .cnt.hi { background: #ffe3ee; color: #c92a5f; }
+    .rail { position: absolute; left: 40px; top: 470px; width: 1520px; height: 6px; border-radius: 3px; background: #e8cbae; }
+    .tick { position: absolute; top: -7px; width: 20px; height: 20px; border-radius: 50%; background: #fffdf5; border: 5px solid #ff6b9d; }
+    .tlab { position: absolute; top: 24px; font-size: 13px; font-weight: 800; color: #8a7a68; transform: translateX(-50%); }
+
+  </style>
+</helmet>
+<div style="position:relative;width:1600px;height:620px;background:#fffdf5;padding:0">
+  <div style="position:absolute;left:40px;top:26px">
+    <span class="tag good">ていあん</span>
+    <span style="font-size:24px;font-weight:800;margin-left:12px">じかんで わける — 同時に 読ませるのは 最大2つ</span>
+  </div>
+
+  <div class="fr" style="left:40px;top:96px">
+    <div class="mini"><div class="gr"></div><div class="ch" style="left:46px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:74px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:102px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:170px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:198px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:226px;background:#74c0fc;border:2px solid #1c7ed6"></div><div style="position:absolute;left:52px;top:34px;width:176px;background:rgba(255,255,255,.95);border:3px solid #e8cbae;border-radius:12px;padding:6px 8px;text-align:center"><div style="font-size:10px;color:#8a7a68;font-weight:800">だい2きょうぎ</div><div style="font-size:20px;font-weight:800">たまいれ</div></div></div>
+    <h4>0.0s — しょうかい</h4>
+    <p>きょうぎ名と アイコンだけ。スコアも しんこうも まだ 出さない。</p>
+    <span class="cnt">出るもの 1つ</span>
+  </div>
+  <div class="fr" style="left:360px;top:96px">
+    <div class="mini"><div class="gr"></div><div class="ch" style="left:46px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:74px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:102px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:170px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:198px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:226px;background:#74c0fc;border:2px solid #1c7ed6"></div><div style="position:absolute;left:88px;top:10px;width:104px;height:30px;background:rgba(255,255,255,.95);border:3px solid #e8cbae;border-radius:10px;opacity:.55;transform:scale(.8)"></div><div style="position:absolute;left:8px;top:8px;width:44px;height:22px;border-radius:8px;background:#ff6b9d"></div><div style="position:absolute;left:228px;top:8px;width:44px;height:22px;border-radius:8px;background:#4dabf7"></div></div>
+    <h4>1.2s — カードが スコアに なる</h4>
+    <p>カードが しゅっと 上に すいこまれて、そのまま スコアおびに かわる。目が 上に ついていく。</p>
+    <span class="cnt">出るもの 1つ</span>
+  </div>
+  <div class="fr" style="left:680px;top:96px">
+    <div class="mini"><div class="gr"></div><div class="ch" style="left:46px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:74px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:102px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:170px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:198px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:226px;background:#74c0fc;border:2px solid #1c7ed6"></div><div style="position:absolute;left:0;top:52px;width:280px;text-align:center;font-size:30px;font-weight:800;color:#d6336c;-webkit-text-stroke:4px #fff;paint-order:stroke fill">スタート!</div><div style="position:absolute;left:8px;top:8px;width:44px;height:22px;border-radius:8px;background:#ff6b9d"></div><div style="position:absolute;left:228px;top:8px;width:44px;height:22px;border-radius:8px;background:#4dabf7"></div></div>
+    <h4>1.8s — スタート!</h4>
+    <p>まんなかに 1ことだけ 0.6びょう。ここで 目を ステージに もどす。</p>
+    <span class="cnt">出るもの 2つ</span>
+  </div>
+  <div class="fr" style="left:1000px;top:96px">
+    <div class="mini"><div class="gr"></div><div class="ch" style="left:46px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:74px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:102px;background:#ff8fab;border:2px solid #d6336c"></div><div class="ch" style="left:170px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:198px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:226px;background:#74c0fc;border:2px solid #1c7ed6"></div><div style="position:absolute;left:8px;top:8px;width:44px;height:22px;border-radius:8px;background:#ff6b9d"></div><div style="position:absolute;left:118px;top:8px;width:44px;height:20px;border-radius:8px;background:#fff;border:2px solid #e8cbae"></div><div style="position:absolute;left:228px;top:8px;width:44px;height:22px;border-radius:8px;background:#4dabf7"></div><div style="position:absolute;left:60px;bottom:6px;width:160px;height:20px;border-radius:999px;background:rgba(255,253,245,.95);border:2px solid #4dabf7"></div></div>
+    <h4>プレー中 — あそんでいる あいだ</h4>
+    <p>スコア2つと じかんだけ。出来事が あった ときだけ テロップが 2.4びょう。</p>
+    <span class="cnt">出るもの 2-3つ</span>
+  </div>
+  <div class="fr" style="left:1320px;top:96px">
+    <div class="mini"><div class="gr"></div><div class="ch" style="left:170px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:198px;background:#74c0fc;border:2px solid #1c7ed6"></div><div class="ch" style="left:226px;background:#74c0fc;border:2px solid #1c7ed6"></div><div style="position:absolute;left:0;top:0;width:280px;height:158px;background:radial-gradient(circle at 70% 60%,rgba(255,255,255,0) 30%,rgba(20,12,6,.45) 100%)"></div><div style="position:absolute;left:40px;top:8px;width:26px;height:26px;border-radius:8px;background:#ff8fab;opacity:.3"></div><div style="position:absolute;left:44px;top:34px;width:192px;background:rgba(255,255,255,.96);border:3px solid #4dabf7;border-radius:12px;padding:6px;text-align:center"><div style="font-size:17px;font-weight:800;color:#1c7ed6">あおチーム の かち!</div></div></div>
+    <h4>決着 — きまった しゅんかん</h4>
+    <p>白フラッシュ → まけた側を うすく → かちカードが 上1/3に せり上がる。ここで 一気に もりあげる。</p>
+    <span class="cnt hi">出るもの 1つ</span>
+  </div>
+  <div class="rail"></div>
+  <div class="tick" style="left:132px"></div><div class="tlab" style="left:142px">0.0</div>
+  <div class="tick" style="left:452px"></div><div class="tlab" style="left:462px">1.2</div>
+  <div class="tick" style="left:772px"></div><div class="tlab" style="left:782px">1.8</div>
+  <div class="tick" style="left:1092px;border-color:#51cf66"></div><div class="tlab" style="left:1102px">2.4 - おわりまで</div>
+  <div class="tick" style="left:1412px;border-color:#ffd43b"></div><div class="tlab" style="left:1422px">きまった しゅんかん</div>
+  <div class="cap" style="position:absolute;left:40px;top:534px;width:1520px">
+    いまは この 5つの 場面 ぜんぶで 同じ UI が 出っぱなしに なっている。<b>出す・消す の タイミングを ずらすだけで、読ませる 量は 6つ → 最大2つに 減る。</b>減らした ぶん、決着の しゅんかんに 全部を つかえる。
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1600,"height":620}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
