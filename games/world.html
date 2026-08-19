@@ -334,11 +334,11 @@ function aimAtPerch(a) {
   a.talt = a.perch.y - perchY(a);
 }
 
-/* とまる よこの いち … むいている ほうと はんたいがわ。
-   はねが まんなかの 丸の うえに かかるように、ひだりむきなら 丸の みぎうえ */
+/* とまる よこの いち … まんなかの 丸から よこに ずらす。
+   はねが 丸の うえに かぶさるように、はねが ひろがる がわの はんたいに おく */
 function perchX(a) {
   const head = flowerHead(a.perch);
-  return head.x - a.perchFacing * a.perch.sun.headR * head.s * 0.55;
+  return head.x + a.perchFacing * a.perch.sun.headR * head.s * 0.55;
 }
 
 /* とまる ときの 足もとの たかさ。
