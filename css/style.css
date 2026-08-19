@@ -287,10 +287,14 @@ main { padding: 14px; }
   padding: 4px;
 }
 canvas.stage {
-  width: 100%;
-  max-width: 1280px;
-  max-height: calc(100vh - var(--bar-h) - 24px);
+  /* よこ・たてを どちらも auto に して、ひりつは ブラウザに まもらせる。
+     width:100% + max-height だと、たてだけ ちぢんで 絵が つぶれる */
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: calc(100vh - var(--bar-h) - 24px);
+  max-height: calc(100dvh - var(--bar-h) - 24px);   /* iPad の ツールバーぶんを のぞく */
+  object-fit: contain;                              /* まんいち はこが ずれても つぶさない */
   border-radius: 18px;
   box-shadow: 0 8px 24px rgba(120,80,40,.2);
   background: #fff;
@@ -383,9 +387,16 @@ canvas.stage {
 /* フローティング版(ゲームのページ):もどるボタンの はんたいがわ */
 .fs-btn.float {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: calc(-14px + env(safe-area-inset-right, 0px));
   z-index: 95;              /* キャラえらび がめんの うえにも のこす */
+  width: 58px;
+  padding-right: 14px;
+  border-radius: 999px;
+  transition: transform .12s, box-shadow .08s, background .12s;
+}
+@media (hover: hover) {
+  .fs-btn.float:hover:not(:active) { transform: translateX(-10px); background: #fff; box-shadow: 0 2px 0 var(--cream-d); }
 }
 /* メニューでは せっていボタンと よこに ならべる */
 .settings-bar { gap: 10px; align-items: center; }
@@ -667,26 +678,34 @@ label.radio { font-size: 17px; font-weight: bold; margin: 0 8px; }
 .bar h1 { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .bar h1 img.bar-icon { width: 46px; height: 46px; object-fit: contain; }
 body.ingame header.bar { display: none; }
+/* もどるボタンは ひだりうえに 「見きれさせて」 おく。
+   ・文字なし・アイコンだけ ・はんぶん がめんの そとに 出して めだたなくする
+   ・こどもが まちがえて おしにくく、おとなは すぐ おせる おおきさは のこす */
 .back-float {
   display: none;
   position: fixed;
-  top: 12px;
-  left: 12px;
+  top: 8px;
+  left: calc(-22px + env(safe-area-inset-left, 0px));
   z-index: 60;
+  align-items: center;
+  justify-content: flex-end;
+  width: 74px;
+  height: 52px;
+  padding: 0 12px 0 0;
   text-decoration: none;
   color: var(--ink);
-  font-weight: bold;
-  font-size: 24px;
-  line-height: 1;
-  background: rgba(255,255,255,.88);
+  background: rgba(255,255,255,.82);
   border: 3px solid var(--cream-d);
   border-radius: 999px;
-  padding: 12px 18px;
-  box-shadow: 0 5px 0 var(--cream-d), 0 6px 14px rgba(120,80,40,.18);
-  transition: transform .08s, box-shadow .08s;
+  box-shadow: 0 4px 0 var(--cream-d), 0 6px 14px rgba(120,80,40,.16);
+  transition: transform .12s, box-shadow .08s, background .12s;
 }
-.back-float:active { transform: translateY(5px); box-shadow: none; }
-body.ingame .back-float { display: block; }
+.back-float svg { width: 26px; height: 26px; display: block; }
+.back-float:active { transform: translateY(4px); box-shadow: none; background: #fff; }
+@media (hover: hover) {
+  .back-float:hover { transform: translateX(10px); background: #fff; }
+}
+body.ingame .back-float { display: flex; }
 
 /* ============================================================
    うんどうかい・たまいれ 共通(js/meet.js が つかう ぶひん)
@@ -926,4 +945,233 @@ body.ingame .back-float { display: block; }
   .mt-hud { margin-top: 50px; }
   .mt-teams { gap: 6px; }
   .mt-teamcol { padding: 8px 6px 10px; }
+}
+
+/* ============================================================
+   あそび中は がめん いっぱい(js/core.js の Stage が つける)
+   ・body.fitstage … ステージ(canvas.stage)の ある がめんで あそんでいる
+   ・.fit-fill    … ステージまでの みちすじ。まんなかに よせる はこ
+   ・.fit-box     … canvas の おや。ステージの ひりつどおりの おおきさ(px は JS が きめる)
+   ・.fit-top / .fit-bottom … ステージの うえに かさねる UI(うえ・した)
+   ふだん(ぜんがめんで ないとき)は display:contents なので、
+   ならびかたは いままでと まったく おなじ。
+   ============================================================ */
+.fit-top, .fit-bottom { display: contents; }
+
+html.fitstage { height: 100%; }
+body.fitstage {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;   /* iPad の びよんと する スクロールを とめる */
+  min-height: 0;
+}
+body.fitstage main {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.fitstage .fit-fill {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.fitstage .fit-box {
+  flex: 0 0 auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+}
+body.fitstage .fit-box canvas.stage {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ステージに かさねる UI。あきスペースは タッチを とおして、
+   ボタンなど おせる ものだけ タッチを うけとる */
+body.fitstage .fit-top,
+body.fitstage .fit-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 12px;
+}
+body.fitstage .fit-top { top: 0; padding-top: max(8px, env(safe-area-inset-top, 0px)); }
+body.fitstage .fit-bottom { bottom: 0; padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+body.fitstage .fit-top,
+body.fitstage .fit-bottom,
+body.fitstage .fit-top > *,
+body.fitstage .fit-bottom > * { pointer-events: none; }
+body.fitstage .fit-top button,
+body.fitstage .fit-top a,
+body.fitstage .fit-top input,
+body.fitstage .fit-top select,
+body.fitstage .fit-top label,
+body.fitstage .fit-bottom button,
+body.fitstage .fit-bottom a,
+body.fitstage .fit-bottom input,
+body.fitstage .fit-bottom select,
+body.fitstage .fit-bottom label { pointer-events: auto; }
+body.fitstage .fit-top > *,
+body.fitstage .fit-bottom > * { margin: 0; max-width: 100%; }
+/* すの文字(ヒントなど)は ステージの うえでも よめるように 白い おびを しく */
+body.fitstage .fit-top > p,
+body.fitstage .fit-bottom > p,
+body.fitstage .fit-top > .note,
+body.fitstage .fit-bottom > .note,
+body.fitstage .fit-top > .streak,
+body.fitstage .fit-bottom > .streak {
+  background: rgba(255,255,255,.86);
+  border-radius: 999px;
+  padding: 5px 18px;
+}
+body.fitstage .fit-bottom .note { color: #5b4a36; }
+/* ゲーム中は ヘッダーの おびを かならず 消す(あそび中は もどるボタンだけ) */
+body.fitstage header.bar { display: none; }
+
+/* よこむきに してほしい ときの おしらせ(iPad は じどうで まわせないため) */
+.rotate-hint {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(255,253,245,.96);
+  font-size: 26px;
+  font-weight: bold;
+  color: var(--ink);
+}
+.rotate-hint .mark {
+  font-size: 84px;
+  line-height: 1;
+  animation: rotate-tilt 1.6s ease-in-out infinite;
+}
+@keyframes rotate-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(90deg); }
+}
+
+/* ============================================================
+   ドロワー(どうぐ箱を よこから 出し入れする)
+   ・.drawer            … 本体(みぎから スライド)
+   ・.drawer.open       … ひらいている
+   ・.drawer-handle     … ひらく ための とって(みぎはしに 見きれさせる)
+   ・.drawer-scrim      … ひらいている あいだの うしろの まく
+   ============================================================ */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 110;
+  width: min(340px, 86vw);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--paper);
+  box-shadow: -8px 0 24px rgba(120,80,40,.22);
+  border-left: 4px solid var(--cream-d);
+  padding: 14px 14px 26px;
+  transform: translateX(102%);
+  transition: transform .22s ease-out;
+}
+.drawer.open { transform: translateX(0); }
+.drawer .panel { margin: 0; padding: 0; background: none; box-shadow: none; text-align: left; }
+.drawer-close {
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--ink);
+  background: #fff;
+  border: 3px solid var(--cream-d);
+  border-radius: 999px;
+  padding: 8px 18px;
+  box-shadow: 0 4px 0 var(--cream-d);
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.drawer-close:active { transform: translateY(4px); box-shadow: none; }
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  background: rgba(60,40,20,.28);
+}
+.drawer-scrim.hidden { display: none !important; }
+.drawer-handle {
+  position: fixed;
+  top: 50%;
+  right: -10px;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--ink);
+  background: rgba(255,255,255,.9);
+  border: 3px solid var(--cream-d);
+  border-radius: 999px 0 0 999px;
+  padding: 14px 20px 14px 16px;
+  box-shadow: 0 4px 0 var(--cream-d), 0 6px 14px rgba(120,80,40,.16);
+  cursor: pointer;
+  transition: transform .12s, background .12s;
+}
+.drawer-handle:active { background: #fff; }
+@media (hover: hover) {
+  .drawer-handle:hover { transform: translateY(-50%) translateX(-8px); background: #fff; }
+}
+
+/* ステージの したに うかべる ミニどうぐバー(よく つかう ものだけ) */
+.minibar {
+  position: fixed;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.92);
+  border: 3px solid var(--cream-d);
+  border-radius: 999px;
+  padding: 8px 12px;
+  box-shadow: 0 5px 0 var(--cream-d), 0 8px 18px rgba(120,80,40,.16);
+  max-width: calc(100vw - 24px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.minibar .btn { font-size: 17px; padding: 10px 18px; box-shadow: 0 4px 0 var(--shade); }
+.minibar .btn:active { transform: translateY(4px); box-shadow: none; }
+.minibar .now {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 3px var(--cream-d);
+  cursor: pointer;
+  padding: 0;
 }
