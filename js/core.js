@@ -1537,7 +1537,9 @@ const Entry = {
     if (!mode) return;
     const btn = document.querySelector(`[data-mode="${mode.replace(/[^\w-]/g, "")}"]`);
     if (!btn) return;
-    /* え の よみこみが おわってから おす(ゲームがわの したくを まつ) */
+    /* え の よみこみが おわってから おす(ゲームがわの したくを まつ)。
+       とちゅうの えらぶ画面は 見せていないので、「もどる」は トップページへ */
+    Nav.direct = true;
     Promise.resolve(Store.ensureSamples()).then(() => {
       setTimeout(() => btn.click(), 80);
     });
@@ -1633,6 +1635,9 @@ const Nav = {
            "selectScreen", "startScreen", "modeScreen"],
 
   stack: [], cur: null, _leave: null,
+  /* トップの「みる」などから ?mode= で 直行してきたか。
+     直行のときは とちゅうの えらぶ画面を 見せずに、そのまま トップページへ もどす */
+  direct: false,
 
   /* ゲームがわの しまつ(ループ停止・ボタンの かたづけ など) */
   onLeave(fn) { this._leave = fn; },
@@ -1669,6 +1674,7 @@ const Nav = {
   /* 1つ まえの がめんへ。もどれないときは false(→ トップページへ) */
   back() {
     if (this._closeOverlay()) return true;
+    if (this.direct) return false;          // 直行してきたので トップページへ
     if (!this.stack.length) return false;
     const prev = this.stack[this.stack.length - 1];
     Sound.tap();

@@ -321,7 +321,8 @@ canvas.stage {
   max-width: 980px;
   margin: 4px auto 10px;
 }
-.tabflow { display: flex; align-items: center; gap: 6px; }
+/* つくる › [みる][ひとりで][ふたりで][みんなで]。ちいさい がめんでは おりかえす */
+.tabflow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
 .tab {
   font-family: inherit;
   font-size: 19px;
@@ -347,7 +348,7 @@ canvas.stage {
   color: #fff;
   box-shadow: 0 4px 0 var(--pink-d);
 }
-/* つくる → みる → あそぶ を つなぐ やじるし */
+/* つくる と そのさきを つなぐ やじるし */
 .tab-arrow { display: flex; align-items: center; color: #d3b189; }
 .tab-arrow svg { width: 15px; height: 15px; display: block; }
 /* ながれ と「ゲーム別」の くぎり */
