@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>かけっこ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 </head>
 <body>
 <header class="bar">
@@ -21,7 +21,7 @@
 
       <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">みるだけ・2にんで れんだたいせん(1〜2さいから)</span></div>
       <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="cheer">みるだけ(オート)</button></div>
-      <div class="row"><button class="btn big green" data-mode="vs">2Pたいせん</button></div>
+      <div class="row"><button class="btn big yellow" data-mode="vs">2Pたいせん</button></div>
 
       <div class="mode-sec">🔥 ガチンコ<span class="tag">CPUたいせん・かつと つぎが とける・かちタイムランキング</span></div>
       <div class="row" id="gachiRow">
@@ -48,7 +48,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -129,6 +129,7 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     start(b.dataset.mode);
   };
 });
+Nav.onLeave(() => { if (G) G.stop = true; refreshLocks(); });
 $("againBtn").onclick = () => start(lastMode);
 $("backBtn").onclick = () => {
   if (G) G.stop = true;

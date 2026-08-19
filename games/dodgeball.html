@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>ドッヂボール</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 <style>
   /* ===== ドッヂボール専用スタイル(1ファイル完結) ===== */
 
@@ -189,8 +189,8 @@
   <div id="selectScreen">
     <div class="panel">
       <h2>たたかう キャラを えらんでね<br><span style="font-size:18px;font-weight:normal;color:#8a7a68">(タッチで えらぶ / はずす)</span></h2>
+      <p class="sel-count" id="selNote"></p>
       <div class="gallery" id="gallery"></div>
-      <p class="note" id="selNote" style="font-size:17px;font-weight:bold;min-height:22px"></p>
 
       <div class="db-rules">
         <div class="db-rule">
@@ -242,7 +242,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -309,15 +309,12 @@ function renderGallery() {
 function refreshDecide() {
   const n = selectedIds.size;
   const btn = $("decideBtn"), note = $("selNote");
-  if (n < 4) {
-    btn.disabled = true;
-    note.textContent = `あと ${4 - n}にん えらんでね(4にん いじょうで はじめられるよ)`;
-    note.style.color = "#d6336c";
-  } else {
-    btn.disabled = false;
-    note.textContent = `${n}にんで たいせん!`;
-    note.style.color = "#2f9e44";
-  }
+  const few = n < 4;
+  btn.disabled = few;
+  /* 「◯にん せんたくちゅう」で そろえる。かずを いちばん おおきく 出す */
+  note.className = "sel-count" + (few ? " few" : "");
+  note.innerHTML = `<span class="n">${n}</span>にん せんたくちゅう`
+    + (few ? `<span class="sub">あと ${4 - n}にん えらんでね</span>` : "");
 }
 /* ---- ルールのトグル ---- */
 function renderRules() {
@@ -342,6 +339,7 @@ $("ruleRevival").onclick = () => {
 };
 renderRules();
 
+Nav.onLeave(() => stopLoop());
 $("decideBtn").onclick = () => {
   if (selectedIds.size < 4) { Sound.bad(); return; }
   Sound.pon();

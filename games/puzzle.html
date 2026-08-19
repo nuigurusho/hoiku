@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかきパズル</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 </head>
 <body>
 <header class="bar">
@@ -46,7 +46,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -107,6 +107,8 @@ $("honbanBtn").onclick = () => {
   refreshLocks();
   document.querySelector('#gachiRow [data-mode="g1"]').click();
 };
+
+Nav.onLeave(() => { if (game) game.stop = true; refreshLocks(); });
 
 /* ---------------- パズル本体 ---------------- */
 async function startGame(rec, mode) {

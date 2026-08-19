@@ -221,6 +221,28 @@ main { padding: 14px; }
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* ---------- えらんだ 人数(キャラの うえに おおきく) ---------- */
+.sel-count {
+  text-align: center;
+  font-weight: bold;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--green-d);
+  margin: 6px 0 12px;
+}
+.sel-count.few { color: var(--pink-d); }
+.sel-count .n {
+  font-size: 58px;
+  vertical-align: -6px;
+  margin-right: 2px;
+}
+.sel-count .sub {
+  display: block;
+  font-size: 15px;
+  color: #8a7a68;
+  margin-top: 2px;
+}
+
 /* ---------- ギャラリー(画像えらび) ---------- */
 .gallery {
   display: grid;

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>なわとび</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=13">
+<link rel="stylesheet" href="../css/style.css?v=14">
 </head>
 <body>
 <header class="bar">
@@ -52,7 +52,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=15"></script>
+<script src="../js/core.js?v=16"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -118,6 +118,7 @@ $("honbanBtn").onclick = () => {
   $("selectScreen").classList.remove("hidden");
   document.querySelector('#gachiRow [data-mode="g1"]').click();
 };
+Nav.onLeave(() => { if (G) G.stop = true; refreshLocks(); });
 $("retryBtn").onclick = () => start(G.modeKey);
 $("backBtn").onclick = () => {
   if (G) G.stop = true;
