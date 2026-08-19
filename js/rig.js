@@ -321,7 +321,7 @@ class Puppet {
          えがくときの 左右はんてん(facing)で、ひだりむきは ひだりへ かたむく */
       ctx.save();
       ctx.translate(p.cx, PIVOT_Y);
-      ctx.rotate(0.70 + Math.sin(this.t * 0.9) * 0.05);
+      ctx.rotate(-0.70 + Math.sin(this.t * 0.9) * 0.05);
       ctx.translate(-p.cx, -PIVOT_Y);
       wing(1, 0.78 + 0.22 * open, -(0.10 + 0.34 * open), 0.8, PIVOT_Y);   // おくの はね
       wing(1, 0.94 + 0.06 * open, 0, 1, PIVOT_Y);                         // てまえの はね
