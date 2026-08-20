@@ -1210,6 +1210,9 @@ body.fitstage header.bar { display: none; }
   border-radius: 999px;
   padding: 8px 12px;
   box-shadow: 0 5px 0 var(--cream-d), 0 8px 18px rgba(120,80,40,.16);
+  /* 中身が 1れつに おさまる ときは 1れつの まま。
+     はばが たりない ときだけ おりかえす */
+  width: max-content;
   max-width: calc(100vw - 24px);
   flex-wrap: wrap;
   justify-content: center;
@@ -1440,3 +1443,7 @@ body.fitstage header.bar { display: none; }
   }
   body.fitstage .mt-over .mt-card { transform: none; max-width: 96%; }
 }
+
+/* おせない ボタンは 立体の へこみも やめる(おした ように 見えないように) */
+.btn:disabled { box-shadow: 0 4px 0 var(--shade); }
+.btn:disabled:active { transform: none; box-shadow: 0 4px 0 var(--shade); }
