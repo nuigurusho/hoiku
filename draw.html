@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかき</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=21">
 <style>
   /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -61,6 +61,29 @@
   .tool-row .btn { font-size: 16px; padding: 10px 16px; box-shadow: 0 4px 0 var(--shade); }
   .tool-row .btn:active { transform: translateY(4px); box-shadow: none; }
   .cat-row label.radio { display: block; margin: 6px 0; font-size: 16px; }
+
+  /* スマホ:ミニどうぐバーが 何だんにも ならないように ちぢめる。
+     もどす・やりなおしは 矢じるしだけに する */
+  @media (max-width: 560px) {
+    main { padding-bottom: 86px; }
+    #drawCanvas {
+      max-width: calc(100vw - 108px);
+      max-height: calc(100vh - 120px);
+      max-height: calc(100dvh - 120px);
+    }
+    .minibar { gap: 5px; padding: 6px 7px; }
+    .minibar .btn { font-size: 15px; padding: 8px 11px; }
+    .minibar .btn.big { font-size: 16px; padding: 9px 12px; }
+    .minibar .now { width: 34px; height: 34px; border-width: 3px; }
+    .minibar .btn .t { display: none; }
+  }
+  /* もっと せまい スマホ */
+  @media (max-width: 400px) {
+    .minibar { gap: 4px; padding: 5px 6px; }
+    .minibar .btn { font-size: 14px; padding: 7px 9px; }
+    .minibar .btn.big { font-size: 15px; padding: 8px 10px; }
+    .minibar .now { width: 30px; height: 30px; }
+  }
 </style>
 </head>
 <body data-chrome="game">
@@ -79,10 +102,11 @@
 <!-- した:よく つかう ものだけ うかせる -->
 <div class="minibar">
   <button class="now" id="nowColor" title="いろを えらぶ" aria-label="いろを えらぶ"></button>
-  <button class="btn blue" id="undoBtn">↩ もどす</button>
+  <button class="btn blue" id="undoBtn">↩<span class="t"> もどす</span></button>
+  <button class="btn blue" id="redoBtn">↪<span class="t"> やりなおし</span></button>
   <button class="btn gray" id="eraserBtn">けしゴム</button>
-  <button class="btn green big" id="saveBtn">✔ ほぞんする</button>
-  <button class="btn green big hidden" id="overwriteBtn">✔ うわがき ほぞん</button>
+  <button class="btn green big" id="saveBtn">✔ ほぞん<span class="t">する</span></button>
+  <button class="btn green big hidden" id="overwriteBtn">✔ うわがき<span class="t"> ほぞん</span></button>
 </div>
 
 <!-- みぎ:どうぐばこ(ドロワー) -->
@@ -146,8 +170,10 @@ const state = {
   tool: "pen",   // "pen" / "eraser" / "fill"
   drawing: false,
   last: null,
-  history: [],   // もどす用スナップショット(dataURL)
+  undo: [],      // もどす用の スナップショット(dataURL)
+  redo: [],      // やりなおし用
 };
+const HISTORY_MAX = 15;   // もどす・やりなおし とも これだけ さかのぼれる
 const isEraser = () => state.tool === "eraser";
 
 const cv = $("drawCanvas");
@@ -210,22 +236,64 @@ function syncTools() {
   $("toolHint").textContent = TOOL_HINT[state.tool];
 }
 
-/* ---------- もどす(履歴) ---------- */
-function pushHistory() {
-  try {
-    state.history.push(cv.toDataURL("image/png"));
-    if (state.history.length > 15) state.history.shift();
-  } catch (e) { /* とじる */ }
+/* ---------- もどす / やりなおし ----------
+   かく まえの じょうたいを 1まいの えとして とっておき、
+   「もどす」で 1つ まえへ、「やりなおし」で 1つ さきへ すすむ。
+
+   ・れんだ しても こわれないように、1つずつ じゅんばんに しょりする。
+     え の よみこみは 時間が かかるので、いっぺんに はしらせると
+     さいごに おわった ものが かちのこり、1回しか もどらなく 見える。
+   ・のこりが ない ときは ボタンを うすくして おせなくする。
+     「おしても なにも おきない」を なくす。 */
+function snapshot() {
+  try { return cv.toDataURL("image/png"); } catch (e) { return null; }   // メモリ不足などで しっぱいする ことがある
 }
-async function undo() {
-  if (!state.history.length) return;
-  Sound.tap();
-  const url = state.history.pop();
+
+function pushHistory() {
+  const url = snapshot();
+  if (!url) return;
+  state.undo.push(url);
+  if (state.undo.length > HISTORY_MAX) state.undo.shift();
+  state.redo.length = 0;              // あたらしく かいたら やりなおしは 消える
+  syncHistory();
+}
+
+function clearHistory() {
+  state.undo.length = 0;
+  state.redo.length = 0;
+  syncHistory();
+}
+
+function syncHistory() {
+  $("undoBtn").disabled = !state.undo.length;
+  $("redoBtn").disabled = !state.redo.length;
+}
+
+async function paintFrom(url) {
   const img = await Util.loadImage(url);
   ctx.clearRect(0, 0, cv.width, cv.height);
   fillWhite();
   ctx.drawImage(img, 0, 0);
 }
+
+/* おした ぶんを 1つずつ じゅんばんに しょりする */
+let historyQueue = Promise.resolve();
+function stepHistory(from, to) {
+  historyQueue = historyQueue.then(async () => {
+    if (!from.length) return;
+    const cur = snapshot();
+    const url = from.pop();
+    if (cur) {
+      to.push(cur);
+      if (to.length > HISTORY_MAX) to.shift();
+    }
+    Sound.tap();
+    await paintFrom(url);
+    syncHistory();
+  }).catch(() => {});
+}
+const undo = () => stepHistory(state.undo, state.redo);
+const redo = () => stepHistory(state.redo, state.undo);
 
 /* ---------- ぬりつぶし(バケツ) ----------
    タッチした ところと にた いろの ところを ひとつづきに ぬる。
@@ -293,7 +361,7 @@ cv.addEventListener("pointerdown", (e) => {
   const at = Util.canvasPos(cv, e);
   if (state.tool === "fill") {
     if (floodFill(at.x, at.y, state.color)) Sound.pop();
-    else { state.history.pop(); Sound.tap(); }
+    else { state.undo.pop(); syncHistory(); Sound.tap(); }
     return;
   }
   state.drawing = true;
@@ -325,6 +393,7 @@ cv.addEventListener("pointerleave", endStroke);
 $("eraserBtn").onclick = () => { Sound.tap(); state.tool = isEraser() ? "pen" : "eraser"; syncTools(); };
 $("fillBtn").onclick = () => { Sound.tap(); state.tool = state.tool === "fill" ? "pen" : "fill"; syncTools(); };
 $("undoBtn").onclick = undo;
+$("redoBtn").onclick = redo;
 $("clearBtn").onclick = () => {
   if (!confirm("かいた えを ぜんぶ けしますか?")) return;
   pushHistory();
@@ -369,7 +438,7 @@ async function loadForEdit(rec) {
   cv.height = Math.max(1, Math.round(img.height * sc));
   fillWhite();
   ctx.drawImage(img, 0, 0, cv.width, cv.height);
-  state.history = [];
+  clearHistory();
 
   const r = document.querySelector(`input[name="cat"][value="${rec.cat}"]`);
   if (r) r.checked = true;
@@ -475,6 +544,7 @@ drawer.addEventListener("click", (e) => {
 });
 
 syncTools();
+syncHistory();      // はじめは もどす・やりなおし とも おせない
 </script>
 </body>
 </html>
