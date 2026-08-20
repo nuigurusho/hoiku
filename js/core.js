@@ -1578,28 +1578,36 @@ const BgFx = {
 };
 
 /* ---------------- Rotate(よこむきに してね の おしらせ) ----------------
-   iPad の Safari は ページから がめんを まわせない。ぜんがめんに した ときに
-   たてむき だったら、やさしく おねがいを 出す(よこむきに なったら 自分で 消える)。 */
+   iPad・スマホの Safari は ページから がめんを まわせない。たてむきの ときに
+   「よこむきに すると 大きく 見えるよ」と ひとこと だけ 出す。
+
+   ぜんがめんを ふさぐ まく には しない こと。まくを 出すと そのあいだ
+   左うえの もどるボタンが おせなく なり、「ボタンが きかない」ことになる。
+   ・うえに ちいさく うかべる(おび)
+   ・6びょうで 自分から 消える
+   ・どこを さわっても 消える
+   ・かさなっても 上の ボタンは おせるように z-index は 58(もどる=60より下) */
 const Rotate = {
   el: null,
+  SHOW_MS: 6000,
 
   ask() {
     if (this.el || innerWidth > innerHeight) return;   // もう よこむきなら 出さない
     const d = document.createElement("div");
     d.className = "rotate-hint";
     d.innerHTML =
-      '<div class="mark">\u{1F4F1}</div>' +
-      '<div>よこむきに してね</div>' +
-      '<p class="note" style="font-size:15px;max-width:440px;line-height:1.6">' +
-      'まわらない ときは、がめんの むきの ロックを きってね' +
-      '(みぎうえから 下に スワイプ \u2192 かぎの マーク)。</p>';
+      '<span class="mark">\u{1F4F1}</span>'
+      + '<span class="txt">よこむきに すると 大きく 見えるよ</span>';
     const b = document.createElement("button");
-    b.className = "btn gray";
-    b.textContent = "このままで いい";
-    b.onclick = () => this.close();
+    b.type = "button";
+    b.className = "x";
+    b.setAttribute("aria-label", "とじる");
+    b.textContent = "\u2715";
     d.appendChild(b);
+    d.onclick = () => this.close();
     document.body.appendChild(d);
     this.el = d;
+    this._timer = setTimeout(() => this.close(), this.SHOW_MS);
     this._watch = () => { if (innerWidth > innerHeight) this.close(); };
     addEventListener("resize", this._watch);
     addEventListener("orientationchange", this._watch);
@@ -1607,6 +1615,7 @@ const Rotate = {
 
   close() {
     if (!this.el) return;
+    clearTimeout(this._timer);
     removeEventListener("resize", this._watch);
     removeEventListener("orientationchange", this._watch);
     this.el.remove();
@@ -1794,6 +1803,31 @@ const GameChrome = {
     const step = (e) => { if (Nav.back()) e.preventDefault(); };
     f.addEventListener("click", step);
     if (back) back.addEventListener("click", step);
+
+    /* iPad で click が とどかない ことが あった ときの ほけん。
+       touchend の あと 350ms たっても click が こなければ、自分で もどす。
+       ・click が きた ときは なにも しない(いつもの みちすじの まま。
+         ページ独自の click しょり… 例:games/sakasa.html… も こわさない)
+       ・ゆびが うごいた とき(スワイプ)は はんのうしない */
+    for (const el of [f, back]) {
+      if (!el) continue;
+      let sx = 0, sy = 0;
+      el.addEventListener("click", () => { el._clickAt = Date.now(); });
+      el.addEventListener("touchstart", (e) => {
+        const t = e.changedTouches[0];
+        sx = t.clientX; sy = t.clientY;
+      }, { passive: true });
+      el.addEventListener("touchend", (e) => {
+        const t = e.changedTouches[0];
+        if (Math.abs(t.clientX - sx) > 16 || Math.abs(t.clientY - sy) > 16) return;
+        setTimeout(() => {
+          if (Date.now() - (el._clickAt || 0) < 700) return;      // click が きていた
+          if (Nav.back()) return;
+          const href = el.getAttribute("href");
+          if (href) location.href = href;
+        }, 350);
+      }, { passive: true });
+    }
 
     const always = document.body.dataset.chrome === "game";
     const screens = ["playScreen", "quizScreen", "animalScreen", "drawScreen"]
