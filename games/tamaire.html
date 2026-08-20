@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>たまいれ</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=16">
+<link rel="stylesheet" href="../css/style.css?v=17">
 </head>
 <body>
 <header class="bar">
@@ -67,7 +67,7 @@
 
 <script src="../js/core.js?v=18"></script>
 <script src="../js/rig.js?v=15"></script>
-<script src="../js/meet.js?v=11"></script>
+<script src="../js/meet.js?v=12"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -211,8 +211,8 @@ async function startMatch() {
 function showResult(res) {
   $("banner").classList.add("hidden");
   const win = res.win;
-  const members = win ? actors[win].slice() : actors.red.concat(actors.blue);
-  Meet.celebrate({ cv, members, teamKey: win });
+  /* まけた チームも のこす(くらくせず、はくしゅで ちがいを 出す) */
+  Meet.celebrate({ cv, members: actors.red.concat(actors.blue), teamKey: win });
 
   const card = $("winCard"), title = $("winTitle");
   card.className = "mt-card" + (win ? " " + win : "");
