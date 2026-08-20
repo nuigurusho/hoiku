@@ -31,6 +31,7 @@ const Meet = (() => {
 
   let rafId = 0;
   let cur = null;   // いま うごいている きょうぎ(or おいわい)
+  let curM = null;  // いま うごいている きょうぎの じょうたい(はやおくり用)
 
   /* ============================================================
      きょうずう:キャラを パペットに する
@@ -58,6 +59,35 @@ const Meet = (() => {
   }
   function toNodes(parts) {
     return parts.map((p) => (typeof p === "string" ? document.createTextNode(p) : nameNode(p)));
+  }
+
+  /* ---- 「けっかへ」:いま の きょうぎを その場で さいごまで すすめる ----
+     とちゅうで やめて ひきわけに するのでは なく、そのまま 早おくりして
+     ふつうに 決着させる(かちまけは いつもと おなじ ルールで きまる)。
+     早おくりの あいだは 音と テロップを 止める(何十びょうぶんが
+     いっぺんに 出てしまうため)。 */
+  const RUSH_STEPS = 2400;          // 1/30びょう x 2400 = 80びょうぶん
+
+  function rush() {
+    const M = curM;
+    if (!M || M.result || !ENGINES[M.key]) return false;
+    const engine = ENGINES[M.key];
+    const banner = M.ui.banner, msg = M.ui.msg;
+    M.ui.banner = function () {}; M.ui.msg = function () {};
+    Sound.mute(true);
+    try {
+      const dt = 1 / 30;
+      for (let i = 0; i < RUSH_STEPS && !M.result; i++) {
+        M.t += dt;
+        engine.update(M, dt);
+      }
+    } finally {
+      Sound.mute(false);
+      M.ui.banner = banner; M.ui.msg = msg;
+    }
+    if (!M.result) return false;    // 決着しなかった(よびだしがわで とばす)
+    M.endWait = 0.5;                // けっかカードまで すこしだけ ためる
+    return true;
   }
 
   /* ---- ページの DOM を エンジンに つなぐ ---- */
@@ -130,6 +160,7 @@ const Meet = (() => {
 
     const token = {};
     cur = token;
+    curM = M;
 
     return new Promise((resolve) => {
       token.resolve = resolve;          // とちゅうで とめられたら null で かえす
@@ -155,6 +186,7 @@ const Meet = (() => {
   function stop() {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
+    curM = null;
     const c = cur;
     cur = null;
     if (c && c.resolve) { const r = c.resolve; c.resolve = null; r(null); }
@@ -1712,5 +1744,5 @@ const Meet = (() => {
 
   const ENGINES = { kakekko: KAKEKKO, tamaire: TAMAIRE, dodgeball: DODGEBALL, relay: RELAY };
 
-  return { actors, ui, run, stop, celebrate, drumroll, nameNode, MARK, COL, COLD };
+  return { actors, ui, run, rush, stop, celebrate, drumroll, nameNode, MARK, COL, COLD };
 })();

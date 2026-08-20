@@ -244,7 +244,12 @@ const Util = {
 /* ---------------- Sound(WebAudioで合成、音源ファイル不要) ---------------- */
 const Sound = {
   ctx: null,
+  /* はやおくり(「けっかへ」)の あいだは 音を 出さない。
+     何十びょうぶんの 音が いっぺんに 鳴ってしまうため。 */
+  muted: false,
+  mute(on) { this.muted = !!on; },
   ensure() {
+    if (this.muted) return null;
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) this.ctx = new AC();
@@ -291,6 +296,7 @@ const Sound = {
      呼び出し側は false のとき従来の効果音にフォールバックできる。 */
   _voiceAudio: null,   // 再生中のキャラの声(連打でかぶらないように)
   playVoice(voices, keys) {
+    if (this.muted) return false;
     if (!voices) return false;
     const avail = keys.filter((k) => voices[k]);
     if (!avail.length) return false;
