@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>うんどうかい</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=17">
+<link rel="stylesheet" href="css/style.css?v=18">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -303,8 +303,19 @@ $("goBtn").onclick = () => {
   runProgramme();
 };
 
+/* たて画面だと ステージ(よこ16:9)が とても 小さくなる。
+   はじめる ときに 1回だけ「よこむきに してね」と おねがいする
+   (「このままで いい」で 閉じられる)。 */
+let askedRotate = false;
+function askLandscape() {
+  if (askedRotate || innerWidth > innerHeight) return;
+  askedRotate = true;
+  Rotate.ask();
+}
+
 async function runProgramme() {
   const myRun = ++runId;
+  askLandscape();
   const list = chosen();
   pts = { red: 0, blue: 0 };
   log = [];
