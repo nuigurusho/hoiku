@@ -685,12 +685,12 @@ body.ingame header.bar { display: none; }
   display: none;
   position: fixed;
   top: 8px;
-  left: calc(-22px + env(safe-area-inset-left, 0px));
+  left: calc(-14px + env(safe-area-inset-left, 0px));
   z-index: 60;
   align-items: center;
   justify-content: flex-end;
-  width: 74px;
-  height: 52px;
+  width: 72px;
+  height: 54px;
   padding: 0 12px 0 0;
   text-decoration: none;
   color: var(--ink);
@@ -701,6 +701,15 @@ body.ingame header.bar { display: none; }
   transition: transform .12s, box-shadow .08s, background .12s;
 }
 .back-float svg { width: 26px; height: 26px; display: block; }
+/* 見た目は そのままで、さわれる はんいだけ ひろげる(iPad で おしやすく) */
+.back-float::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -10px;
+  right: -14px;
+  bottom: -10px;
+}
 .back-float:active { transform: translateY(4px); box-shadow: none; background: #fff; }
 @media (hover: hover) {
   .back-float:hover { transform: translateX(10px); background: #fff; }
@@ -1062,31 +1071,56 @@ body.fitstage .fit-bottom .note { color: #5b4a36; }
 /* ゲーム中は ヘッダーの おびを かならず 消す(あそび中は もどるボタンだけ) */
 body.fitstage header.bar { display: none; }
 
-/* よこむきに してほしい ときの おしらせ(iPad は じどうで まわせないため) */
+/* よこむきに してほしい ときの おしらせ。
+   ぜんがめんを ふさぐ まくに すると、そのあいだ 左うえの もどるボタンが
+   おせなく なるので、うえに ちいさく うかべる おびに する。
+   z-index も もどる(60)・ぜんがめん(95)より 下に して、かさなっても
+   ボタンが おせるように する。 */
 .rotate-hint {
   position: fixed;
-  inset: 0;
-  z-index: 120;
+  top: max(8px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 58;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
-  text-align: center;
-  padding: 24px;
-  background: rgba(255,253,245,.96);
-  font-size: 26px;
-  font-weight: bold;
+  gap: 10px;
+  max-width: min(94vw, 580px);
+  padding: 9px 14px 11px 18px;
+  border: 4px solid var(--yellow);
+  border-radius: 999px;
+  background: rgba(255,253,245,.97);
+  box-shadow: 0 6px 0 var(--yellow-d), 0 8px 20px rgba(120,80,40,.18);
   color: var(--ink);
+  font-size: clamp(14px, 2.2vw, 19px);
+  font-weight: bold;
+  cursor: pointer;
+  animation: rotate-in .24s cubic-bezier(.2,1.3,.5,1) both;
 }
+@keyframes rotate-in { from { transform: translate(-50%, -130%); opacity: 0; } }
 .rotate-hint .mark {
-  font-size: 84px;
+  font-size: 1.5em;
   line-height: 1;
-  animation: rotate-tilt 1.6s ease-in-out infinite;
+  animation: rotate-tilt 1.8s ease-in-out infinite;
+}
+.rotate-hint .txt { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rotate-hint .x {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: bold;
+  color: #8a7a68;
+  background: #fff;
+  border: 2px solid var(--cream-d);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  padding: 0;
+  cursor: pointer;
 }
 @keyframes rotate-tilt {
-  0%, 100% { transform: rotate(0deg); }
-  50%      { transform: rotate(90deg); }
+  0%, 60%, 100% { transform: rotate(0deg); }
+  30%           { transform: rotate(90deg); }
 }
 
 /* ============================================================
