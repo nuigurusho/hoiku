@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # 公開しないもの(設計メモ・デザイン提案)を配信対象から外す
-      - run: rm -rf design
+      # 公開しないもの(設計メモ・デザイン提案・引き継ぎメモ)を配信対象から外す
+      - run: rm -rf design notes
       - uses: actions/configure-pages@v5
         with:
           enablement: true
