@@ -744,10 +744,12 @@ body.ingame .back-float { display: flex; }
    2.4びょうで 消す)。 */
 .mt-banner {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: 2.5%;
-  transform: translateX(-50%);
-  max-width: 74%;
+  width: fit-content;
+  margin: 0 auto;
+  max-width: 86%;
   z-index: 40;
   text-align: center;
   font-weight: bold;
@@ -768,8 +770,8 @@ body.ingame .back-float { display: flex; }
 .mt-banner .mt-nm { font-weight: 800; }
 .mt-banner .mt-nm.red  { color: var(--pink-d); }
 .mt-banner .mt-nm.blue { color: var(--blue-d); }
-@keyframes mt-banner-in  { from { transform: translate(-50%, 130%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-@keyframes mt-banner-out { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, 130%); opacity: 0; } }
+@keyframes mt-banner-in  { from { transform: translateY(130%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes mt-banner-out { from { transform: translateY(0); opacity: 1; } to { transform: translateY(130%); opacity: 0; } }
 
 /* ---------- canvas に かさねる カード(きょうぎ名・けっか) ---------- */
 .mt-over {
@@ -1198,13 +1200,17 @@ body.fitstage header.bar { display: none; }
    ・そうごう点は きょうぎ中は 出さない(さいごの そうごうけっかで 1回だけ)
    ============================================================ */
 .uk-top {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
   width: 100%;
+  box-sizing: border-box;
+  padding: 0 56px;             /* 左うえ=もどる・右うえ=ぜんがめん の ボタンを よける */
   min-height: 76px;
 }
 .uk-chip {
-  position: absolute;
-  top: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1216,8 +1222,8 @@ body.fitstage header.bar { display: none; }
   white-space: nowrap;
 }
 /* 左うえの もどるボタン・右うえの ぜんがめんボタンに かぶらない いちに する */
-.uk-chip.red  { left: 52px;  background: var(--pink); border-color: var(--pink-d); box-shadow: 0 6px 0 var(--pink-d); }
-.uk-chip.blue { right: 50px; background: var(--blue); border-color: var(--blue-d); box-shadow: 0 6px 0 var(--blue-d); }
+.uk-chip.red  { background: var(--pink); border-color: var(--pink-d); box-shadow: 0 6px 0 var(--pink-d); }
+.uk-chip.blue { background: var(--blue); border-color: var(--blue-d); box-shadow: 0 6px 0 var(--blue-d); }
 .uk-chip .n { font-size: clamp(30px, 4.6vw, 50px); line-height: 1; }
 .uk-chip .u { font-size: clamp(12px, 1.5vw, 16px); align-self: flex-end; padding-bottom: 5px; opacity: .92; }
 .uk-chip .lbl {
@@ -1250,12 +1256,13 @@ body.fitstage header.bar { display: none; }
 
 /* ---------- きょうぎアイコンの ならび(しんこう) ---------- */
 .uk-prog {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   min-height: 62px;
-  padding: 0 clamp(120px, 20vw, 260px);   /* 左右の チップに かぶらない */
 }
 .uk-prog .ev { position: relative; flex: 0 0 auto; line-height: 0; }
 .uk-prog .ev img { width: 30px; height: 30px; object-fit: contain; display: block; }
@@ -1301,13 +1308,70 @@ body.fitstage header.bar { display: none; }
 }
 @keyframes uk-flash { 0% { opacity: 0; } 18% { opacity: .92; } 100% { opacity: 0; } }
 
-@media (max-width: 640px) {
-  .uk-chip.red { left: 44px; }
-  .uk-chip.blue { right: 42px; }
-  .uk-prog { padding: 0 104px; gap: 4px; }
+/* ---------- はばが せまい とき(スマホ・たて画面) ----------
+   よこ1れつには 入りきらないので、2だんに する。
+     1だんめ … きょうぎアイコン(左右は もどる/ぜんがめんボタンを よける)
+     2だんめ … チームの チップを 左右のはしに
+   HTML は かえずに grid で ならびかえる。 */
+@media (orientation: portrait) and (max-width: 900px) {
+  .uk-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "prog prog"
+      "red  blue";
+    gap: 18px 8px;              /* 左うえの もどるボタンの 下に かからないように */
+    padding: 0 4px;
+    min-height: 0;
+  }
+  .uk-chip.red  { grid-area: red;  justify-self: start; }
+  .uk-chip.blue { grid-area: blue; justify-self: end; }
+  .uk-chip { max-width: 100%; padding: 3px 14px 5px; }
+  .uk-chip .n { font-size: clamp(26px, 8vw, 40px); }
+  .uk-chip .lbl { max-width: clamp(56px, 20vw, 120px); }
+  /* もどる(左うえ)と ぜんがめん(右うえ)の ボタンを よける */
+  .uk-prog { grid-area: prog; padding: 0 52px; gap: 5px; min-height: 0; }
   .uk-prog .ev img { width: 24px; height: 24px; }
-  .uk-prog .ev.now img { width: 30px; height: 30px; }
-  .uk-prog .ev.now .sec { font-size: 26px; }
+  .uk-prog .ev .done { width: 14px; height: 14px; right: -3px; bottom: -3px; }
+  .uk-prog .ev.now { padding: 3px 12px 5px; gap: 6px; }
+  .uk-prog .ev.now img { width: 28px; height: 28px; }
+  .uk-prog .ev.now .sec { font-size: 24px; }
+  .uk-prog .ev.now .secu { font-size: 10px; }
+  .uk-prog .arrow { width: 10px; height: 10px; }
+}
+@media (orientation: portrait) and (max-width: 400px) {
+  .uk-prog { padding: 0 52px; gap: 3px; }
+  .uk-prog .ev img { width: 21px; height: 21px; }
+  .uk-prog .ev.now { padding: 3px 9px 5px; gap: 5px; }
+  .uk-prog .ev.now img { width: 25px; height: 25px; }
+  .uk-prog .ev.now .sec { font-size: 21px; }
+  .uk-chip { padding: 3px 11px 5px; gap: 7px; }
+}
+
+/* ---------- せまい がめんの けっか・そうごうけっか ----------
+   カード・きょうぎの けっか一覧・ボタンが かさならないように ちぢめる */
+@media (max-width: 760px) {
+  .mt-banner { max-width: 92%; padding: 6px 18px 8px; }
+  .mt-card { padding: 10px 16px 13px; border-radius: 20px; border-width: 4px; }
+  .mt-card .ttl { font-size: clamp(21px, 5.8vw, 34px); }
+  .mt-card .no  { font-size: 14px; }
+  .mt-card .sub { font-size: 14px; }
+  .uk-total .pt { font-size: clamp(32px, 11vw, 52px); }
+  .uk-total .nm { font-size: 13px; }
+  body.fitstage .fit-bottom { gap: 4px; }
+  body.fitstage .fit-bottom .btn.big {
+    font-size: 18px;
+    padding: 11px 18px;
+    border-radius: 16px;
+    border-width: 3px;
+    box-shadow: 0 5px 0 var(--shade);
+  }
+  body.fitstage .fit-bottom .btn.big:active { transform: translateY(5px); box-shadow: none; }
+  body.fitstage .fit-bottom .btn { font-size: 16px; padding: 9px 14px; }
+  body.fitstage .fit-bottom .row { gap: 6px; }
+  body.fitstage .fit-bottom .mt-list { font-size: 12px; margin: 2px auto; }
+  body.fitstage .fit-bottom .mt-list .li { padding: 3px 10px; margin: 3px 0; gap: 7px; border-radius: 10px; }
+  body.fitstage .fit-bottom .mt-list .li .sc { font-size: 11px; }
 }
 
 /* さいごの そうごうけっかで 1回だけ 出す てんすう(カードの中) */
@@ -1325,3 +1389,83 @@ body.fitstage header.bar { display: none; }
 .uk-total .side.red  { color: var(--pink-d); }
 .uk-total .side.blue { color: var(--blue-d); }
 .uk-total .mid { font-size: clamp(20px, 4vw, 36px); color: #b9ada0; }
+
+/* ---------- スマホの たて画面:カードを ステージの 上に どける ----------
+   たて画面だと ステージ(よこ16:9)は まんなかの ほそい おびに なる。
+   そこに カードを 出すと、おいわいしている キャラが まるごと かくれてしまう。
+   カードは おびの すぐ 上(あいている ところ)に 出して、おびは キャラに あける。
+   ※ よこ画面(はばが せまくても 高さが 足りない)には あてない。 */
+@media (max-width: 760px) and (orientation: portrait) {
+  body.fitstage .mt-over { background: none; }
+  body.fitstage .mt-over.clear,
+  body.fitstage .mt-over.top {
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 0;
+  }
+  body.fitstage .mt-over .mt-card {
+    transform: translateY(calc(-100% - 8px));
+    max-width: 96%;
+  }
+}
+
+/* ---------- スマホの よこ画面:1れつの まま ちいさく ----------
+   たて画面のように 2だんに すると、ひくい がめんでは ステージを 3ぶんの1も
+   ふさいでしまう。よこ画面では 1れつの まま、左右の チップを よけた
+   はばに おさめる。 */
+@media (orientation: landscape) and (max-width: 900px) {
+  .uk-top { min-height: 62px; }
+  .uk-chip { padding: 3px 12px 5px; gap: 8px; }
+  .uk-top { padding: 0 50px; gap: 6px; }
+  .uk-chip .n { font-size: clamp(24px, 4vw, 36px); }
+  .uk-chip .lbl { font-size: 12px; max-width: clamp(50px, 8vw, 100px); }
+  .uk-chip .u { font-size: 11px; padding-bottom: 3px; }
+  .uk-prog { gap: 4px; min-height: 0; }
+  .uk-prog .ev img { width: 21px; height: 21px; }
+  .uk-prog .ev .done { width: 13px; height: 13px; right: -3px; bottom: -3px; }
+  .uk-prog .ev.now { padding: 3px 10px 5px; gap: 5px; }
+  .uk-prog .ev.now img { width: 26px; height: 26px; }
+  .uk-prog .ev.now .sec { font-size: 21px; }
+  .uk-prog .ev.now .secu { font-size: 10px; }
+  .uk-prog .arrow { width: 10px; height: 10px; }
+}
+
+/* ---------- 高さが 足りない がめん(スマホの よこ画面) ----------
+   けっか一覧と ボタンで 画面の はんぶんを つかってしまい、カードに
+   かさなる。一覧は 2れつに して、ボタンも カードも ちいさくする。 */
+@media (max-height: 520px) {
+  body.fitstage .fit-bottom .mt-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 8px;
+    max-width: 94vw;
+    font-size: 11.5px;
+  }
+  body.fitstage .fit-bottom .mt-list .li { padding: 2px 9px; margin: 2px 0; gap: 6px; }
+  body.fitstage .fit-bottom .mt-list .li .sc { font-size: 10.5px; }
+  body.fitstage .fit-bottom .btn.big {
+    font-size: 15px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    border-width: 3px;
+    box-shadow: 0 4px 0 var(--shade);
+  }
+  body.fitstage .fit-bottom .btn.big:active { transform: translateY(4px); box-shadow: none; }
+  body.fitstage .fit-bottom .btn { font-size: 14px; padding: 7px 12px; }
+  .mt-card { padding: 8px 16px 11px; border-radius: 18px; }
+  .mt-card .ttl { font-size: clamp(18px, 4.4vw, 30px); }
+  .mt-card .no { font-size: 12px; }
+  .mt-card .sub { font-size: 12.5px; }
+  .mt-card img.ico { width: clamp(44px, 9vw, 72px); }
+  .uk-total .pt { font-size: clamp(26px, 7vw, 44px); }
+  .uk-total .nm { font-size: 12px; }
+}
+
+/* よこ画面で とくに せまい とき(iPhone SE など):
+   チップの チーム名を やめて すうじだけに する。
+   色じたいが チーム名がわりなので、なくても わかる。 */
+@media (orientation: landscape) and (max-width: 660px) {
+  .uk-chip .lbl { display: none; }
+  .uk-chip { padding: 3px 10px 5px; gap: 5px; }
+  .uk-top { padding: 0 46px; }
+}
