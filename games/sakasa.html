@@ -490,19 +490,12 @@ function finishPlay() {
   if (rate >= 0.6) Ui.confetti();
 }
 
-/* --- 左上の「← もどる」は 1つずつ もどる --- */
-document.addEventListener("click", (e) => {
-  const a = e.target.closest("a.back, a.back-float");
-  if (!a) return;
-  const vis = (id) => !$(id).classList.contains("hidden");
-  if (vis("modeScreen")) return;   // ふつうに メニューへ
-  e.preventDefault();
-  Sound.tap();
+/* --- 左上の「← もどる」は 1つずつ もどる ---
+   がめんの 出し入れは core.js の Nav が やる(ここで じぶんでも 出し入れすると
+   1かい おしただけで 2つ もどって しまう)。ここは あとしまつだけ。 */
+Nav.onLeave(() => {
   stopRec();
-  if (vis("makeScreen")) showScreen("modeScreen");
-  else if (vis("readyScreen")) { showScreen("makeScreen"); renderMake(); }   // 完成後も もどって調整できる
-  else if (vis("quizScreen")) { $("readyNote").textContent = MODE_TXT[mode].ready; showScreen("readyScreen"); }
-  else showScreen("modeScreen");   // endScreen から
+  if (curSrc) { try { curSrc.stop(); } catch (e) {} curSrc = null; }
 });
 
 /* --- ボタン配線 --- */
