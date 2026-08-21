@@ -461,6 +461,50 @@ const Samples = {
       ],
     },
     {
+      id: "sample-pic-insects-garden-official-v1", name: "むしの おにわ", cat: "pic",
+      path: "samples/diff-insects-garden-base.jpg",
+      diffVariants: [
+        { path: "samples/diff-insects-garden-v1.jpg", spots: [
+          { x: 0.086, y: 0.290, r: 0.050 }, { x: 0.245, y: 0.190, r: 0.085 },
+          { x: 0.630, y: 0.150, r: 0.090 }, { x: 0.515, y: 0.450, r: 0.045 },
+          { x: 0.760, y: 0.785, r: 0.095 },
+        ] },
+      ],
+    },
+    {
+      id: "sample-pic-insects-twilight-official-v1", name: "よるの むしのもり", cat: "pic",
+      path: "samples/diff-insects-twilight-base.jpg",
+      diffVariants: [
+        { path: "samples/diff-insects-twilight-v1.jpg", spots: [
+          { x: 0.790, y: 0.130, r: 0.075 }, { x: 0.830, y: 0.420, r: 0.045 },
+          { x: 0.680, y: 0.565, r: 0.050 }, { x: 0.850, y: 0.655, r: 0.060 },
+          { x: 0.410, y: 0.910, r: 0.060 },
+        ] },
+      ],
+    },
+    {
+      id: "sample-pic-princess-garden-official-v1", name: "おしろの プリンセス", cat: "pic",
+      path: "samples/diff-princess-garden-base.jpg",
+      diffVariants: [
+        { path: "samples/diff-princess-garden-v1.jpg", spots: [
+          { x: 0.380, y: 0.170, r: 0.040 }, { x: 0.360, y: 0.545, r: 0.080 },
+          { x: 0.835, y: 0.610, r: 0.105 }, { x: 0.720, y: 0.235, r: 0.080 },
+          { x: 0.075, y: 0.835, r: 0.080 },
+        ] },
+      ],
+    },
+    {
+      id: "sample-pic-sea-creatures-official-v1", name: "うみの いきもの", cat: "pic",
+      path: "samples/diff-sea-creatures-base.jpg",
+      diffVariants: [
+        { path: "samples/diff-sea-creatures-v1.jpg", spots: [
+          { x: 0.655, y: 0.235, r: 0.105 }, { x: 0.490, y: 0.455, r: 0.060 },
+          { x: 0.775, y: 0.575, r: 0.095 }, { x: 0.630, y: 0.850, r: 0.100 },
+          { x: 0.485, y: 0.100, r: 0.040 },
+        ] },
+      ],
+    },
+    {
       id: "sample-pic-crayon-picnic-v1", name: "ピクニックこうえん", cat: "pic",
       path: "samples/diff-picnic.jpg",
       diffSpots: [
