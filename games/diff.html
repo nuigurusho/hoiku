@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>まちがいさがし</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=21">
+<link rel="stylesheet" href="../css/style.css?v=22">
 <style>
   .pair {
     display: flex;
@@ -48,7 +48,7 @@
   <div id="selectScreen" class="panel">
     <h2>あそびかたを えらんでね</h2>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">タッチしないで ながめて、「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">じかんも まけも なし・タッチしても、ながめて「こたえを みる」でも OK</span></div>
     <div class="row" data-tier="yuru"><button class="btn big yellow" data-mode="miru">みんなで</button></div>
 
     <div class="mode-sec">🔥 ガチンコ<span class="tag">せいげんじかんない・はやさランキング・クリアで つぎが とけるよ</span></div>
@@ -81,7 +81,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=20"></script>
+<script src="../js/core.js?v=21"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -203,17 +203,35 @@ async function startGame(rec, mode) {
   $("answerBig").classList.add("hidden");
   $("revealBtn").classList.toggle("hidden", !view);
   $("playHint").textContent = view
-    ? "どこが ちがうかな? 2まいの えを みくらべてみよう!"
-    : "みぎの えを タッチして まちがいを さがしてね!";
+    ? "どこが ちがうかな? わかったら えを タッチしてみよう!"
+    : "どちらかの えを タッチして まちがいを さがしてね!";
   if (view) {
     $("countFrame").innerHTML = "";
     const f = document.createElement("div");
     f.className = "choice frame c1";
-    f.textContent = `まちがいは ${spots.length}こ あるよ`;
+    f.id = "countText";
     $("countFrame").appendChild(f);
-    cvR.onpointerdown = null;
-    return;
   }
+  updateCount();
+
+  /* ---- 2まいの えの どちらでも、おなじ ばしょを おせる ----
+     「まちがっている ほう」だけを おさせると、ちいさい子には むずかしい。
+     ばしょが 合っていれば、まちがっていない ほうの えでも あたりに する。
+     みんなで(ゆるふわ)でも おせる。じかんも ノルマも ないので、
+     さわって みつける よろこびだけ ふえる。 */
+  const hit = (target) => (e) => {
+    if (G.done) return;
+    const p = Util.canvasPos(target, e);
+    for (const s of G.spots) {
+      if (s.found) continue;
+      if (Math.hypot(p.x - s.x * W, p.y - s.y * H) < s.r * W * 1.35) return foundSpot(s);
+    }
+    Sound.tap();
+  };
+  cvL.onpointerdown = hit(cvL);
+  cvR.onpointerdown = hit(cvR);
+
+  if (view) return;
 
   // ガチンコ:せいげんじかんの カウントダウン
   if (mode.limit) {
@@ -228,36 +246,41 @@ async function startGame(rec, mode) {
     })(last);
   }
 
-  cvR.onpointerdown = (e) => {
-    if (G.done) return;
-    const p = Util.canvasPos(cvR, e);
-    for (const s of G.spots) {
-      if (s.found) continue;
-      if (Math.hypot(p.x - s.x * W, p.y - s.y * H) < s.r * W * 1.35) {
-        s.found = true;
-        Sound.pop();
-        markSpot(s);
-        updateHud();
-        if (G.spots.every((q) => q.found)) {
-          G.done = true;
-          Sound.fanfare();
-          Ui.confetti();
-          if (G.mode.limit) {
-            const secs = Math.max(1, Math.round(G.elapsed));
-            Tiers.setUnlock(GAME, Math.min(3, G.mode.lv + 1));
-            Tiers.addRank(GAME, G.mode.lv, "?", secs, { lowerIsBetter: true });
-            Ui.msg(`クリア!🏆 ${secs}びょう`, 2400);
-          } else {
-            Ui.msg("ぜんぶ みつけた!", 2200);
-          }
-        } else {
-          Ui.msg("あたり!", 800, "#51cf66");
-        }
-        return;
-      }
-    }
-    Sound.tap();
-  };
+}
+
+/* まちがいを 1つ みつけた */
+function foundSpot(s) {
+  s.found = true;
+  Sound.pop();
+  markSpot(s);
+  updateHud();
+  updateCount();
+  if (!G.spots.every((q) => q.found)) {
+    Ui.msg("あたり!", 800, "#51cf66");
+    return;
+  }
+  G.done = true;
+  Sound.fanfare();
+  Ui.confetti();
+  if (G.mode.limit) {
+    const secs = Math.max(1, Math.round(G.elapsed));
+    Tiers.setUnlock(GAME, Math.min(3, G.mode.lv + 1));
+    Tiers.addRank(GAME, G.mode.lv, "?", secs, { lowerIsBetter: true });
+    Ui.msg(`クリア!🏆 ${secs}びょう`, 2400);
+  } else {
+    Ui.msg("ぜんぶ みつけた!", 2200);
+    $("revealBtn").classList.add("hidden");
+  }
+}
+
+/* みんなでモードの まんなかの わく(のこりの かず) */
+function updateCount() {
+  const el = $("countText");
+  if (!el || !G) return;
+  const f = G.spots.filter((s) => s.found).length;
+  el.textContent = f
+    ? `みつけた ${f}こ / ぜんぶで ${G.spots.length}こ`
+    : `まちがいは ${G.spots.length}こ あるよ`;
 }
 
 function failGame() {
@@ -273,6 +296,7 @@ function failGame() {
 $("revealBtn").onclick = () => {
   if (!G || G.done) return;
   G.done = true;
+  const already = G.spots.filter((s) => s.found).length;
   G.spots.forEach((s, i) => markSpot(s, i + 1));
   const box = $("answerBig");
   box.innerHTML = "";
@@ -280,7 +304,9 @@ $("revealBtn").onclick = () => {
   label.className = "answer-label";
   label.textContent = "こたえは…";
   const text = document.createElement("div");
-  text.textContent = `ここが ${G.spots.length}こ ちがったよ!`;
+  text.textContent = already
+    ? `ここが ${G.spots.length}こ ちがったよ!(${already}こ みつけたね)`
+    : `ここが ${G.spots.length}こ ちがったよ!`;
   box.append(label, text);
   box.classList.remove("hidden");
   Sound.pon();
