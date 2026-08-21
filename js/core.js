@@ -494,13 +494,13 @@ const Samples = {
     },
     {
       id: "sample-pic-princess-garden-official-v1", name: "おしろの プリンセス", cat: "pic",
-      sampleRevision: 2,
+      sampleRevision: 3,
       path: "samples/diff-princess-garden-base.jpg",
       diffVariants: [
         { path: "samples/diff-princess-garden-v1.jpg", spots: [
-          { x: 0.360, y: 0.545, r: 0.095 }, { x: 0.135, y: 0.850, r: 0.135 },
+          { x: 0.360, y: 0.545, r: 0.055 }, { x: 0.135, y: 0.850, r: 0.135 },
           { x: 0.900, y: 0.820, r: 0.175 }, { x: 0.930, y: 0.155, r: 0.105 },
-          { x: 0.350, y: 0.340, r: 0.165 },
+          { x: 0.300, y: 0.340, r: 0.050 },
         ] },
       ],
     },
