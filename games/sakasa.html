@@ -25,18 +25,22 @@
     letter-spacing: 2px;
     color: #8a7a68;
   }
-  /* さかさもじモードで もとのキーワードを見せる行 */
-  .word-sub {
-    margin: 0 auto 12px;
-    font-size: 19px;
-    font-weight: bold;
-    color: #4a3f35;
-  }
   .step-title { font-size: 22px; font-weight: bold; margin: 4px 0; }
   #recDot { color: #fa5252; }
   .mode-desc { font-size: 15px; font-weight: normal; }
   .qnum { text-align: center; font-size: 20px; font-weight: bold; color: #8a7a68; margin-top: 10px; }
   .stars { text-align: center; font-size: 46px; letter-spacing: 6px; }
+  /* おとなの ひとが おぼえる ことばの 一覧(さかさもじモード) */
+  .memo-list {
+    max-width: 560px;
+    margin: 12px auto 6px;
+    padding: 0 0 0 42px;
+    text-align: left;
+  }
+  .memo-list li { margin: 12px 0; }
+  .memo-sakasa { font-size: 34px; font-weight: bold; letter-spacing: 3px; color: var(--ink); }
+  .memo-roma { font-size: 18px; font-weight: bold; letter-spacing: 1px; color: #8a7a68; margin-left: 10px; }
+  .memo-src { display: block; font-size: 16px; font-weight: bold; color: #4a3f35; }
   /* こえを もういちど きく まるボタン(アイコンだけ) */
   .play-icon {
     font-size: 34px;
@@ -61,13 +65,14 @@
       <h2>あそびかたを えらんでね</h2>
       <div class="row">
         <button class="btn big green" id="modeMojiBtn">さかさもじ<br>
-          <span class="mode-desc">キーワードを さかさに よんで ろくおん(かんたん)</span></button>
+          <span class="mode-desc">おとなの ひとが さかさに よむ(ろくおん なし・かんたん)</span></button>
         <button class="btn big purple" id="modeRevBtn">ぎゃくさいせい<br>
           <span class="mode-desc">ふつうに よんだ こえを きかいが さかさまに(むずかしい)</span></button>
       </div>
       <p class="note">
-        つくるひとが もんだいを 5もん ろくおん → こたえるひとが 4たくで こたえるよ。
-        マイクは <b>localhost か https</b> で つかえます。ろくおんした こえは <b>ほぞんされません</b>。
+        もんだいは 5もん。こたえるひとは 4たくで こたえるよ。<br>
+        「さかさもじ」は ろくおん なし(おとなの ひとが よみます)。
+        「ぎゃくさいせい」だけ マイクを つかいます(<b>localhost か https</b>・ろくおんした こえは <b>ほぞんされません</b>)。
       </p>
     </div>
   </div>
@@ -80,7 +85,6 @@
       <p class="note" id="makeNote"></p>
       <div class="word-box" id="wordBox">ことば</div>
       <div class="word-romaji" id="wordRomaji"></div>
-      <div class="word-sub hidden" id="wordSub"></div>
       <div class="row">
         <button class="btn yellow" id="anotherBtn">べつの ことば</button>
       </div>
@@ -100,10 +104,12 @@
   <!-- ========== かんせい → ゲームせつめい ========== -->
   <div id="readyScreen" class="hidden">
     <div class="panel">
-      <h2>もんだい かんせい!</h2>
+      <h2 id="readyTitle">もんだい かんせい!</h2>
       <p style="font-size:22px; font-weight:bold" id="readyNote"></p>
-      <p class="note">こえは なんかいでも きけるよ。ぜんもん せいかい めざして がんばろう!</p>
+      <ol class="memo-list hidden" id="memoList"></ol>
+      <p class="note" id="readyFoot"></p>
       <div class="row">
+        <button class="btn yellow hidden" id="memoShuffleBtn">べつの ことばに する</button>
         <button class="btn big pink" id="startBtn">ゲームかいし</button>
       </div>
     </div>
@@ -113,7 +119,7 @@
   <div id="quizScreen" class="hidden">
     <div class="qnum" id="qnum"></div>
     <p style="text-align:center; font-weight:bold; margin:6px" id="quizNote"></p>
-    <div class="row" style="margin:8px 0">
+    <div class="row" style="margin:8px 0" id="replayRow">
       <button class="btn blue play-icon" id="replayBtn" title="もういちど きく">🔊</button>
     </div>
     <div class="choices" id="choices"></div>
@@ -150,14 +156,14 @@ const WORDS = [
 ];
 
 /* あそびかた(モード)
-   moji: さかさもじ … キーワードを さかさに よんで ろくおん → そのまま再生
+   moji: さかさもじ … 録音なし。5もんぶんの さかさことばを 出題者に見せて おぼえてもらい、
+                       ゲーム中は 出題者が こえに 出して よむ
    rev : ぎゃくさいせい … ふつうに よんで ろくおん → 逆再生 */
 let mode = "moji";
 const MODE_TXT = {
   moji: {
-    makeNote: "キーワードを さかさに よんでみよう! したの さかさことばを そのまま よんで ろくおんしてね(さいちょう10びょう)。",
-    ready: "さかさに よんだ こえが 5もん ながれるよ。もとの ことばを 4つの なかから えらんでね!",
-    quizNote: "さかさに よんだ こえを きいて、もとの ことばを えらぼう!",
+    ready: "おとなの ひとが さかさことばを よんで、こたえるひとが 4つの なかから えらぶよ。",
+    quizNote: "おとなの ひとの さかさことばを きいて、もとの ことばを えらぼう!",
   },
   rev: {
     makeNote: "でた ことばを、はっきり こえに だして ろくおんしてね(さいちょう10びょう)。きかいが さかさに して あそぶよ!",
@@ -234,8 +240,9 @@ function reverseMora(kana) {
   return units.reverse().join("");
 }
 
-/* このモードで こたえるひとに 聞かせる音 */
-function quizBufOf(q) { return q && (mode === "moji" ? q.normal : q.reversed); }
+/* 音を つかうのは「ぎゃくさいせい」だけ(さかさもじは おとなの ひとが よむ) */
+function usesRec() { return mode === "rev"; }
+function quizBufOf(q) { return (usesRec() && q) ? q.reversed : null; }
 
 /* 5もんで かぶらないように ことばを えらぶ */
 function pickUniqueWord() {
@@ -251,14 +258,50 @@ function showScreen(id) {
   SCREENS.forEach((s) => $(s).classList.toggle("hidden", s !== id));
 }
 
+/* 5もんぶんを からっぽに もどす */
+function resetQuestions() {
+  questions = Array.from({ length: N_Q }, () => ({ word: null, normal: null, reversed: null }));
+}
+
 function setMode(m) {
   mode = m;
   Sound.tap();
-  questions = Array.from({ length: N_Q }, () => ({ word: null, normal: null, reversed: null }));
+  resetQuestions();
+  if (!usesRec()) {
+    // さかさもじ: ろくおんは せず、5もんぶんの ことばを 出題者に 見せる
+    questions.forEach((q) => { q.word = pickUniqueWord(); });
+    renderReady();
+    showScreen("readyScreen");
+    return;
+  }
   questions[0].word = pickUniqueWord();
   cur = 0;
   showScreen("makeScreen");
   renderMake();
+}
+
+/* --- ゲームせつめい画面(さかさもじでは「おぼえてね」一覧) --- */
+function renderReady() {
+  const memo = !usesRec();
+  $("readyTitle").textContent = memo ? "これが じゅんばんに でるから おぼえてね!" : "もんだい かんせい!";
+  $("readyNote").textContent = MODE_TXT[mode].ready;
+  $("readyFoot").textContent = memo
+    ? "ゲームが はじまると ことばは 出ません。上の じゅんばんに 1もんずつ よんであげてね。"
+    : "こえは なんかいでも きけるよ。ぜんもん せいかい めざして がんばろう!";
+  $("memoList").classList.toggle("hidden", !memo);
+  $("memoShuffleBtn").classList.toggle("hidden", !memo);
+  if (!memo) return;
+  const ol = $("memoList");
+  ol.innerHTML = "";
+  questions.forEach((q) => {
+    const sakasa = reverseMora(q.word);
+    const li = document.createElement("li");
+    const a = document.createElement("span"); a.className = "memo-sakasa"; a.textContent = sakasa;
+    const b = document.createElement("span"); b.className = "memo-roma";   b.textContent = toRomaji(sakasa);
+    const c = document.createElement("span"); c.className = "memo-src";    c.textContent = `もとの ことば: ${q.word}`;
+    li.append(a, b, c);
+    ol.appendChild(li);
+  });
 }
 
 /* --- つくるひと画面の表示更新 --- */
@@ -266,17 +309,8 @@ function renderMake() {
   const q = questions[cur];
   $("makeQnum").textContent = `もんだい ${cur + 1} / ${N_Q}`;
   $("makeNote").textContent = MODE_TXT[mode].makeNote;
-  if (mode === "moji") {
-    const sakasa = reverseMora(q.word);
-    $("wordBox").textContent = sakasa;
-    $("wordRomaji").textContent = toRomaji(sakasa);
-    $("wordSub").textContent = `もとの キーワード: ${q.word}`;
-    $("wordSub").classList.remove("hidden");
-  } else {
-    $("wordBox").textContent = q.word;
-    $("wordRomaji").textContent = toRomaji(q.word);
-    $("wordSub").classList.add("hidden");
-  }
+  $("wordBox").textContent = q.word;
+  $("wordRomaji").textContent = toRomaji(q.word);
   const recorded = !!q.normal;
   $("previewBtn").classList.toggle("hidden", !recorded);
   $("recBtn").innerHTML = recorded ? '<span id="recDot">🔴</span> とりなおす' : '<span id="recDot">🔴</span> ろくおん';
@@ -421,7 +455,7 @@ function goNext() {
     renderMake();
   } else {
     // かんせい → ゲームせつめいへ
-    $("readyNote").textContent = MODE_TXT[mode].ready;
+    renderReady();
     showScreen("readyScreen");
   }
 }
@@ -440,6 +474,7 @@ function showQ() {
   busy = false;
   $("qnum").textContent = `だい ${playIdx + 1} もん / ${N_Q} もん`;
   $("quizNote").textContent = MODE_TXT[mode].quizNote;
+  $("replayRow").classList.toggle("hidden", !usesRec());
   // 4たく: せいかい + ほかのことば3つ(5もんの ことばは まぜない)
   const used = questions.map((x) => x.word);
   const others = Util.shuffle(WORDS.filter((w) => used.indexOf(w) < 0)).slice(0, 3);
@@ -513,6 +548,12 @@ $("stopBtn").onclick = () => stopRec();
 $("previewBtn").onclick = () => { Sound.tap(); playBuffer(quizBufOf(questions[cur])); };
 $("prevBtn").onclick = () => goPrev();
 $("nextBtn").onclick = () => goNext();
+$("memoShuffleBtn").onclick = () => {
+  Sound.tap();
+  resetQuestions();
+  questions.forEach((q) => { q.word = pickUniqueWord(); });
+  renderReady();
+};
 $("startBtn").onclick = () => startPlay();
 $("replayBtn").onclick = () => playBuffer(quizBufOf(questions[playIdx]));
 $("retryBtn").onclick = () => startPlay();
