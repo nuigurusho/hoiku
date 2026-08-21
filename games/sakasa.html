@@ -244,12 +244,13 @@ function reverseMora(kana) {
 function usesRec() { return mode === "rev"; }
 function quizBufOf(q) { return (usesRec() && q) ? q.reversed : null; }
 
-/* 5もんで かぶらないように ことばを えらぶ */
+/* 5もんで かぶらないように ことばを えらぶ。
+   さかさもじは 出題者が さかさことばを そのまま よむので、さかさにしても
+   おなじに なる ことば(とまと・ちょうちょ)は こたえが わかってしまう。のぞく */
 function pickUniqueWord() {
   const used = questions.map((q) => q.word).filter(Boolean);
-  let w;
-  do { w = Util.choice(WORDS); } while (used.indexOf(w) >= 0);
-  return w;
+  const pool = WORDS.filter((w) => used.indexOf(w) < 0 && (usesRec() || reverseMora(w) !== w));
+  return Util.choice(pool);
 }
 
 /* --- 画面の切りかえ --- */
