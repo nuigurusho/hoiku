@@ -408,10 +408,18 @@ const Store = {
       return this.all();
     }
 
-    const ids = new Set(list.flatMap((r) => [r.id, r.sampleKey].filter(Boolean)));
     for (const def of Samples.ASSET_SAMPLES) {
-      if (ids.has(def.id)) continue;
+      const existing = list.find((r) => r.id === def.id || r.sampleKey === def.id);
+      if (existing && (!def.sampleRevision || existing.sampleRevision === def.sampleRevision)) continue;
       const rec = await Samples.assetRecord(def);
+      // 公開済みの内蔵サンプルを直したときは、端末内の古い画像も同じIDで更新する
+      if (existing) {
+        rec.id = existing.id;
+        rec.created = existing.created;
+        rec.sampleKey = def.id;
+        await this.put(rec);
+        continue;
+      }
       const legacy = def.replaceLegacy && list.find((r) =>
         r.name === def.replaceLegacy.name &&
         !r.diffVariants &&
@@ -462,45 +470,49 @@ const Samples = {
     },
     {
       id: "sample-pic-insects-garden-official-v1", name: "むしの おにわ", cat: "pic",
+      sampleRevision: 2,
       path: "samples/diff-insects-garden-base.jpg",
       diffVariants: [
         { path: "samples/diff-insects-garden-v1.jpg", spots: [
-          { x: 0.086, y: 0.290, r: 0.050 }, { x: 0.245, y: 0.190, r: 0.085 },
-          { x: 0.630, y: 0.150, r: 0.090 }, { x: 0.515, y: 0.450, r: 0.045 },
-          { x: 0.760, y: 0.785, r: 0.095 },
+          { x: 0.085, y: 0.270, r: 0.100 }, { x: 0.290, y: 0.310, r: 0.105 },
+          { x: 0.630, y: 0.150, r: 0.095 }, { x: 0.510, y: 0.460, r: 0.130 },
+          { x: 0.760, y: 0.785, r: 0.115 },
         ] },
       ],
     },
     {
       id: "sample-pic-insects-twilight-official-v1", name: "よるの むしのもり", cat: "pic",
+      sampleRevision: 2,
       path: "samples/diff-insects-twilight-base.jpg",
       diffVariants: [
         { path: "samples/diff-insects-twilight-v1.jpg", spots: [
-          { x: 0.790, y: 0.130, r: 0.075 }, { x: 0.830, y: 0.420, r: 0.045 },
-          { x: 0.680, y: 0.565, r: 0.050 }, { x: 0.850, y: 0.655, r: 0.060 },
-          { x: 0.410, y: 0.910, r: 0.060 },
+          { x: 0.790, y: 0.130, r: 0.090 }, { x: 0.800, y: 0.405, r: 0.125 },
+          { x: 0.670, y: 0.615, r: 0.080 }, { x: 0.850, y: 0.660, r: 0.140 },
+          { x: 0.410, y: 0.910, r: 0.075 },
         ] },
       ],
     },
     {
       id: "sample-pic-princess-garden-official-v1", name: "おしろの プリンセス", cat: "pic",
+      sampleRevision: 2,
       path: "samples/diff-princess-garden-base.jpg",
       diffVariants: [
         { path: "samples/diff-princess-garden-v1.jpg", spots: [
-          { x: 0.380, y: 0.170, r: 0.040 }, { x: 0.360, y: 0.545, r: 0.080 },
-          { x: 0.835, y: 0.610, r: 0.105 }, { x: 0.720, y: 0.235, r: 0.080 },
-          { x: 0.075, y: 0.835, r: 0.080 },
+          { x: 0.360, y: 0.545, r: 0.095 }, { x: 0.135, y: 0.850, r: 0.135 },
+          { x: 0.900, y: 0.820, r: 0.175 }, { x: 0.930, y: 0.155, r: 0.105 },
+          { x: 0.350, y: 0.340, r: 0.165 },
         ] },
       ],
     },
     {
       id: "sample-pic-sea-creatures-official-v1", name: "うみの いきもの", cat: "pic",
+      sampleRevision: 2,
       path: "samples/diff-sea-creatures-base.jpg",
       diffVariants: [
         { path: "samples/diff-sea-creatures-v1.jpg", spots: [
-          { x: 0.655, y: 0.235, r: 0.105 }, { x: 0.490, y: 0.455, r: 0.060 },
-          { x: 0.775, y: 0.575, r: 0.095 }, { x: 0.630, y: 0.850, r: 0.100 },
-          { x: 0.485, y: 0.100, r: 0.040 },
+          { x: 0.650, y: 0.230, r: 0.140 }, { x: 0.220, y: 0.100, r: 0.075 },
+          { x: 0.870, y: 0.310, r: 0.135 }, { x: 0.490, y: 0.565, r: 0.165 },
+          { x: 0.630, y: 0.850, r: 0.135 },
         ] },
       ],
     },
