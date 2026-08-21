@@ -45,7 +45,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=21"></script>
+<script src="../js/core.js?v=22"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -73,13 +73,21 @@ initSelect();
 
 async function setupMic() {
   if (mic) return true;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const actx = Sound.ensure();
+    if (!actx) return false;
     const src = actx.createMediaStreamSource(stream);
     const an = actx.createAnalyser();
     an.fftSize = 512;
     src.connect(an);
+    /* iPad(iOS Safari)は 出口(destination)まで つながっていない えだの 音を
+       けいさんしない。アナライザーだけ つないでも いつも むおんに なるので、
+       おとの 大きさ 0 の ゲインを はさんで 出口まで つなぐ(音は 鳴らない) */
+    const mute = actx.createGain();
+    mute.gain.value = 0;
+    an.connect(mute).connect(actx.destination);
     mic = { an, buf: new Uint8Array(an.fftSize) };
     return true;
   } catch (e) {
@@ -89,6 +97,9 @@ async function setupMic() {
 
 function volume() {
   if (!mic) return 0;
+  /* マイクを つかうと iPad では AudioContext が とまる ことが ある。
+     とまっていると ずっと むおんに なるので、そのつど もどす */
+  Sound.wake();
   mic.an.getByteTimeDomainData(mic.buf);
   let sum = 0;
   for (let i = 0; i < mic.buf.length; i++) {

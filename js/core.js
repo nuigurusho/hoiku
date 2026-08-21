@@ -253,9 +253,20 @@ const Sound = {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) this.ctx = new AC();
+      /* iPad(iOS Safari)は マイクを つかったり ほかのアプリが 音を 出すと
+         AudioContext が "interrupted" という iOS だけの じょうたいに なる。
+         ほうっておくと そのあと ずっと 音が 出なく なるので、気づいたら もどす */
+      if (this.ctx) this.ctx.onstatechange = () => this.wake();
     }
-    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+    this.wake();
     return this.ctx;
+  },
+  /* running いがい(suspended / interrupted)なら 鳴るようにもどす。
+     ※ "suspended" だけを見ると iOS の "interrupted" を のがす */
+  wake() {
+    const c = this.ctx;
+    if (!c || c.state === "running" || !c.resume) return;
+    try { const p = c.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   },
   beep(freq, dur = 0.12, type = "sine", vol = 0.2, when = 0, slide = 0) {
     const ctx = this.ensure();
@@ -309,7 +320,11 @@ const Sound = {
     } catch (e) { return false; }
   },
 };
-window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
+/* iOS は ユーザーの そうさの 中でしか AudioContext を もどせない。
+   1かいめは つくるため、2かいめ いこうは interrupted から もどすために
+   ずっと ひろっておく(once に しない) */
+window.addEventListener("pointerdown", () => Sound.ensure());
+document.addEventListener("visibilitychange", () => { if (!document.hidden) Sound.wake(); });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
    レコード: { id, name, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL,

@@ -131,7 +131,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=21"></script>
+<script src="../js/core.js?v=22"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -314,12 +314,17 @@ let curSrc = null;   // 再生中のソース(連打でかぶらないように)
 function playBuffer(bufr) {
   if (!bufr) return;
   const actx = Sound.ensure();
+  if (!actx) return;
   if (curSrc) { try { curSrc.stop(); } catch (e) {} }
   const s = actx.createBufferSource();
   s.buffer = bufr;
   s.connect(actx.destination);
-  s.start();
   curSrc = s;
+  /* iPad は ろくおん(getUserMedia)の あと AudioContext が とまっている ことが ある。
+     とまったまま start しても 鳴らないので、うごき出してから 鳴らす */
+  const go = () => { if (curSrc === s) { try { s.start(); } catch (e) {} } };
+  if (actx.state === "running") go();
+  else Promise.resolve(actx.resume()).then(go, go);
 }
 
 /* --- ろくおん --- */
