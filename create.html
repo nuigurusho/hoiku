@@ -2,34 +2,38 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>つくる</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>つくる — みんなの ゲームパック</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=22">
+<link rel="stylesheet" href="css/style.css?v=23">
 </head>
 <body>
-<header class="bar">
-  <a class="back" href="index.html">← もどる</a>
-  <h1>つくる</h1>
-  <div class="spacer"></div>
-</header>
+<!-- トップページ(index.html)の「つくる」タブ。
+     みる・ひとりで・… は index.html の中で きりかわるが、つくる だけは
+     ページが わかれる。見た目は トップと そろえる(みだしバーは 出さない) -->
+<main>
+  <div class="settings-bar">
+    <a class="settings-fab" href="admin.html?from=create" title="とりこみ・せってい(おとなのひとよう)" aria-label="とりこみ・せってい おとなのひとよう">
+      <img src="assets/buttons/admin.png" alt="せってい">
+    </a>
+  </div>
+  <h1 style="margin:0"><img class="logo" src="assets/logo.png" alt="みんなの ゲームパック"></h1>
 
-<main class="admin-list">
   <nav class="tabbar" aria-label="やることを えらぶ">
     <span class="tabflow">
       <a class="tab on" href="create.html" data-tab="create">つくる</a>
       <span class="tab-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
-      <a class="tab" href="index.html#miru" data-tab="see">みる</a>
-      <span class="tab-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
-      <a class="tab" href="index.html#asobu" data-tab="play">あそぶ</a>
+      <a class="tab" href="index.html#miru"   data-tab="see">みる</a>
+      <a class="tab" href="index.html#hitori" data-tab="solo">ひとりで</a>
+      <a class="tab" href="index.html#futari" data-tab="duo">ふたりで</a>
+      <a class="tab" href="index.html#minna"  data-tab="multi">みんなで</a>
     </span>
     <span class="tab-div" aria-hidden="true"></span>
+    <a class="tab tab-undoukai" href="undoukai.html" data-tab="undoukai">🏆 うんどうかい</a>
     <a class="tab" href="index.html#gamebetsu" data-tab="games">ゲーム別</a>
   </nav>
 
-  <p class="subtitle" style="text-align:center;color:#8a7a68;font-weight:bold;margin:6px 0 16px">
-    なにを つくる?
-  </p>
+  <p class="subtitle">なにを つくる? えらんでね!</p>
 
   <div class="tiles four">
     <a class="tile" href="admin.html?from=create">
@@ -50,8 +54,8 @@
     </a>
   </div>
 
-  <p class="note" style="max-width:1000px;margin:22px auto;text-align:center">
-    絵の 名前かえ・DL・トリミング・カテゴリ・削除は <a href="admin.html">とりこみ・せってい</a> でできます。
+  <p class="subtitle" style="margin-top:16px;font-size:15px;font-weight:normal">
+    絵の 名前かえ・DL・トリミング・カテゴリ・削除は <a href="admin.html?from=create">とりこみ</a> でできます
   </p>
 </main>
 

@@ -147,9 +147,11 @@ main { padding: 14px; }
   text-align: center;
 }
 /* 「つくる」の 4つ・「おえかき」の えらび … 1行に よっつ、せまければ ふたつ */
+/* トップの ゲーム一覧と 同じ はば(980px)。
+   右上の せっていボタンの 右はしと、いちばん右の タイルの 右はしが そろう */
 .tiles.four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  max-width: 880px;
+  max-width: 980px;
 }
 @media (max-width: 760px) {
   .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -334,6 +336,45 @@ canvas.stage {
 .panel h2 { margin-top: 0; font-size: 26px; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
 
+/* ---------- トップの みだし(ロゴ・せってい)。index.html と create.html で つかう ---------- */
+.logo {
+  display: block;
+  margin: 10px auto 0;
+  width: min(500px, 82vw);
+  height: auto;
+  mix-blend-mode: multiply;   /* 白地をパステル背景になじませる */
+}
+.subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
+
+/* 設定ボタン(おとなのひと用)。
+   フローティングにせず、ゲーム一覧と同じ幅(980px・中央寄せ)のバーの中で右端に置き、
+   1行目の右端のタイルと 右はしを そろえる。 */
+.settings-bar {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: flex-end;
+}
+.settings-fab {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: #fff;
+  border: 3px solid var(--cream-d);
+  border-radius: 50%;
+  overflow: hidden;                /* 白背景のはみ出しを防ぐ */
+  box-shadow: 0 4px 0 var(--cream-d);
+  transition: transform .08s, box-shadow .08s;
+}
+.settings-fab img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+.settings-fab:active { transform: translateY(4px); box-shadow: none; }
+@media (hover: hover) {
+  .settings-fab:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
+}
+
 /* ---------- トップの タブ(つくる → みる → あそぶ / ゲーム別) ---------- */
 .tabbar {
   display: flex;
@@ -376,6 +417,16 @@ canvas.stage {
 .tab-arrow svg { width: 15px; height: 15px; display: block; }
 /* ながれ と「ゲーム別」の くぎり */
 .tab-div { width: 3px; height: 28px; border-radius: 2px; background: var(--cream-d); margin: 0 4px; }
+/* うんどうかい タブ(ゲーム別の ひだり・すこし めだつ色) */
+.tab.tab-undoukai {
+  background: var(--yellow);
+  border-color: var(--yellow-d);
+  color: #7a5b00;
+  box-shadow: 0 4px 0 var(--yellow-d);
+}
+@media (hover: hover) {
+  .tab.tab-undoukai:hover:not(:active) { box-shadow: 0 2px 0 var(--yellow-d); }
+}
 @media (max-width: 620px) {
   .tab { font-size: 17px; padding: 9px 15px; }
   .tabflow { gap: 4px; }

@@ -5,17 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>みんなの ゲームパック</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=22">
+<link rel="stylesheet" href="css/style.css?v=23">
 <style>
-  .logo {
-    display: block;
-    margin: 10px auto 0;
-    width: min(500px, 82vw);
-    height: auto;
-    mix-blend-mode: multiply;   /* 白地をパステル背景になじませる */
-  }
-  .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
-
   /* ---------- ゲーム一覧(1行5こ・3だん) ----------
      ※ キャッシュ対策でここに直接書き、外部CSSに左右されないようにする */
   .tiles.games {
@@ -37,50 +28,6 @@
     #panel-duo .tiles.games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
-  /* ---------- 設定ボタン(おとなのひと用) ----------
-     フローティングにせず、通常配置。ゲーム一覧と同じ幅(980px・中央寄せ)の
-     バーの中で右端に置き、じゃんけん(1行目の右端)の右端とそろえる。 */
-  .settings-bar {
-    max-width: 980px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: flex-end;
-  }
-  .settings-fab {
-    width: 54px;
-    height: 54px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;                    /* 程よい余白 */
-    background: #fff;
-    border: 3px solid var(--cream-d);
-    border-radius: 50%;              /* 丸 */
-    overflow: hidden;                /* 白背景のはみ出しを防ぐ */
-    box-shadow: 0 4px 0 var(--cream-d);
-    transition: transform .08s, box-shadow .08s;
-  }
-  .settings-fab img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 50%;
-  }
-  .settings-fab:active { transform: translateY(4px); box-shadow: none; }
-  @media (hover: hover) {
-    .settings-fab:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
-  }
-
-  /* ---------- うんどうかい タブ(ゲーム別の ひだり・すこし めだつ色) ---------- */
-  .tab.tab-undoukai {
-    background: var(--yellow);
-    border-color: var(--yellow-d);
-    color: #7a5b00;
-    box-shadow: 0 4px 0 var(--yellow-d);
-  }
-  @media (hover: hover) {
-    .tab.tab-undoukai:hover:not(:active) { box-shadow: 0 2px 0 var(--yellow-d); }
-  }
 </style>
 </head>
 <body>

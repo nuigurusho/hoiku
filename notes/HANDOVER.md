@@ -13,7 +13,7 @@
 | 中身 | 保育園のイベント用に、子ども(1〜6歳)が iPad で遊ぶオフラインのゲーム集 |
 | 公開 | GitHub Pages。`main` にマージすると `.github/workflows/deploy-pages.yml` が走って自動で本番反映 |
 | 作業ブランチ | `claude/tsukuru-screen-improvements-8011fk` |
-| 直近の版 | `core.js?v=21` / `style.css?v=22` / `meet.js?v=13` / `rig.js?v=15` / `editors.js?v=13` |
+| 直近の版 | `core.js?v=21` / `style.css?v=23` / `meet.js?v=13` / `rig.js?v=15` / `editors.js?v=13` |
 | ゲーム数 | 17本(`games/`)+ うんどうかい(`undoukai.html`)+ おえかき(`draw.html`) |
 
 ### 直近のセッションでやったこと(PR #23〜#31)
@@ -52,6 +52,11 @@ index.html ──「つくる」タブ─→ create.html(4つの入口だけ)
   点線の位置は `Rig.DEFAULT`(くび0.42・こし0.70・まんなか0.5・おなか0.55)に合わせてあるので、
   **あたりに沿って描けば うごきせっていを触らなくても正しく動く**
 - **`Editors.mountLists`(`js/editors.js`)** … 「1行=1まいの絵+編集ボタン」の一覧を各ページで共通化
+- **`create.html` はトップの「つくる」タブそのもの** … `index.html` と同じ体裁で出す
+  (みだしバーなし・ロゴ・同じタブ列・右上のせっていボタン)。そのため
+  `.logo` / `.subtitle` / `.settings-bar` / `.settings-fab` / `.tab-undoukai` は
+  index.html のインラインCSSから `css/style.css` へ移した(2ページで共有するため)。
+  `.tiles.four` の幅もトップのゲーム一覧と同じ 980px にして、右上のボタンと右はしをそろえてある
 - **`draw.html` の `?back=`** … 戻り先。飛び先を勝手に増やさないよう `BACK_PAGES` の
   ホワイトリストでしか受け付けない。ページを増やしたらここに足すこと
 
