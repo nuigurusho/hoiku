@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>じゃんけん</title>
 <link rel="icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../css/style.css?v=21">
+<link rel="stylesheet" href="../css/style.css?v=22">
 <style>
   .hands { display: flex; gap: 18px; justify-content: center; margin: 10px 0 4px; }
   .hbtn {
@@ -36,17 +36,18 @@
     <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">かちまけなし・「ぽん!」で みんな いっしょに(1〜2さいから)</span></div>
     <div class="row" data-tier="yuru"><button class="btn big yellow" data-mode="crowd">みんなで</button></div>
 
-    <div class="mode-sec">🔥 ガチンコ<span class="tag">れんしょうノルマ&ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="mode-sec">🔥 ガチンコ<span class="tag">てんを ためる ゲーム。まけても へらない・ゲームオーバー なし</span></div>
     <div class="row" id="gachiRow">
-      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">2れんしょう</span></button>
-      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">3れんしょう</span></button>
-      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">5れんしょう</span></button>
+      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">8かい で 8てん</span></button>
+      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">10かい で 14てん</span></button>
+      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">12かい で 20てん</span></button>
     </div>
+    <p class="note">かち は 3てん。<b>れんしょうすると 5てん・7てん…</b> と どんどん あがるよ。あいこも 1てん!</p>
     <div class="rank" id="rankView"></div>
   </div>
 
   <div id="playScreen" class="hidden">
-    <div class="hud hidden" id="gachiHud"><span id="gStreak"></span><span id="gHeart"></span></div>
+    <div class="hud hidden" id="gachiHud"><span id="gPoint"></span><span id="gLeft"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1000" height="540"></canvas></div>
     <div class="streak" id="streak"></div>
     <p style="text-align:center;font-weight:bold;margin:4px" id="playHint">だすのを えらんでね!</p>
@@ -62,7 +63,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=20"></script>
+<script src="../js/core.js?v=21"></script>
 <script src="../js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -74,17 +75,29 @@ const HANDS = ["✊", "✌️", "✋"];
 const HAND_CV = HANDS.map((h) => Util.emojiCanvas(h, 300));
 
 let puppet = null, charName = "", selRec = null;
-let state = { mode: "idle", show: -1, t: 0, streak: 0, busy: false };
-let gmode = null, miss = 0, best = 0, over = false;
+let state = { mode: "idle", show: -1, t: 0, streak: 0, busy: false, points: 0, round: 0 };
+let gmode = null, over = false;
 
 const GAME = "janken";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+
+/* ---------- てんすうの きまり ----------
+   まけても てんは へらない・リセットも しない。ゲームオーバーも ない。
+   きまった かいすう の あいだに ノルマの てんに とどけば クリア。
+   とどかなくても「ぜんぶで ○てん!」で おわる(まけ が こわくない)。
+   かちが つづくほど 1かいの てんが 大きく なるので、
+   じゃんけんの うんが わるい 日でも、どこかで 気もちよく なれる。 */
+const WIN_BASE = 3;    // 1かいめの かち
+const WIN_STEP = 2;    // れんしょう 1つごとに ふえる ぶん
+const WIN_MAX = 15;    // 1かいの じょうげん
+const TIE_POINT = 1;   // あいこ
 const MODES = {
   crowd: { label: "みんなで", crowd: true },
-  g1: { label: "かんたん",   goal: 2, missLimit: 3, lv: 1 },
-  g2: { label: "ふつう",     goal: 3, missLimit: 3, lv: 2 },
-  g3: { label: "むずかしい", goal: 5, missLimit: 3, lv: 3 },
+  g1: { label: "かんたん",   rounds: 8,  goal: 8,  lv: 1 },
+  g2: { label: "ふつう",     rounds: 10, goal: 14, lv: 2 },
+  g3: { label: "むずかしい", rounds: 12, goal: 20, lv: 3 },
 };
+const winPoint = (streak) => Math.min(WIN_MAX, WIN_BASE + (streak - 1) * WIN_STEP);
 
 let allChars = [];
 
@@ -104,7 +117,7 @@ function refreshLocks() {
     b.classList.toggle("locked", need > lv);
     b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
   });
-  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "れんしょう" });
+  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "てん" });
 }
 
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
@@ -127,13 +140,13 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     charName = selRec.name || "";
     puppet = new Puppet(parts, { x: 300, y: 500, h: 330, facing: 1 });
     state.streak = 0; state.show = -1; state.busy = false;
-    miss = 0; best = 0; over = false;
+    state.points = 0; state.round = 0; over = false;
     $("selectScreen").classList.add("hidden");
     $("playScreen").classList.remove("hidden");
     $("streak").textContent = "";
     $("handRow").classList.toggle("hidden", !!m.crowd);
     $("ponBtn").classList.toggle("hidden", !m.crowd);
-    $("gachiHud").classList.toggle("hidden", !m.goal);
+    $("gachiHud").classList.toggle("hidden", !m.rounds);
     $("playHint").textContent = m.crowd ? "「ぽん!」で みんな いっしょに!" : "だすのを えらんでね!";
     updateGachiHud();
   };
@@ -147,9 +160,9 @@ $("backBtn").onclick = () => {
 };
 
 function updateGachiHud() {
-  if (!gmode || !gmode.goal) return;
-  $("gStreak").textContent = `れんしょう: ${state.streak} / ${gmode.goal}`;
-  $("gHeart").textContent = "❤".repeat(Math.max(0, gmode.missLimit - miss));
+  if (!gmode || !gmode.rounds) return;
+  $("gPoint").textContent = `⭐ ${state.points} / ${gmode.goal}てん`;
+  $("gLeft").textContent = `あと ${Math.max(0, gmode.rounds - state.round)}かい`;
 }
 
 document.querySelectorAll(".hbtn").forEach((b) => {
@@ -178,59 +191,65 @@ function play(playerHand) {
     }
     setTimeout(() => {
       const me = playerHand, cp = state.show;
+      let gain = 0;
       if (me === cp) {
-        Ui.msg("あいこ!", 1200, "#ff922b");
-        Sound.tap();
+        gain = TIE_POINT;
+        Ui.msg(`あいこ! +${gain}てん`, 1300, "#ff922b");
+        Sound.pop();
       } else if ((me === 0 && cp === 1) || (me === 1 && cp === 2) || (me === 2 && cp === 0)) {
         state.streak++;
-        best = Math.max(best, state.streak);
-        Ui.msg("かち!🎉", 1500, "#51cf66");
+        gain = winPoint(state.streak);
+        Ui.msg(`かち!🎉 +${gain}てん`, 1500, "#51cf66",
+          state.streak >= 2 ? `${state.streak}れんしょう ボーナス!` : "");
         Sound.good();
         // キャラは まけたので「しっぱい」の こえ(あれば)
         Sound.playVoice(selRec && selRec.voices, ["fail"]);
-        if (state.streak >= 3) Ui.confetti(1800, 80);
+        if (state.streak >= 2) Ui.confetti(1500, 40 + state.streak * 20);
       } else {
+        /* まけても てんは へらない・0に もどらない。
+           「まけ = そんをする」に しないための だいじな ところ */
         state.streak = 0;
-        if (gmode && gmode.goal) miss++;
-        Ui.msg("まけ〜", 1300, "#4dabf7");
-        Sound.bad();
+        Ui.msg("ざんねん!", 1300, "#4dabf7", "てんすうは そのまま。つぎ いこう!");
+        Sound.tap();
         // キャラは かったので「よろこび」の こえ(あれば)
         Sound.playVoice(selRec && selRec.voices, ["joy"]);
       }
-      $("streak").textContent = state.streak > 0 ? `れんしょう: ${"⭐".repeat(Math.min(state.streak, 10))}` : "";
+      state.points += gain;
+      $("streak").textContent = state.streak >= 2
+        ? `${state.streak}れんしょう ${"⭐".repeat(Math.min(state.streak, 10))}`
+        : (state.streak === 1 ? "⭐" : "");
       updateGachiHud();
-      if (gmode && gmode.goal) {
-        if (state.streak >= gmode.goal) return clearGachi();
-        if (miss >= gmode.missLimit) return failGachi();
+      if (gmode && gmode.rounds) {
+        state.round++;
+        updateGachiHud();
+        if (state.points >= gmode.goal) return finishGachi(true);
+        if (state.round >= gmode.rounds) return finishGachi(false);
       }
       state.busy = false;
     }, 1100);
   }, 1400);
 }
 
-function clearGachi() {
+/* おわり。ノルマに とどいたら クリア、とどかなくても おこられない。
+   どちらでも てんすうは ランキングに のこる */
+function finishGachi(cleared) {
   over = true; state.busy = false;
-  Tiers.setUnlock(GAME, Math.min(3, gmode.lv + 1));
-  Tiers.addRank(GAME, gmode.lv, charName || "?", best);
-  Sound.fanfare();
-  Ui.confetti();
-  Ui.msg(`クリア!🏆 ${best}れんしょう!`, 2400);
+  Tiers.addRank(GAME, gmode.lv, charName || "?", state.points);
+  if (cleared) {
+    Tiers.setUnlock(GAME, Math.min(3, gmode.lv + 1));
+    Sound.fanfare();
+    Ui.confetti();
+    Ui.msg(`クリア!🏆 ${state.points}てん!`, 2600);
+  } else {
+    Sound.good();
+    Ui.confetti(1600, 70);
+    Ui.msg(`ぜんぶで ${state.points}てん!`, 2600, "#ff922b", "よく がんばったね!");
+  }
   setTimeout(() => {
     $("playScreen").classList.add("hidden");
     $("selectScreen").classList.remove("hidden");
     refreshLocks();
-  }, 2400);
-}
-function failGachi() {
-  over = true; state.busy = false;
-  Tiers.addRank(GAME, gmode.lv, charName || "?", best);
-  Sound.bad();
-  Ui.msg(`ざんねん!さいこう ${best}れんしょう`, 2400, "#9775fa");
-  setTimeout(() => {
-    $("playScreen").classList.add("hidden");
-    $("selectScreen").classList.remove("hidden");
-    refreshLocks();
-  }, 2400);
+  }, 2600);
 }
 
 let last = performance.now();
