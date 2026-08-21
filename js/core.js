@@ -1577,6 +1577,231 @@ const BgFx = {
   },
 };
 
+/* ---------------- Guide(おえかきの「あたり」) ----------------
+   なにを かくか(にんげん・どうぶつ…)に あわせて、うすい 点線で
+   「だいたい この へんに この 大きさで」を 見せる しくみ。
+
+   ・KINDS の 1つが「おえかきで えらべる 1こ」。かみの ひりつ(cv)と
+     ほぞんする カテゴリ(cat)・うごきのタイプ(type)も ここに まとめてある
+   ・あたりの ばしょは Rig.DEFAULT(くび 0.42 / こし 0.70 / まんなか 0.5 /
+     おなか 0.55)に そろえてある。あたりに そって かけば、
+     「うごきせってい」を さわらなくても そのまま きれいに うごく
+   ・えがくのは べつの canvas(すけた 上のそう)で、ほぞんする えには 入らない
+
+   つかいかた: Guide.draw(ctx, w, h, "human")           … あたりを えがく
+               Guide.draw(ctx, w, h, "human", {labels:false})  … 文字なし(サムネ用) */
+const Guide = {
+  COLOR: "#5f92da",
+
+  KINDS: {
+    human: {
+      label: "にんげん", emoji: "🧍", cat: "char", type: "biped", cv: [820, 1040],
+      hint: "あたま・からだ・あし を まっすぐ 大きく",
+      draw(g) {
+        g.faint(() => g.line(0.5, 0.05, 0.5, 0.97));     // まんなかの 線
+        g.circle(0.5, 0.24, 0.18);                        // あたま
+        g.faint(() => g.line(0.18, 0.438, 0.82, 0.438));  // くび
+        g.line(0.5, 0.44, 0.5, 0.69);                     // せなか
+        g.line(0.5, 0.50, 0.19, 0.66);                    // うで
+        g.line(0.5, 0.50, 0.81, 0.66);
+        g.faint(() => g.line(0.18, 0.69, 0.82, 0.69));    // こし
+        g.line(0.5, 0.69, 0.35, 0.955);                   // あし
+        g.line(0.5, 0.69, 0.65, 0.955);
+        g.label("あたま", 0.5, 0.24);
+        g.label("て", 0.13, 0.665);
+        g.label("あし", 0.25, 0.87);
+      },
+    },
+
+    skirt: {
+      label: "スカート", emoji: "👗", cat: "char", type: "skirt", cv: [820, 1040],
+      hint: "こしから したは スカートで ひろげよう",
+      draw(g) {
+        g.faint(() => g.line(0.5, 0.05, 0.5, 0.97));
+        g.circle(0.5, 0.24, 0.18);
+        g.faint(() => g.line(0.18, 0.438, 0.82, 0.438));
+        g.poly([[0.34, 0.44], [0.66, 0.44], [0.70, 0.69], [0.30, 0.69]], true);   // からだ
+        g.line(0.36, 0.50, 0.19, 0.66);
+        g.line(0.64, 0.50, 0.81, 0.66);
+        g.faint(() => g.line(0.18, 0.69, 0.82, 0.69));    // こし(ここから スカート)
+        g.poly([[0.30, 0.69], [0.70, 0.69], [0.86, 0.95], [0.14, 0.95]], true);
+        g.label("あたま", 0.5, 0.24);
+        g.label("スカート", 0.5, 0.84);
+      },
+    },
+
+    animal: {
+      label: "どうぶつ", emoji: "🐕", cat: "char", type: "quad", cv: [1100, 820],
+      hint: "よこむきに、あたまは かならず ひだり",
+      draw(g) {
+        g.faint(() => g.line(0.5, 0.10, 0.5, 0.95));      // まえあし/うしろあし の さかいめ
+        g.oval(0.55, 0.38, 0.30, 0.20);                   // からだ
+        g.circle(0.20, 0.30, 0.15);                       // あたま(ひだり)
+        g.line(0.28, 0.38, 0.34, 0.40);                   // くび
+        g.faint(() => g.line(0.10, 0.56, 0.92, 0.56));    // おなかの 線
+        g.line(0.30, 0.55, 0.28, 0.90);                   // まえあし
+        g.line(0.42, 0.55, 0.44, 0.90);
+        g.line(0.66, 0.55, 0.64, 0.90);                   // うしろあし
+        g.line(0.78, 0.55, 0.80, 0.90);
+        g.line(0.85, 0.30, 0.95, 0.18);                   // しっぽ
+        g.arrowLeft(0.20, 0.075, 0.12);
+        g.label("あたまは こっち", 0.36, 0.075, { align: "left" });
+        g.label("あし 4ほん", 0.53, 0.78);
+      },
+    },
+
+    fly: {
+      label: "ちょうちょ", emoji: "🦋", cat: "char", type: "butterfly", cv: [780, 900],
+      hint: "はねは 1まいだけ。からだは ひだりはしに はんぶん",
+      draw(g) {
+        g.line(0.07, 0.06, 0.07, 0.94);                   // からだ(まんなかの 線)
+        g.curve([[0.07, 0.10], [0.55, 0.00], [0.98, 0.18], [0.52, 0.50]]);   // うわばね
+        g.line(0.52, 0.50, 0.07, 0.50);
+        g.curve([[0.07, 0.52], [0.50, 0.55], [0.80, 0.75], [0.38, 0.92]]);   // したばね
+        g.curve([[0.38, 0.92], [0.22, 0.96], [0.10, 0.90], [0.07, 0.80]]);
+        g.faint(() => { g.line(0.07, 0.10, 0.30, 0.03); });                  // しょっかく
+        g.label("からだ", 0.11, 0.06, { align: "left" });
+        g.label("はねは 1まいだけ", 0.52, 0.24);
+      },
+    },
+
+    float: {
+      label: "ふわふわ", emoji: "👻", cat: "char", type: "float", cv: [820, 1040],
+      hint: "まるく ふんわり。ぷかぷか うかぶよ",
+      draw(g) {
+        g.faint(() => g.line(0.5, 0.08, 0.5, 0.95));
+        g.circle(0.5, 0.50, 0.34);                        // まるい からだ
+        g.faint(() => { g.circle(0.40, 0.44, 0.035); g.circle(0.60, 0.44, 0.035); });   // め
+        g.label("まる〜く", 0.5, 0.06, { baseline: "top" });
+      },
+    },
+
+    face: {
+      label: "かお", emoji: "😀", cat: "fuku", cv: [900, 1000],
+      hint: "め・はな・くちを 大きく はなして かこう",
+      draw(g) {
+        g.oval(0.5, 0.50, 0.38, 0.42);                    // かおの りんかく
+        g.faint(() => {
+          g.oval(0.36, 0.42, 0.09, 0.06);                 // め
+          g.oval(0.64, 0.42, 0.09, 0.06);
+          g.oval(0.5, 0.58, 0.05, 0.05);                  // はな
+          g.oval(0.5, 0.73, 0.13, 0.06);                  // くち
+        });
+        g.label("かお ぜんぶ", 0.5, 0.16);
+        g.label("め・はな・くち", 0.5, 0.88);
+      },
+    },
+
+    bg: {
+      label: "はいけい", emoji: "🏞️", cat: "bg", cv: [1200, 760],
+      hint: "そらと じめんを かくと それらしく なるよ",
+      draw(g) {
+        g.line(0.03, 0.66, 0.97, 0.66);                   // ちへいせん
+        g.faint(() => { g.circle(0.84, 0.20, 0.10); g.oval(0.24, 0.22, 0.13, 0.07); });  // おひさま・くも
+        g.label("そら", 0.5, 0.30);
+        g.label("じめん", 0.5, 0.83);
+      },
+    },
+  },
+
+  /* えらべる じゅんばん(おえかきの えらび がめんで つかう) */
+  ORDER: ["human", "skirt", "animal", "fly", "float", "face", "bg"],
+  CHAR_ORDER: ["human", "skirt", "animal", "fly", "float"],
+
+  get(kind) { return this.KINDS[kind] || null; },
+
+  /* ctx に あたりを えがく(w・h は canvas の 大きさ) */
+  draw(ctx, w, h, kind, opts) {
+    const k = this.KINDS[kind];
+    if (!k) return false;
+    const showLabels = !opts || opts.labels !== false;
+    const u = Math.min(w, h);
+    const X = (v) => v * w, Y = (v) => v * h;
+    const dash = [Math.max(4, u * 0.03), Math.max(3, u * 0.026)];
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = this.COLOR;
+    ctx.fillStyle = this.COLOR;
+    ctx.lineWidth = Math.max(2, u * 0.011);
+    ctx.setLineDash(dash);
+
+    const g = {
+      /* うすく えがく(おまけの 線) */
+      faint(fn) {
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+        ctx.lineWidth = Math.max(1.5, u * 0.007);
+        fn();
+        ctx.restore();
+      },
+      line(x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(X(x1), Y(y1));
+        ctx.lineTo(X(x2), Y(y2));
+        ctx.stroke();
+      },
+      circle(cx, cy, r) {
+        ctx.beginPath();
+        ctx.arc(X(cx), Y(cy), r * h, 0, 7);
+        ctx.stroke();
+      },
+      oval(cx, cy, rx, ry) {
+        ctx.beginPath();
+        ctx.ellipse(X(cx), Y(cy), rx * w, ry * h, 0, 0, 7);
+        ctx.stroke();
+      },
+      poly(pts, close) {
+        ctx.beginPath();
+        pts.forEach((p, i) => (i ? ctx.lineTo(X(p[0]), Y(p[1])) : ctx.moveTo(X(p[0]), Y(p[1]))));
+        if (close) ctx.closePath();
+        ctx.stroke();
+      },
+      /* [はじめ, ひかえ1, ひかえ2, おわり] の カーブ */
+      curve(p) {
+        ctx.beginPath();
+        ctx.moveTo(X(p[0][0]), Y(p[0][1]));
+        ctx.bezierCurveTo(X(p[1][0]), Y(p[1][1]), X(p[2][0]), Y(p[2][1]), X(p[3][0]), Y(p[3][1]));
+        ctx.stroke();
+      },
+      /* ひだりむきの やじるし(どうぶつの「あたまは こっち」) */
+      arrowLeft(x, y, len) {
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(X(x + len), Y(y));
+        ctx.lineTo(X(x), Y(y));
+        ctx.moveTo(X(x + len * 0.3), Y(y - 0.03));
+        ctx.lineTo(X(x), Y(y));
+        ctx.lineTo(X(x + len * 0.3), Y(y + 0.03));
+        ctx.stroke();
+        ctx.restore();
+      },
+      label(str, x, y, o) {
+        if (!showLabels) return;
+        o = o || {};
+        const size = Math.max(13, u * (o.size || 0.045));
+        ctx.save();
+        ctx.setLineDash([]);
+        ctx.font = `bold ${size}px sans-serif`;
+        ctx.textAlign = o.align || "center";
+        ctx.textBaseline = o.baseline || "middle";
+        ctx.lineWidth = size * 0.3;
+        ctx.strokeStyle = "rgba(255,255,255,.92)";
+        ctx.strokeText(str, X(x), Y(y));
+        ctx.fillStyle = Guide.COLOR;
+        ctx.fillText(str, X(x), Y(y));
+        ctx.restore();
+      },
+    };
+
+    k.draw(g);
+    ctx.restore();
+    return true;
+  },
+};
+
 /* ---------------- Rotate(よこむきに してね の おしらせ) ----------------
    iPad・スマホの Safari は ページから がめんを まわせない。たてむきの ときに
    「よこむきに すると 大きく 見えるよ」と ひとこと だけ 出す。
@@ -1735,9 +1960,12 @@ const Nav = {
     this.cur = now;
   },
 
-  /* えらぶ まど(モーダル)が 出ていたら とじる */
+  /* えらぶ まど(モーダル)が 出ていたら とじる。
+     ※ かならず 出ている ものだけを ひろう。editors.js は つかっていない ときも
+        .modal.hidden を ページに いれておくので、hidden を のぞかないと
+        「もどる」が いつも モーダルを とじたつもりに なり、がめんが うごかなく なる */
   _closeOverlay() {
-    const ov = document.querySelector(".picker, .modal");
+    const ov = document.querySelector(".picker:not(.hidden), .modal:not(.hidden)");
     if (!ov) return false;
     const cancel = ov.querySelector('[data-x="0"]') || ov.querySelector(".btn.gray");
     if (cancel) cancel.click(); else ov.remove();

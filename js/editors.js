@@ -11,6 +11,7 @@
      Editors.chooseCamera(cat)   カメラで とって きりだす
      Editors.cropRecord(rec,cat) すでにある えから きりだす
      Editors.initQuiz()          クイズ作成UI(ページに あれば)
+     Editors.mountLists(defs,opt) つくる画面の いちらん(1行=1まいの え + 編集ボタン)
      Editors.onChange            なにか かわったら よばれる(いちらんの さいびょうが用)
    ============================================================ */
 (function () {
@@ -25,13 +26,13 @@ document.body.insertAdjacentHTML("beforeend", `
     <h2>動き設定</h2>
     <p class="note">
       まず「動きのタイプ」を選んで、線をドラッグして合わせてください。<br>
-      🐕四つ足 は <b>あたまを左がわ</b> にして 横むきに描いてください。<br>
+      🐕どうぶつ は <b>あたまを左がわ</b> にして 横むきに描いてください。<br>
       🦋ちょうちょ は <b>はねを1まい</b> 描いた絵を、左右はんてんして ひらひら飛ばします。
     </p>
     <div class="rig-types" id="rigTypes">
-      <button class="btn purple" data-type="biped">🧍二本足</button>
+      <button class="btn purple" data-type="biped">🧍にんげん</button>
       <button class="btn pink" data-type="skirt">👗スカート</button>
-      <button class="btn orange" data-type="quad">🐕四つ足</button>
+      <button class="btn orange" data-type="quad">🐕どうぶつ</button>
       <button class="btn blue" data-type="float">👻ふわふわ</button>
       <button class="btn yellow" data-type="butterfly">🦋ちょうちょ</button>
     </div>
@@ -992,12 +993,122 @@ async function cropRecord(rec, cat) {
   openCrop([c], rec.name || "切り出し", { cat: cat || null });
 }
 
+/* ---------- つくる画面の いちらん(create-*.html / draw-pick.html で 共通) ----------
+   おなじ「1行 = 1まいの え + 編集ボタン」を どのページでも 同じ形で出す。
+
+     defs: [{ cat, el, what, btns, kind }]
+       cat  … Store の カテゴリ("char" / "fuku" / "pic" / "bg")
+       el   … いちらんを 入れる 要素の id
+       what … ふやすボタンの ことば(「キャラクターの ぜんしん」など)
+       btns … その行に 出す 編集ボタン("rig" / "voice" / "fuku" / "spot")
+              ※ 名前かえ・DL・トリミング・削除は「とりこみ・せってい」の しごと
+       kind … おえかきに わたす あたりの しゅるい(Guide.KINDS のキー。なくてもよい)
+     opts: { back } … おえかきから もどってくる ページ(いま ひらいている ページ)
+
+   もどってくる先を つけておくと、draw.html の「← もどる」と
+   ほぞんした あとの いき先が、そのページに なる。 */
+function mountLists(defs, opts) {
+  opts = opts || {};
+
+  const drawURL = (params) => {
+    const p = new URLSearchParams(params);
+    if (opts.back) p.set("back", opts.back);
+    return "draw.html?" + p.toString();
+  };
+
+  async function refresh() {
+    await Store.ensureSamples();
+    for (const L of defs) {
+      const el = $(L.el);
+      if (!el) continue;
+      el.innerHTML = "";
+      const recs = await Store.all(L.cat);
+      for (const r of recs) el.appendChild(row(r, L));
+      el.appendChild(addButton(L));
+    }
+  }
+
+  function row(r, L) {
+    const d = document.createElement("div");
+    d.className = "admin-row";
+    d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(名前なし)"}</span>`;
+    Ui.thumbFix(d.querySelector("img"), r);
+    const mk = (label, cls, fn) => {
+      const b = document.createElement("button");
+      b.className = "btn " + cls;
+      b.textContent = label;
+      b.onclick = fn;
+      d.appendChild(b);
+    };
+    mk("名前", "blue", async () => {
+      const nm = prompt("名前を入力してください", r.name || "");
+      if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
+    });
+    mk("おえかきで なおす", "yellow", () => { location.href = drawURL({ edit: r.id }); });
+    const btns = L.btns || [];
+    if (btns.includes("rig")) mk("うごきせってい", "purple", () => openRig(r));
+    if (btns.includes("voice")) mk("こえ", "orange", () => openVoice(r));
+    if (btns.includes("fuku")) mk("ふくわらいパーツ", "green", () => openFuku(r));
+    if (btns.includes("spot")) mk("差分画像・スポット", "orange", () => openSpot(r));
+    return d;
+  }
+
+  /* いちらんの さいごの ＋ボタン */
+  function addButton(L) {
+    const b = document.createElement("button");
+    b.className = "add-row";
+    b.type = "button";
+    b.innerHTML = '<span class="add-mark">＋</span>' + L.what + 'を ふやす';
+    b.onclick = () => addNew(L);
+    return b;
+  }
+
+  async function addNew(L) {
+    Sound.tap();
+    const how = await Ui.menu({
+      title: L.what + "を ふやす",
+      note: "やりかたを えらんでね",
+      items: [
+        { value: "draw", label: "おえかきする", color: "pink" },
+        { value: "file", label: "ファイルを えらぶ", color: "green" },
+        { value: "camera", label: "カメラで とる", color: "blue" },
+        { value: "src", label: "元素材から きりだす", color: "purple" },
+      ],
+    });
+    if (!how) return;
+    if (how === "file") return Editors.chooseFiles(L.cat);
+    if (how === "camera") return Editors.chooseCamera(L.cat);
+    if (how === "draw") {
+      location.href = drawURL(L.kind ? { kind: L.kind } : { cat: L.cat });
+      return;
+    }
+
+    /* 元素材から:えらんだ 1枚を そのまま きりだし画面へ(保存先は このカテゴリ) */
+    const srcs = await Store.all("src");
+    if (!srcs.length) {
+      Ui.msg("元素材が まだ ないよ", 1800, "#4dabf7");
+      return;
+    }
+    const rec = await Picker.one({
+      title: "どの 元素材から きりだす?",
+      note: "つぎの がめんで かこんだ ところが「" + L.what + "」に なります",
+      records: srcs,
+    });
+    if (rec) cropRecord(rec, L.cat);
+  }
+
+  Editors.onChange = refresh;
+  refresh();
+  return refresh;
+}
+
 window.Editors = {
   onChange: null,
   openRig, openSpot, openFuku, openVoice, openCrop,
   importFiles,
   cropRecord,
   initQuiz,
+  mountLists,
   chooseFiles(cat) { pickCat = cat || "char"; $("edFileInput").click(); },
   chooseCamera(cat) { pickCat = cat || "char"; $("edCameraInput").click(); },
 };

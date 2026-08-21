@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかき</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=21">
+<link rel="stylesheet" href="css/style.css?v=22">
 <style>
   /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -35,6 +35,38 @@
     max-height: calc(100dvh - 130px);
     cursor: crosshair;
   }
+  /* あたり(かく ばしょの めやす)… えの うえに かさねる すけた そう。
+     ここに かいた 点線は ほぞんする えには 入らない */
+  .canvas-wrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; }
+  .guide-layer {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    border-radius: 10px;
+    pointer-events: none;          /* あたりの うえからも かける */
+    opacity: 0;
+    transition: opacity .55s;
+  }
+  .guide-layer.on { opacity: 1; }
+  .guide-cap {
+    position: absolute;
+    left: 6px; right: 6px; bottom: 8px;
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.86);
+    color: #4a6fa5;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1.4;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .55s;
+  }
+  .guide-cap.on { opacity: 1; }
+  @media (max-width: 560px) { .guide-cap { font-size: 14px; padding: 5px 8px; } }
+
   .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 6px 0 4px; }
   .swatch {
     width: 100%;
@@ -88,14 +120,18 @@
 </head>
 <body data-chrome="game">
 <header class="bar">
-  <a class="back" href="index.html">← もどる</a>
+  <a class="back" href="index.html" id="backLink">← もどる</a>
   <h1><img class="bar-icon" src="assets/buttons/draw.png" alt=""> おえかき</h1>
   <div class="spacer"></div>
 </header>
 
 <main>
   <div class="paper">
-    <canvas id="drawCanvas" width="820" height="1040"></canvas>
+    <div class="canvas-wrap">
+      <canvas id="drawCanvas" width="820" height="1040"></canvas>
+      <canvas class="guide-layer" id="guideCanvas" aria-hidden="true"></canvas>
+      <p class="guide-cap" id="guideCap"></p>
+    </div>
   </div>
 </main>
 
@@ -124,6 +160,8 @@
     <h3>どうぐ</h3>
     <div class="tool-row">
       <button class="btn purple" id="fillBtn">ぬりつぶし</button>
+      <button class="btn orange" id="flipBtn">↔ 左右はんてん</button>
+      <button class="btn blue" id="guideBtn">あたり</button>
       <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
     </div>
     <p class="note" id="toolHint" style="margin:6px 0 0">ペンで かけます</p>
@@ -146,13 +184,15 @@
     <h3>かきかたの コツ</h3>
     <p class="note" style="line-height:1.7">
       キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。<br>
-      🦋ちょうちょ を つくるときは <b>はねを1まいだけ</b> かいて、あとで「うごきせってい」で ちょうちょを えらんでね。<br>
+      <b>あたり</b>(うすい 点線)に そって かくと、そのままで きれいに うごきます。<br>
+      🐕どうぶつ は <b>あたまを ひだり</b>、🦋ちょうちょ は <b>はねを 1まいだけ</b> かいてね。
+      むきを まちがえたら <b>↔ 左右はんてん</b> で なおせます。<br>
       こまかい せってい(うごき・まちがいスポット)は <a href="create.html">つくる</a> でできます。
     </p>
   </div>
 </aside>
 
-<script src="js/core.js?v=20"></script>
+<script src="js/core.js?v=21"></script>
 <script src="js/rig.js?v=15"></script>
 <script>
 "use strict";
@@ -172,12 +212,34 @@ const state = {
   last: null,
   undo: [],      // もどす用の スナップショット(dataURL)
   redo: [],      // やりなおし用
+  dirty: false,  // ほぞんして いない かきかけが あるか
 };
 const HISTORY_MAX = 15;   // もどす・やりなおし とも これだけ さかのぼれる
 const isEraser = () => state.tool === "eraser";
 
 const cv = $("drawCanvas");
 const ctx = cv.getContext("2d");
+const gcv = $("guideCanvas");
+
+/* ---------- どこから きて、なにを かくのか ----------
+   ?kind= … 「なにを かく?」で えらんだ しゅるい(Guide.KINDS のキー)。
+            かみの ひりつ・ほぞん先・うごきのタイプ・あたり が これで きまる
+   ?cat=  … しゅるいまでは きめず、ほぞん先だけ かためる(まちがいさがしの え など)
+   ?edit= … すでに ある えを なおす
+   ?back= … 「← もどる」と ほぞんした あとの いき先。
+            かってな ところへ とばないよう、しっている ページだけ うけつける */
+const q = new URLSearchParams(location.search);
+const BACK_PAGES = ["index.html", "create.html", "draw-pick.html",
+                    "draw-pick.html?from=create", "create-diff.html"];
+const BACK = BACK_PAGES.includes(q.get("back")) ? q.get("back") : "index.html";
+$("backLink").setAttribute("href", BACK);
+
+const kindDef = Guide.get(q.get("kind"));
+const fixedCat = kindDef ? kindDef.cat
+  : (["char", "bg", "pic", "fuku"].includes(q.get("cat")) ? q.get("cat") : null);
+
+/* しゅるいごとに かみの かたちを かえる(どうぶつ・はいけいは よこ長) */
+if (kindDef) { cv.width = kindDef.cv[0]; cv.height = kindDef.cv[1]; }
 
 /* 白い紙で スタート */
 function fillWhite() {
@@ -185,6 +247,44 @@ function fillWhite() {
   ctx.fillRect(0, 0, cv.width, cv.height);
 }
 fillWhite();
+
+/* ---------- あたり(かく ばしょの めやす) ----------
+   ・えとは べつの canvas に えがくので、ほぞんする えには 入らない
+   ・がめんに 入って 2びょうほど 出してから、すーっと 消える
+     (ずっと 出ていると じゃま、ずっと 消えていると 意味がない)
+   ・「どうぐ」の あたり で いつでも 出したり 消したり できる */
+const KIND_OF_TYPE = { biped: "human", skirt: "skirt", quad: "animal", butterfly: "fly", float: "float" };
+const guide = { kind: kindDef ? q.get("kind") : null, on: false, timer: 0 };
+
+function kindOfRec(rec) {
+  if (rec.cat === "char") return KIND_OF_TYPE[(rec.rig && rec.rig.type) || "biped"] || "human";
+  if (rec.cat === "fuku") return "face";
+  if (rec.cat === "bg") return "bg";
+  return null;
+}
+
+/* あたりの そうを えと おなじ 大きさに して かきなおす */
+function guideSync() {
+  gcv.width = cv.width;
+  gcv.height = cv.height;
+  const g = gcv.getContext("2d");
+  g.clearRect(0, 0, gcv.width, gcv.height);
+  if (guide.kind) Guide.draw(g, gcv.width, gcv.height, guide.kind);
+  $("guideBtn").disabled = !guide.kind;
+}
+
+function guideShow(on, autoHide) {
+  clearTimeout(guide.timer);
+  guide.on = !!(on && guide.kind);
+  const k = guide.kind ? Guide.get(guide.kind) : null;
+  const cap = $("guideCap");
+  gcv.classList.toggle("on", guide.on);
+  cap.textContent = guide.on && k ? k.emoji + " " + k.hint : "";
+  cap.classList.toggle("on", guide.on && !!k);
+  $("guideBtn").classList.toggle("green", guide.on);
+  $("guideBtn").classList.toggle("blue", !guide.on);
+  if (guide.on && autoHide) guide.timer = setTimeout(() => guideShow(false), 2200);
+}
 
 /* ---------- パレット ---------- */
 COLORS.forEach((col, i) => {
@@ -360,10 +460,11 @@ cv.addEventListener("pointerdown", (e) => {
   pushHistory();
   const at = Util.canvasPos(cv, e);
   if (state.tool === "fill") {
-    if (floodFill(at.x, at.y, state.color)) Sound.pop();
+    if (floodFill(at.x, at.y, state.color)) { Sound.pop(); state.dirty = true; }
     else { state.undo.pop(); syncHistory(); Sound.tap(); }
     return;
   }
+  state.dirty = true;
   state.drawing = true;
   state.last = at;
   strokeStyle();
@@ -398,7 +499,29 @@ $("clearBtn").onclick = () => {
   if (!confirm("かいた えを ぜんぶ けしますか?")) return;
   pushHistory();
   fillWhite();
+  state.dirty = true;
   Sound.tap();
+};
+
+/* あたりの 出し入れ(じぶんで おしたときは かってに 消えない) */
+$("guideBtn").onclick = () => { Sound.tap(); guideShow(!guide.on); };
+
+/* 左右はんてん … むきを まちがえた ときの たすけ舟。
+   どうぶつは あたまが ひだり、ちょうちょは からだが ひだり と むきが きまっているので、
+   かきなおさずに ひっくりかえせるように しておく */
+$("flipBtn").onclick = () => {
+  pushHistory();
+  const tmp = Util.makeCanvas(cv.width, cv.height);
+  tmp.getContext("2d").drawImage(cv, 0, 0);
+  ctx.save();
+  fillWhite();
+  ctx.translate(cv.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(tmp, 0, 0);
+  ctx.restore();
+  state.dirty = true;
+  Sound.pop();
+  Ui.msg("左右を いれかえたよ", 1000, "#ff922b");
 };
 
 /* ---------- ほぞん ---------- */
@@ -411,18 +534,13 @@ function isBlank() {
   return true;
 }
 
-/* 「つくる」画面から きたとき:なにを かくかは きまっているので えらばせない */
-const q = new URLSearchParams(location.search);
-const fixedCat = (() => {
-  const c = q.get("cat");
-  return ["char", "bg", "pic", "fuku"].includes(c) ? c : null;
-})();
+/* えらび がめんから きたとき:なにを かくかは きまっているので えらばせない */
 const CAT_NAME = { char: "キャラクターの ぜんしん", bg: "はいけい", pic: "しゃしん・え", fuku: "キャラクターの かお" };
 const CAT_BASE = { char: "キャラ", bg: "はいけい", pic: "え", fuku: "ふくわらい" };
 if (fixedCat) {
   document.querySelector(`input[name="cat"][value="${fixedCat}"]`).checked = true;
   $("catRow").classList.add("hidden");
-  $("catTitle").textContent = CAT_NAME[fixedCat] + " を かこう!";
+  $("catTitle").textContent = (kindDef ? kindDef.emoji + " " + kindDef.label : CAT_NAME[fixedCat]) + " を かこう!";
 }
 
 /* ---------- とりこんだ えを なおす ---------- */
@@ -439,6 +557,12 @@ async function loadForEdit(rec) {
   fillWhite();
   ctx.drawImage(img, 0, 0, cv.width, cv.height);
   clearHistory();
+  state.dirty = false;
+
+  /* なおす えの うごきのタイプに あわせた あたりを、ここでも すこしだけ 出す */
+  guide.kind = kindOfRec(rec);
+  guideSync();
+  guideShow(true, true);
 
   const r = document.querySelector(`input[name="cat"][value="${rec.cat}"]`);
   if (r) r.checked = true;
@@ -453,6 +577,7 @@ async function loadForEdit(rec) {
 /* 「とりこんだ えを なおす」ボタン:えらび がめんを だす */
 $("openBtn").onclick = async () => {
   Sound.tap();
+  if (state.dirty && !confirm("ほぞんして いない えが あります。すてて べつの えを ひらきますか?")) return;
   const recs = await Store.ensureSamples();
   const rec = await Picker.one({
     title: "どの えを なおす?",
@@ -489,42 +614,96 @@ const toDataURL = (out, cat) =>
   // キャラは 白ぬきの きれいさ優先で PNG、しゃしん/はいけいは JPEG
   cat === "char" ? out.toDataURL("image/png") : out.toDataURL("image/jpeg", 0.9);
 
+/* えらび がめん(つくる・なにを かく?)から きたときは、ほぞんしたら そこへ もどる */
+const RETURN_TO = (fixedCat || q.get("edit")) ? BACK : null;
+
 function afterSave(msg) {
   Sound.good();
   Ui.confetti(1800, 90);
   Ui.msg(msg, 1500, "#51cf66");
-  // 「つくる」画面から きたときは そこへ もどる
-  if (fixedCat || editRec) setTimeout(() => { location.href = "create.html"; }, 1500);
+  state.dirty = false;
+  if (RETURN_TO) setTimeout(() => { location.href = RETURN_TO; }, 1500);
 }
 
-/* あたらしく ほぞん(なおしている ときは「べつの えとして」) */
+/* あたらしく ほぞん(なおしている ときは「べつの えとして」)
+   ほぞんできたら true。やめた・まっしろ だったときは false */
 async function saveAsNew() {
-  if (isBlank()) { Ui.msg("なにか かいてね!", 1400, "#4dabf7"); return; }
+  if (isBlank()) { Ui.msg("なにか かいてね!", 1400, "#4dabf7"); return false; }
   const cat = editRec ? editRec.cat : document.querySelector('input[name="cat"]:checked').value;
   const base = CAT_BASE[cat];
   const existing = await Store.all(cat);
   const suggest = editRec ? `${editRec.name || base}のつづき` : `${base}${existing.length + 1}`;
   const nm = prompt("なまえを いれてください", suggest);
-  if (nm === null) return;
+  if (nm === null) return false;
 
   const rec = { name: nm.trim() || base, cat, dataURL: toDataURL(outputCanvas(cat), cat) };
-  if (cat === "char") rec.rig = { ...Rig.DEFAULT, ...((editRec && editRec.rig) || {}) };
+  if (cat === "char") {
+    rec.rig = { ...Rig.DEFAULT, ...((editRec && editRec.rig) || {}) };
+    /* 「なにを かく?」で えらんだ しゅるいを、そのまま うごきのタイプに する */
+    if (!editRec && kindDef && kindDef.type) rec.rig.type = kindDef.type;
+  }
   await Store.put(rec);
   afterSave("ほぞんしたよ!");
+  return true;
 }
 
 /* うわがき(なまえ・うごきせってい・まちがいスポットなどは そのまま のこす) */
 async function saveOverwrite() {
-  if (!editRec) return;
-  if (!confirm(`「${editRec.name || "なまえなし"}」を かきかえますか?`)) return;
+  if (!editRec) return false;
+  if (!confirm(`「${editRec.name || "なまえなし"}」を かきかえますか?`)) return false;
   editRec.dataURL = toDataURL(outputCanvas(editRec.cat), editRec.cat);
   await Store.put(editRec);
   afterSave("うわがき しました!");
+  return true;
 }
 
 $("saveBtn").onclick = saveAsNew;
 $("saveNewBtn").onclick = saveAsNew;
 $("overwriteBtn").onclick = saveOverwrite;
+
+/* ---------- ほぞんして いないのに 出ていこうとしたとき ----------
+   すこしでも かいて あったら、そのまま ページを かえると えは きえてしまう。
+   「← もどる」を おしたときは、ほぞんするか きくようにする。
+   ・GameChrome の しょりは とめない(そのまま つたわらせる)ので、
+     iPad の おしなおし(touchend の ほけん)とも けんかしない
+   ・リロードや タブを とじる ときは、ブラウザの かくにんに まかせる */
+async function confirmLeave(href) {
+  const how = await Ui.menu({
+    title: "まだ ほぞんして いないよ",
+    note: "このまま もどると、かいた えは きえてしまいます",
+    items: [
+      { value: "save", label: "✔ ほぞんしてから もどる", color: "green" },
+      { value: "go", label: "ほぞんしないで もどる", color: "gray" },
+    ],
+  });
+  if (!how) return;                       // やめる … このまま かきつづける
+  if (how === "go") {
+    state.dirty = false;
+    location.href = href;
+    return;
+  }
+  const saved = editRec ? await saveOverwrite() : await saveAsNew();
+  /* ほぞんできて、いき先が きまっていない ときだけ ここで もどる
+     (きまっている ときは afterSave が もどしてくれる) */
+  if (saved && !RETURN_TO) { state.dirty = false; location.href = href; }
+}
+
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest("a.back, a.back-float");
+  if (!a || !state.dirty) return;
+  e.preventDefault();
+  /* この おなじ クリックは このあと GameChrome にも つたわり、
+     Nav.back() が「出ている まど」を とじに いく。
+     いま ここで まどを 出すと、その場で とじられてしまうので 1こ ずらす */
+  const href = a.getAttribute("href") || BACK;
+  setTimeout(() => confirmLeave(href), 0);
+}, true);
+
+addEventListener("beforeunload", (e) => {
+  if (!state.dirty) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
 
 /* ---------- どうぐばこ(ドロワー)の あけしめ ---------- */
 const drawer = $("toolsDrawer"), scrim = $("toolsScrim");
@@ -545,6 +724,8 @@ drawer.addEventListener("click", (e) => {
 
 syncTools();
 syncHistory();      // はじめは もどす・やりなおし とも おせない
+guideSync();
+if (guide.kind) guideShow(true, true);   // さいしょの 2びょうだけ あたりを 見せる
 </script>
 </body>
 </html>

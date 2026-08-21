@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>取り込み・設定</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=21">
+<link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body>
 <header class="bar">
-  <a class="back" href="index.html">← もどる</a>
+  <a class="back" href="index.html" id="backLink">← もどる</a>
   <h1><img class="bar-icon" src="assets/buttons/admin.png" alt=""> 取り込み・設定</h1>
   <div class="spacer"></div>
 </header>
@@ -62,15 +62,20 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=20"></script>
+<script src="js/core.js?v=21"></script>
 <script src="js/rig.js?v=15"></script>
-<script src="js/editors.js?v=12"></script>
+<script src="js/editors.js?v=13"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "js/vendor/pdf.worker.min.js";
 }
 const $ = (id) => document.getElementById(id);
+
+/* 「つくる」から来たときは「つくる」へ戻る(トップの歯車から来たときはトップへ) */
+if (new URLSearchParams(location.search).get("from") === "create") {
+  $("backLink").setAttribute("href", "create.html");
+}
 
 /* 一覧の並び順:元素材 → キャラ全身 → キャラ顔 → 写真・絵 → 背景 */
 const CATS = [

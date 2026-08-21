@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>つくる — ４たくクイズ</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css?v=22">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="create.html">← もどる</a>
+  <h1><img class="bar-icon" src="assets/buttons/quiz.png" alt=""> ４たくクイズを つくる</h1>
+  <div class="spacer"></div>
+</header>
+
+<main class="admin-list">
+  <div class="make-sec">
+    <h2>４たくクイズ<button class="info-btn" type="button" id="quizInfo" aria-label="クイズの説明">i</button></h2>
+
+    <h3>かんたん作成 — 答えを入れるだけ</h3>
+    <div id="quizTemplates"></div>
+
+    <h3>自分で作る</h3>
+    <div class="row" style="justify-content:flex-start; gap:8px">
+      <input type="text" id="qfQ" placeholder="問題文" style="flex:2 1 260px">
+      <input type="text" id="qfE" placeholder="絵文字(🏫など)" style="width:130px">
+    </div>
+    <div class="row" style="justify-content:flex-start; gap:8px">
+      <input type="text" id="qfA0" placeholder="正解" style="flex:1 1 150px; border-color:#51cf66">
+      <input type="text" id="qfA1" placeholder="不正解1" style="flex:1 1 150px">
+      <input type="text" id="qfA2" placeholder="不正解2" style="flex:1 1 150px">
+      <input type="text" id="qfA3" placeholder="不正解3" style="flex:1 1 150px">
+      <button class="btn green" id="qfAdd">クイズに追加</button>
+    </div>
+
+    <h3>この端末のオリジナル問題</h3>
+    <div id="quizList"></div>
+  </div>
+
+  <p class="note" style="max-width:1000px;margin:18px auto;text-align:center">
+    つくった問題は <a href="games/quiz.html">４たくクイズ</a> にそのまま出てきます。
+  </p>
+</main>
+
+<script src="js/vendor/pdf.min.js"></script>
+<script src="js/core.js?v=21"></script>
+<script src="js/rig.js?v=15"></script>
+<script src="js/editors.js?v=13"></script>
+<script>
+"use strict";
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "js/vendor/pdf.worker.min.js";
+}
+
+document.getElementById("quizInfo").onclick = () => {
+  Sound.tap();
+  Ui.info("クイズの つくりかた", `
+    <ul class="info-list">
+      <li>ここで作った問題は <b>この端末の中にだけ</b> 保存されます(公開サイトには載りません)</li>
+      <li>園の名前・先生の名前など、<b>固有名詞を入れても大丈夫</b>です</li>
+      <li>「かんたん作成」は答えを入れるだけ。不正解の選択肢は自動で入ります</li>
+      <li>作った問題は ４たくクイズに <b>自動で合流</b>します</li>
+      <li>全端末で共通の問題を変えたいときだけ <code>js/quiz-data.js</code> を編集してください</li>
+    </ul>
+  `);
+};
+
+Editors.initQuiz();
+</script>
+</body>
+</html>
