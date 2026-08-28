@@ -25,7 +25,7 @@
       <label class="radio-row"><input type="radio" name="cat" value="bg"> <span>🏞️ 背景の絵</span></label>
     </div>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn green" id="pickBtn">ファイルを選ぶ(PDFも可)</button>
+      <button class="btn green" id="pickBtn">ファイルを選ぶ(複数可・PDFも可)</button>
       <button class="btn blue" id="cameraBtn">カメラで撮る</button>
     </div>
   </div>
@@ -64,7 +64,7 @@
 <script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=24"></script>
 <script src="js/rig.js?v=15"></script>
-<script src="js/editors.js?v=13"></script>
+<script src="js/editors.js?v=14"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -179,6 +179,7 @@ $("importInfo").onclick = () => {
       <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、写真・絵・背景は <b>1100px</b>、元素材は <b>1600px</b></li>
       <li>比率の決まりはありません。キャラクターは <b>たて長</b>、背景は <b>よこ長(16:9くらい)</b> が画面に収まりやすいです</li>
       <li>スマホやカメラの写真をそのまま入れてOK。PDFはページごとに読み込みます</li>
+      <li>PDFを2ファイル以上まとめて選ぶと、全ページを「トリミング用の元素材」へ一括で保存します</li>
     </ul>
   `);
 };

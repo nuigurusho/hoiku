@@ -16,7 +16,7 @@
    ============================================================ */
 (function () {
 const $ = (id) => document.getElementById(id);
-const changed = () => { if (Editors.onChange) Editors.onChange(); };
+const changed = () => Editors.onChange ? Editors.onChange() : undefined;
 
 /* モーダルと かくれた ファイル入力を ページに いれておく */
 document.body.insertAdjacentHTML("beforeend", `
@@ -140,16 +140,21 @@ document.body.insertAdjacentHTML("beforeend", `
 /* ---------- とりこみ ---------- */
 async function importFiles(files, cat) {
   if (!files.length) return;
-  // PDFは ページ画像化 → きりだし画面へ
+  // PDFが1ファイルなら従来どおり切り出し画面へ。
+  // 複数PDFはモーダルが上書きされないよう、全ページを元素材へ一括保存する。
   const pdfs = files.filter((f) => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name || ""));
   files = files.filter((f) => !pdfs.includes(f));
-  for (const f of pdfs) {
+  if (pdfs.length === 1) {
     try {
+      const f = pdfs[0];
       const pages = await pdfToCanvases(f);
       openCrop(pages, (f.name || "スキャン").replace(/\.pdf$/i, ""));
     } catch (e) {
+      const f = pdfs[0];
       alert("PDFの読み込みに失敗しました: " + (f.name || "") + "\n" + ((e && e.message) || ""));
     }
+  } else if (pdfs.length > 1) {
+    await importPdfPagesAsSources(pdfs);
   }
   if (!files.length) return;
   const existing = await Store.all(cat);
@@ -177,6 +182,36 @@ async function importFiles(files, cat) {
   if (fails.length) {
     alert("取り込みに失敗しました:\n" + fails.join("\n") +
       "\n\n画像ファイル(JPG/PNGなど)か確認してください。iPhoneのHEICは「設定→カメラ→フォーマット→互換性優先」にすると確実です。");
+  }
+}
+
+async function importPdfPagesAsSources(pdfs) {
+  let ok = 0;
+  const fails = [];
+  Ui.msg("PDFを読み込んでいます…", 1600, "#4dabf7");
+  for (const f of pdfs) {
+    try {
+      const pages = await pdfToCanvases(f);
+      const baseName = (f.name || "スキャン").replace(/\.pdf$/i, "");
+      for (let i = 0; i < pages.length; i++) {
+        await Store.put({
+          name: `${baseName} ${i + 1}ページ`,
+          cat: "src",
+          dataURL: pages[i].toDataURL("image/jpeg", 0.9),
+        });
+        ok++;
+      }
+    } catch (e) {
+      fails.push(`${f.name || "?"}(${(e && (e.message || e.name)) || "読み込みエラー"})`);
+    }
+  }
+  await changed();
+  if (ok > 0) {
+    Sound.good();
+    Ui.msg(`${pdfs.length}個のPDFから ${ok}ページを元素材へ取り込みました`, 2200, "#51cf66");
+  }
+  if (fails.length) {
+    alert("PDFの読み込みに失敗しました:\n" + fails.join("\n"));
   }
 }
 // 予期しないエラーも見えるようにしておく(「何も起きない」の調査用)
