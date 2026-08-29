@@ -138,8 +138,9 @@ document.body.insertAdjacentHTML("beforeend", `
 `);
 
 /* ---------- とりこみ ---------- */
-async function importFiles(files, cat) {
+async function importFiles(files, cat, meta) {
   if (!files.length) return;
+  meta = meta || {};
   // PDFが1ファイルなら従来どおり切り出し画面へ。
   // 複数PDFはモーダルが上書きされないよう、全ページを元素材へ一括保存する。
   const pdfs = files.filter((f) => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name || ""));
@@ -148,7 +149,10 @@ async function importFiles(files, cat) {
     try {
       const f = pdfs[0];
       const pages = await pdfToCanvases(f);
-      openCrop(pages, (f.name || "スキャン").replace(/\.pdf$/i, ""));
+      openCrop(pages, meta.name || (f.name || "スキャン").replace(/\.pdf$/i, ""), {
+        cat: cat === "src" ? null : cat,
+        author: meta.author || "",
+      });
     } catch (e) {
       const f = pdfs[0];
       alert("PDFの読み込みに失敗しました: " + (f.name || "") + "\n" + ((e && e.message) || ""));
@@ -166,7 +170,10 @@ async function importFiles(files, cat) {
       const maxDim = { char: 900, src: 1600 }[cat] || 1100;   // 元素材は切り出し前提で高画質のまま保持
       const dataURL = await Util.fileToDataURL(f, maxDim);
       const base = { char: "キャラ", bg: "背景", pic: "絵・写真", fuku: "ふくわらい", src: "元素材" }[cat];
-      const rec = { name: `${base}${++n}`, cat, dataURL };
+      n++;
+      const numberedName = meta.name && files.length > 1 ? `${meta.name} ${ok + 1}` : meta.name;
+      const rec = { name: numberedName || `${base}${n}`, cat, dataURL };
+      if ((cat === "char" || cat === "bg") && meta.author) rec.author = meta.author;
       if (cat === "char") rec.rig = { ...Rig.DEFAULT };
       await Store.put(rec);
       ok++;
@@ -243,7 +250,7 @@ async function pdfToCanvases(file) {
 
 /* ---------- きりだし(トリミング)エディタ ----------
    pages: 元画像のcanvas配列(PDFは複数ページ、画像は1枚) */
-const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", rect: null, drag: null, sc: 1, saved: 0 };
+const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null, sc: 1, saved: 0 };
 
 function openCrop(pages, baseName, opts) {
   opts = opts || {};
@@ -252,6 +259,7 @@ function openCrop(pages, baseName, opts) {
   cropEd.pages = pages;
   cropEd.idx = 0;
   cropEd.baseName = baseName || "切り出し";
+  cropEd.author = (opts.author || "").trim();
   cropEd.saved = 0;
   $("cropModal").classList.remove("hidden");
   showCropPage();
@@ -327,11 +335,13 @@ async function saveCropRegion(rect) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, out.width, out.height);
   ctx.drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  cropEd.saved++;
   const rec = {
-    name: `${cropEd.baseName}${++cropEd.saved}`,
+    name: cropEd.saved === 1 ? cropEd.baseName : `${cropEd.baseName} ${cropEd.saved}`,
     cat,
     dataURL: out.toDataURL("image/jpeg", 0.88),
   };
+  if ((cat === "char" || cat === "bg") && cropEd.author) rec.author = cropEd.author;
   if (cat === "char") rec.rig = { ...Rig.DEFAULT };
   await Store.put(rec);
   Sound.pop();
@@ -994,11 +1004,13 @@ $("voiceClose").onclick = () => {
 };
 /* ---------- ファイル/カメラ/既存の えから とりこむ ---------- */
 let pickCat = "char";
+let pickMeta = {};
 
 $("edFileInput").onchange = (e) => {
   const files = [...e.target.files];
   e.target.value = "";
-  importFiles(files, pickCat);
+  importFiles(files, pickCat, pickMeta);
+  pickMeta = {};
 };
 $("edCameraInput").onchange = async (e) => {
   const files = [...e.target.files];
@@ -1017,7 +1029,11 @@ $("edCameraInput").onchange = async (e) => {
       alert("写真の読み込みに失敗しました: " + (f.name || ""));
     }
   }
-  if (pages.length) openCrop(pages, "写真", { cat: pickCat === "src" ? null : pickCat });
+  if (pages.length) openCrop(pages, pickMeta.name || "写真", {
+    cat: pickCat === "src" ? null : pickCat,
+    author: pickMeta.author || "",
+  });
+  pickMeta = {};
 };
 
 /* すでに とりこんである え(元素材など)から きりだす */
@@ -1144,7 +1160,7 @@ window.Editors = {
   cropRecord,
   initQuiz,
   mountLists,
-  chooseFiles(cat) { pickCat = cat || "char"; $("edFileInput").click(); },
-  chooseCamera(cat) { pickCat = cat || "char"; $("edCameraInput").click(); },
+  chooseFiles(cat, meta) { pickCat = cat || "char"; pickMeta = meta || {}; $("edFileInput").click(); },
+  chooseCamera(cat, meta) { pickCat = cat || "char"; pickMeta = meta || {}; $("edCameraInput").click(); },
 };
 })();

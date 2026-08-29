@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>みんなの さくひん</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css?v=24">
+</head>
+<body class="collection-page">
+<header class="bar">
+  <a class="back" href="index.html#miru" id="backLink">← もどる</a>
+  <h1 id="pageTitle">みんなの さくひん</h1>
+  <div class="spacer"></div>
+</header>
+
+<main class="collection-main">
+  <section id="shelfScreen">
+    <p class="collection-lead" id="pageLead"></p>
+    <div class="collection-grid" id="collectionGrid"></div>
+    <div class="collection-empty hidden" id="emptyState"></div>
+  </section>
+
+  <section class="exhibit hidden" id="detailScreen" aria-live="polite">
+    <div class="exhibit-heading">
+      <button class="exhibit-back" id="shelfBack" type="button">← いちらん</button>
+      <div>
+        <h2 id="workName"></h2>
+        <p id="workAuthor"></p>
+      </div>
+      <span class="exhibit-count" id="workCount"></span>
+    </div>
+
+    <div class="character-exhibit hidden" id="characterExhibit">
+      <button class="character-stage" id="characterStage" type="button" aria-label="キャラクターをタップして反応を見る">
+        <canvas id="characterCanvas" width="760" height="540"></canvas>
+        <span class="tap-invite">👆 キャラクターを タップ!</span>
+      </button>
+      <div class="reaction-label" id="reactionLabel">なにを するかな?</div>
+      <div class="control-group">
+        <h3>うごき</h3>
+        <div class="exhibit-controls">
+          <button class="motion-btn" type="button" data-motion="walk">🚶 あるく</button>
+          <button class="motion-btn" type="button" data-motion="jump">⬆️ ジャンプ</button>
+          <button class="motion-btn" type="button" data-motion="spin">🌀 くるり</button>
+          <button class="motion-btn" type="button" data-motion="greet">👋 ごあいさつ</button>
+        </div>
+      </div>
+      <div class="control-group" id="voiceGroup">
+        <h3>こえ</h3>
+        <div class="exhibit-controls" id="voiceButtons"></div>
+        <p class="control-note hidden" id="noVoices">こえは まだ とうろくされていないよ</p>
+      </div>
+    </div>
+
+    <div class="background-exhibit hidden" id="backgroundExhibit">
+      <div class="museum-wall"><img id="backgroundImage" alt=""></div>
+    </div>
+
+    <nav class="work-pager" aria-label="さくひんを きりかえる">
+      <button type="button" id="prevWork">◀ まえの さくひん</button>
+      <button type="button" id="nextWork">つぎの さくひん ▶</button>
+    </nav>
+  </section>
+</main>
+
+<script src="js/core.js?v=25"></script>
+<script src="js/rig.js?v=15"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const kind = new URLSearchParams(location.search).get("type") === "bg" ? "bg" : "char";
+const voiceLabels = { joy: "🎉 よろこび", greet: "👋 あいさつ", ouch: "💥 びっくり", fail: "💧 しっぱい" };
+let works = [];
+let current = 0;
+let puppet = null;
+let raf = 0;
+let last = performance.now();
+let motion = { type: "idle", until: 0, started: 0 };
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function text(el, value) { el.textContent = value || ""; }
+
+function setupCopy() {
+  const isChar = kind === "char";
+  document.title = isChar ? "キャラクターずかん" : "みんなの びじゅつかん";
+  text($("pageTitle"), isChar ? "📖 キャラクターずかん" : "🖼️ みんなの びじゅつかん");
+  text($("pageLead"), isChar ? "きになる キャラクターを えらんでね" : "みたい さくひんを えらんでね");
+  $("emptyState").innerHTML = isChar
+    ? "キャラクターが まだ いないよ<br><a href=\"admin.html\">とりこみ・せってい</a>で とうろくしてね"
+    : "はいけいが まだ ないよ<br><a href=\"admin.html\">とりこみ・せってい</a>で とうろくしてね";
+}
+
+function renderShelf() {
+  const grid = $("collectionGrid");
+  grid.innerHTML = "";
+  $("emptyState").classList.toggle("hidden", works.length > 0);
+  works.forEach((work, index) => {
+    const button = document.createElement("button");
+    button.className = "collection-card " + kind;
+    button.type = "button";
+    const frame = document.createElement("span");
+    frame.className = "collection-frame";
+    const img = document.createElement("img");
+    img.src = work.dataURL;
+    img.alt = "";
+    frame.appendChild(img);
+    const caption = document.createElement("span");
+    caption.className = "collection-caption";
+    const name = document.createElement("strong");
+    name.textContent = work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん");
+    caption.appendChild(name);
+    if (work.author) {
+      const author = document.createElement("small");
+      author.textContent = "作者: " + work.author;
+      caption.appendChild(author);
+    }
+    button.append(frame, caption);
+    button.onclick = () => openWork(index);
+    grid.appendChild(button);
+    if (kind === "char") Ui.thumbFix(img, work);
+  });
+}
+
+async function openWork(index) {
+  if (!works.length) return;
+  current = (index + works.length) % works.length;
+  const work = works[current];
+  text($("workName"), work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん"));
+  text($("workAuthor"), work.author ? "作者: " + work.author : "");
+  text($("workCount"), `${current + 1} / ${works.length}`);
+  $("shelfScreen").classList.add("hidden");
+  $("detailScreen").classList.remove("hidden");
+  $("characterExhibit").classList.toggle("hidden", kind !== "char");
+  $("backgroundExhibit").classList.toggle("hidden", kind !== "bg");
+  if (kind === "bg") {
+    $("backgroundImage").src = work.dataURL;
+    $("backgroundImage").alt = work.name || "はいけいの さくひん";
+    return;
+  }
+  renderVoiceButtons(work);
+  try {
+    const parts = await Rig.load(work);
+    if (works[current] !== work) return;
+    puppet = new Puppet(parts, { x: 380, y: 472, h: Math.min(390, 350 * 560 / Math.max(parts.H, 1)), facing: 1 });
+    puppet.h = Math.min(390, 350 * parts.H / Math.max(parts.W, parts.H));
+    resetMotion();
+  } catch (e) {
+    puppet = null;
+    text($("reactionLabel"), "この キャラクターは ひょうじできなかったよ");
+  }
+}
+
+function renderVoiceButtons(work) {
+  const box = $("voiceButtons");
+  box.innerHTML = "";
+  const keys = Object.keys(voiceLabels).filter((key) => work.voices && work.voices[key]);
+  $("noVoices").classList.toggle("hidden", keys.length > 0);
+  Object.keys(voiceLabels).forEach((key) => {
+    const has = keys.includes(key);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "voice-btn";
+    b.textContent = voiceLabels[key] + (has ? "" : "（まだ）");
+    b.disabled = !has;
+    b.onclick = () => {
+      Sound.playVoice(work.voices, [key]);
+      react(key === "joy" ? "jump" : key === "greet" ? "greet" : key === "ouch" ? "spin" : "walk", voiceLabels[key].replace(/^\S+\s/, ""), false);
+    };
+    box.appendChild(b);
+  });
+}
+
+function resetMotion() {
+  motion = { type: "idle", until: 0, started: performance.now() };
+  if (!puppet) return;
+  puppet.walking = false;
+  puppet.roll = 0;
+  puppet.kick = false;
+  puppet.perched = false;
+}
+
+function react(type, label, playGreeting = true) {
+  if (!puppet) return;
+  const now = performance.now();
+  resetMotion();
+  motion = { type, started: now, until: now + (type === "walk" ? 2600 : type === "spin" ? 1100 : 900) };
+  text($("reactionLabel"), label || ({ walk: "てくてく!", jump: "ぴょーん!", spin: "くるりん!", greet: "こんにちは!" }[type]));
+  if (type === "jump" || type === "greet") puppet.hop();
+  if (type === "walk") { puppet.walking = true; Sound.step(); }
+  if (type === "spin") Sound.pon();
+  if (type === "greet" && playGreeting && !Sound.playVoice(works[current].voices, ["greet"])) Sound.good();
+}
+
+function randomReaction() {
+  const choices = ["walk", "jump", "spin", "greet"];
+  const type = Util.choice(choices);
+  react(type);
+  const voiceKeys = Object.keys(voiceLabels).filter((key) => works[current].voices && works[current].voices[key]);
+  if (voiceKeys.length && Math.random() < 0.65) Sound.playVoice(works[current].voices, [Util.choice(voiceKeys)]);
+}
+
+function draw(now) {
+  raf = requestAnimationFrame(draw);
+  const canvas = $("characterCanvas");
+  const ctx = canvas.getContext("2d");
+  const dt = Math.min(.04, (now - last) / 1000 || 0); last = now;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const glow = ctx.createRadialGradient(380, 330, 20, 380, 330, 330);
+  glow.addColorStop(0, "rgba(255,255,255,.96)");
+  glow.addColorStop(1, "rgba(255,241,196,.16)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(139,103,64,.12)";
+  ctx.beginPath(); ctx.ellipse(380, 482, 150, 24, 0, 0, Math.PI * 2); ctx.fill();
+  if (!puppet) return;
+  if (!reducedMotion || motion.type !== "idle") puppet.update(dt);
+  if (motion.until && now >= motion.until) { resetMotion(); text($("reactionLabel"), "もういちど タップしてね!"); }
+  if (motion.type === "walk") {
+    const p = (now - motion.started) / Math.max(1, motion.until - motion.started);
+    puppet.x = 230 + Math.sin(Math.min(1, p) * Math.PI) * 300;
+    puppet.facing = p < .5 ? 1 : -1;
+  } else puppet.x = 380;
+  if (motion.type === "spin") puppet.roll = Math.min(1, (now - motion.started) / 1100) * Math.PI * 2;
+  puppet.draw(ctx);
+}
+
+document.querySelectorAll("[data-motion]").forEach((b) => { b.onclick = () => react(b.dataset.motion); });
+$("characterStage").onclick = randomReaction;
+$("shelfBack").onclick = () => { resetMotion(); $("detailScreen").classList.add("hidden"); $("shelfScreen").classList.remove("hidden"); };
+$("prevWork").onclick = () => openWork(current - 1);
+$("nextWork").onclick = () => openWork(current + 1);
+
+(async () => {
+  setupCopy();
+  await Store.ensureSamples();
+  works = await Store.all(kind);
+  renderShelf();
+  if (kind === "char") raf = requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

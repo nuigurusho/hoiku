@@ -312,7 +312,7 @@ const Sound = {
 window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
-   レコード: { id, name, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL,
+   レコード: { id, name, author, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
                diffVariants:[{dataURL,spots:[{x,y,r}]}],
                fukuParts:[{kind,x,y,w,h}],
@@ -1466,6 +1466,7 @@ const Backup = {
       const file = "images/" + String(i).padStart(4, "0") + "." + ext;
       files.push({ name: file, data: bytes });
       const meta = { file, mime, id: r.id, name: r.name, cat: r.cat, created: r.created };
+      if (r.author) meta.author = r.author;
       if (r.sampleKey) meta.sampleKey = r.sampleKey;
       if (r.rig) meta.rig = r.rig;
       if (r.diffSpots) meta.diffSpots = r.diffSpots;
@@ -1543,7 +1544,7 @@ const Backup = {
       const bytes = map[m.file];
       if (!bytes) continue;
       const rec = {
-        id: m.id, name: m.name, cat: m.cat, created: m.created,
+        id: m.id, name: m.name, author: m.author || "", cat: m.cat, created: m.created,
         dataURL: this._bytesToDataURL(m.mime, bytes),
       };
       if (m.sampleKey) rec.sampleKey = m.sampleKey;

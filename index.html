@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>みんなの ゲームパック</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 <style>
   /* ---------- ゲーム一覧(1行5こ・3だん) ----------
      ※ キャッシュ対策でここに直接書き、外部CSSに左右されないようにする */
@@ -85,8 +85,10 @@
   </div>
 
   <div class="tab-panel hidden" id="panel-see">
-    <p class="subtitle">みているだけで すすむよ。ゲームを えらんでね!</p>
+    <p class="subtitle">みんなの さくひんを ゆっくり みたり、うごく ゲームを たのしめるよ!</p>
     <div class="tiles games">
+    <a class="tile collection-tile char" href="gallery.html?type=char"><span class="collection-icon" aria-hidden="true">📖</span>キャラクターずかん<span class="sub">タップすると うごいて こたえるよ</span></a>
+    <a class="tile collection-tile bg" href="gallery.html?type=bg"><span class="collection-icon" aria-hidden="true">🖼️</span>みんなの びじゅつかん<span class="sub">はいけいを 1まいずつ みられるよ</span></a>
     <a class="tile" href="games/world.html"><img class="icon" src="assets/buttons/world.png" alt="">みんなの せかい</a>
     <a class="tile" href="games/race.html?mode=cheer"><img class="icon" src="assets/buttons/race.png" alt="">かけっこ</a>
     <a class="tile" href="games/tamaire.html"><img class="icon" src="assets/buttons/tamaire.png" alt="">たまいれ</a>
@@ -133,7 +135,7 @@
   </div>
 
 </main>
-<script src="js/core.js?v=24"></script>
+<script src="js/core.js?v=25"></script>
 <script>
   // 初回アクセス時にサンプル画像を用意しておく
   Store.ensureSamples();

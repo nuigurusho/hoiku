@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>取り込み・設定</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
 </head>
 <body>
 <header class="bar">
@@ -23,6 +23,11 @@
       <label class="radio-row"><input type="radio" name="cat" value="fuku"> <span>😀 キャラクターの顔(ふくわらい用)</span></label>
       <label class="radio-row"><input type="radio" name="cat" value="pic"> <span>🖼️ 写真・絵(パズル・まちがいさがし用)</span></label>
       <label class="radio-row"><input type="radio" name="cat" value="bg"> <span>🏞️ 背景の絵</span></label>
+    </div>
+    <div class="import-meta" id="importMeta">
+      <label><span id="importNameLabel">キャラクター名</span><input id="importName" type="text" maxlength="40" placeholder="例: にじいろちゃん"></label>
+      <label><span>作者名 <small>（任意）</small></span><input id="importAuthor" type="text" maxlength="40" placeholder="例: さくらぐみ"></label>
+      <p class="note">複数枚を選ぶと、名前の後ろに番号がつきます。あとから「作品情報」でも変更できます。</p>
     </div>
     <div class="row" style="justify-content:flex-start">
       <button class="btn green" id="pickBtn">ファイルを選ぶ(複数可・PDFも可)</button>
@@ -62,9 +67,9 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=24"></script>
+<script src="js/core.js?v=25"></script>
 <script src="js/rig.js?v=15"></script>
-<script src="js/editors.js?v=14"></script>
+<script src="js/editors.js?v=15"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -106,7 +111,9 @@ Editors.onChange = refresh;
 function row(r) {
   const d = document.createElement("div");
   d.className = "admin-row";
-  d.innerHTML = `<img src="${r.dataURL}"><span class="nm">${r.name || "(名前なし)"}</span>`;
+  d.innerHTML = `<img src="${r.dataURL}"><span class="nm"></span>`;
+  const info = r.name || "(名前なし)";
+  d.querySelector(".nm").textContent = r.author ? `${info}　作者: ${r.author}` : info;
   Ui.thumbFix(d.querySelector("img"), r);
   const mk = (label, cls, fn) => {
     const b = document.createElement("button");
@@ -115,9 +122,16 @@ function row(r) {
     b.onclick = fn;
     d.appendChild(b);
   };
-  mk("名前", "blue", async () => {
-    const nm = prompt("名前を入力してください", r.name || "");
-    if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
+  mk(r.cat === "char" || r.cat === "bg" ? "作品情報" : "名前", "blue", async () => {
+    const nm = prompt(r.cat === "char" ? "キャラクター名を入力してください" : r.cat === "bg" ? "背景名を入力してください" : "名前を入力してください", r.name || "");
+    if (nm === null) return;
+    r.name = nm.trim();
+    if (r.cat === "char" || r.cat === "bg") {
+      const author = prompt("作者名を入力してください（任意）", r.author || "");
+      if (author === null) return;
+      r.author = author.trim();
+    }
+    await Store.put(r); refresh();
   });
   mk("DL", "blue", () => {
     const ext = /^data:image\/png/i.test(r.dataURL) ? "png" : "jpg";
@@ -150,8 +164,16 @@ function row(r) {
 }
 
 const curCat = () => document.querySelector('input[name="cat"]:checked').value;
-$("pickBtn").onclick = () => Editors.chooseFiles(curCat());
-$("cameraBtn").onclick = () => Editors.chooseCamera(curCat());
+const importMeta = () => ({ name: $("importName").value.trim(), author: $("importAuthor").value.trim() });
+function updateImportMeta() {
+  const cat = curCat();
+  $("importMeta").classList.toggle("hidden", cat !== "char" && cat !== "bg");
+  $("importNameLabel").textContent = cat === "bg" ? "背景名" : "キャラクター名";
+}
+document.querySelectorAll('input[name="cat"]').forEach((el) => el.addEventListener("change", updateImportMeta));
+updateImportMeta();
+$("pickBtn").onclick = () => Editors.chooseFiles(curCat(), importMeta());
+$("cameraBtn").onclick = () => Editors.chooseCamera(curCat(), importMeta());
 
 /* 長い説明は iボタンの中に(読みやすい箇条書きで) */
 $("importInfo").onclick = () => {
