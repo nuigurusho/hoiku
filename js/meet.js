@@ -266,32 +266,76 @@ const Meet = (() => {
      ============================================================ */
   const KK_GOAL = 2400;
   const KK_TOP = 84, KK_TOP_H = 536;   // レーンの うえの あき・ぜんたいの たかさ
+  const KK_MAX_PER_HEAT = 4;
+
+  /* 1組4人までにし、各組の人数とチーム数がなるべく均等になるように分ける。 */
+  function kkMakeHeats(A) {
+    const total = A.red.length + A.blue.length;
+    const count = Math.max(1, Math.ceil(total / KK_MAX_PER_HEAT));
+    const sizes = Array.from({ length: count }, (_, i) =>
+      Math.floor(total / count) + (i < total % count ? 1 : 0));
+
+    // 手動でチーム人数が偏っていても全員が出られるよう、全体の赤青比を各組へ配分する。
+    // 端数は理想人数との差が大きい組から1人ずつ足すと、合計人数を保ったまま偏りを抑えられる。
+    const ideals = sizes.map((n) => n * A.red.length / total);
+    const redCounts = ideals.map((n) => Math.floor(n));
+    let redLeft = A.red.length - redCounts.reduce((sum, n) => sum + n, 0);
+    const remainderOrder = ideals.map((n, i) => ({ i, frac: n - Math.floor(n) }))
+      .sort((a, b) => b.frac - a.frac || a.i - b.i);
+    for (const item of remainderOrder) {
+      if (redLeft <= 0) break;
+      if (redCounts[item.i] < sizes[item.i]) { redCounts[item.i]++; redLeft--; }
+    }
+
+    let ri = 0, bi = 0;
+    return sizes.map((size, i) => {
+      const red = A.red.slice(ri, ri + redCounts[i]);
+      const blueCount = size - red.length;
+      const blue = A.blue.slice(bi, bi + blueCount);
+      ri += red.length;
+      bi += blue.length;
+      const lanes = [];
+      const maxLen = Math.max(red.length, blue.length);
+      for (let j = 0; j < maxLen; j++) {
+        if (red[j]) lanes.push(red[j]);
+        if (blue[j]) lanes.push(blue[j]);
+      }
+      return lanes;
+    });
+  }
+
+  function kkStartHeat(M, index) {
+    const E = M.E;
+    E.heatIndex = index;
+    E.lanes = E.heats[index];
+    E.laneH = KK_TOP_H / E.lanes.length;
+    E.state = "ready";
+    E.stateT = 0;
+    E.finished = 0;
+    E.lead = 0;
+    E.sinceFirst = 0;
+    for (const a of E.lanes) {
+      a.prog = 0; a.rank = 0; a.wob = Util.rand(0, 9);
+      a.event = null; a.eventT = 0; a.eventCd = Util.rand(1.4, 3.4); a.emo = "";
+      a.puppet.h = Util.clamp(E.laneH * 1.1, 42, 148);
+      a.puppet.facing = 1;
+    }
+    kkHud(M);
+    const heat = E.heats.length > 1 ? `${index + 1}くみめ! ` : "";
+    M.say([`🏁 ${heat}いちについて… よーい…`], "");
+    M.ui.msg(E.heats.length > 1 ? `${index + 1}くみめ よーい…` : "よーい…", 1100, "#4dabf7");
+    Sound.tick();
+  }
 
   const KAKEKKO = {
     init(M) {
-      // あか・あおを こうごに ならべる(となりが あいてチーム)
-      const lanes = [];
-      const maxLen = Math.max(M.A.red.length, M.A.blue.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (M.A.red[i])  lanes.push(M.A.red[i]);
-        if (M.A.blue[i]) lanes.push(M.A.blue[i]);
-      }
-      const laneH = KK_TOP_H / lanes.length;
-      for (const a of lanes) {
-        a.prog = 0; a.rank = 0; a.wob = Util.rand(0, 9);
-        a.event = null; a.eventT = 0; a.eventCd = Util.rand(1.4, 3.4); a.emo = "";
-        a.puppet.h = Util.clamp(laneH * 1.1, 42, 148);
-        a.puppet.facing = 1;
-      }
+      const heats = kkMakeHeats(M.A);
       M.E = {
-        lanes, laneH, state: "ready", stateT: 0,
-        finished: 0, lead: 0, sinceFirst: 0,
-        pts: { red: 0, blue: 0 }, floats: [],
+        heats, heatIndex: 0, lanes: [], laneH: 0,
+        state: "ready", stateT: 0, finished: 0, lead: 0, sinceFirst: 0,
+        pts: { red: 0, blue: 0 }, firsts: { red: 0, blue: 0 }, floats: [],
       };
-      kkHud(M);
-      M.say(["🏁 いちについて… よーい…"], "");
-      M.ui.msg("よーい…", 1100, "#4dabf7");
-      Sound.tick();
+      kkStartHeat(M, 0);
     },
 
     update(M, dt) {
@@ -314,6 +358,8 @@ const Meet = (() => {
         if (E.finished) E.sinceFirst += dt;
         // ぜんいん ゴール、または 1いから しばらく たったら しめきり
         if (E.finished >= E.lanes.length || (E.finished && E.sinceFirst > 6)) kkEnd(M);
+      } else if (E.state === "between" && E.stateT >= 2.4) {
+        kkStartHeat(M, E.heatIndex + 1);
       }
       idleAll(M, dt);
     },
@@ -352,6 +398,7 @@ const Meet = (() => {
       a.puppet.walking = false;
       const pt = E.lanes.length - a.rank + 1;
       E.pts[a.team] += pt;
+      if (a.rank === 1) E.firsts[a.team]++;
       const medal = ["", "🥇", "🥈", "🥉"][a.rank] || `${a.rank}い`;
       M.say([medal + " ", a, ` ゴール! ${pt}てん!`], a.team);
       addFloat(M, 1150, KK_TOP + M.E.laneH * (M.E.lanes.indexOf(a) + 1) - 60, `+${pt}`, COLD[a.team], a.rank === 1);
@@ -388,9 +435,20 @@ const Meet = (() => {
       a.event = null; a.emo = "";
     }
     kkHud(M);
+    if (E.heatIndex + 1 < E.heats.length) {
+      E.state = "between";
+      E.stateT = 0;
+      const next = E.heatIndex + 2;
+      M.say([`🏁 ${E.heatIndex + 1}くみめ しゅうりょう! つぎは ${next}くみめ!`], "");
+      Sound.good();
+      return;
+    }
     const p = E.pts;
     let win = p.red === p.blue ? null : (p.red > p.blue ? "red" : "blue");
-    if (!win) {                                   // どうてんは 1いの チームの かち
+    if (!win && E.firsts.red !== E.firsts.blue) { // 同点は1位が多いチームの勝ち
+      win = E.firsts.red > E.firsts.blue ? "red" : "blue";
+    }
+    if (!win) {                                   // それも同じなら最後の組の1位
       const first = E.lanes.find((a) => a.rank === 1);
       win = first ? first.team : null;
     }
@@ -405,7 +463,7 @@ const Meet = (() => {
     M.ui.hud({
       red:  `${MARK.red} ${M.names.red} ${p.red}てん`,
       blue: `${MARK.blue} ${M.names.blue} ${p.blue}てん`,
-      mid:  "かけっこ",
+      mid:  M.E.heats.length > 1 ? `かけっこ ${M.E.heatIndex + 1}/${M.E.heats.length}` : "かけっこ",
       n:    { red: p.red, blue: p.blue },
       unit: { red: "てん", blue: "てん" },
     });
