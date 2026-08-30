@@ -869,6 +869,59 @@ canvas.stage {
 .rig-types .btn { opacity: .55; }
 .rig-types .btn.active { opacity: 1; outline: 3px solid #212529; transform: translateY(1px); }
 
+/* 動き設定の高度な調整。閉じている間は従来と同じ簡単な画面だけを見せる。 */
+.advanced-settings {
+  max-width: 720px;
+  margin: 18px auto 4px;
+  border: 3px solid #e3b341;
+  border-radius: 18px;
+  background: #fffaf0;
+  overflow: hidden;
+  text-align: left;
+}
+.advanced-settings > summary {
+  cursor: pointer;
+  padding: 15px 18px;
+  font-size: 19px;
+  font-weight: bold;
+  color: #725000;
+  background: #fff1bd;
+  list-style-position: inside;
+}
+.advanced-settings[open] > summary { border-bottom: 3px solid #e3b341; }
+.advanced-block { padding: 14px 18px 18px; }
+.advanced-block + .advanced-block { border-top: 3px dashed #e5d2aa; }
+.advanced-block h3 { margin-top: 0 !important; }
+.cutout-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.cutout-mode .radio-row { align-items: flex-start; font-size: 16px; }
+.cutout-mode .radio-row span { display: grid; gap: 3px; }
+.cutout-mode .radio-row small { color: #7f705e; font-weight: normal; line-height: 1.35; }
+.advanced-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+.advanced-sliders label, .cutout-tools label { display: grid; gap: 5px; font-size: 15px; font-weight: bold; }
+.advanced-sliders output { color: var(--orange-d); }
+.advanced-settings input[type="range"] { width: 100%; accent-color: var(--orange); }
+.cutout-canvas { display: block; margin: 8px auto 12px; border: 3px solid #cbbda8; }
+.cutout-tools { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.cutout-tools .btn { padding: 9px 13px; font-size: 14px; border-width: 2px; box-shadow: 0 3px 0 var(--shade); }
+.cutout-tools .btn.active { outline: 4px solid #212529; outline-offset: 2px; }
+.cutout-tools label { min-width: 150px; }
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 3px solid #d8c7aa;
+  border-radius: 14px;
+  background: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+.toggle-row input { width: 24px; height: 24px; accent-color: var(--purple); }
+@media (max-width: 620px) {
+  .cutout-mode, .advanced-sliders { grid-template-columns: 1fr; }
+  .advanced-block { padding: 12px; }
+}
+
 /* ---------- ダイアログの ラジオ・メニュー ---------- */
 .radio-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
 .radio-row {

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>取り込み・設定</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body>
 <header class="bar">
@@ -67,9 +67,9 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=25"></script>
-<script src="js/rig.js?v=15"></script>
-<script src="js/editors.js?v=15"></script>
+<script src="js/core.js?v=26"></script>
+<script src="js/rig.js?v=16"></script>
+<script src="js/editors.js?v=16"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -154,6 +154,7 @@ function row(r) {
     if (!cat || cat === r.cat) return;
     r.cat = cat;
     if (cat === "char" && !r.rig) r.rig = { ...Rig.DEFAULT };
+    if (cat === "char" && !r.cutout) r.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
     await Store.put(r);
     refresh();
   });
@@ -191,7 +192,8 @@ $("importInfo").onclick = () => {
     <ul class="info-list">
       <li>白い紙に <b>濃く・はっきり</b> 描く(うすい鉛筆は消えやすい)</li>
       <li>明るい場所で <b>影が入らないよう</b> 真上からまっすぐ撮る</li>
-      <li>白い部分は自動で透明になります。背景が白いほどきれいに切り抜けます</li>
+      <li>キャラクターは、紙の外側につながる白だけを自動で透明にします。輪郭の中の白い顔・服・体は残ります</li>
+      <li>輪郭が薄い・切れている絵は、「つくる」画面の <b>動き設定 → 高度な設定</b> で白の判定や隙間補正、残す／消す筆を調整できます</li>
       <li>キャラクターは <b>紙いっぱいに大きく</b> 描くと、動かしたときにきれいです</li>
       <li>顔の絵は、目・鼻・口が重ならないよう <b>大きく</b> 描くとパーツを切り出しやすいです</li>
     </ul>

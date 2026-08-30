@@ -72,20 +72,104 @@ const Util = {
     });
   },
 
-  /* 白っぽい背景を透明に(紙に描いた絵の切りぬき) */
-  keyImage(img, thr = 225) {
+  /* キャラクターの白背景を抜く設定。
+     cutout未設定の古い絵は、見た目を変えないため従来方式(legacy)で扱う。 */
+  cutoutSettings(cutout) {
+    return {
+      mode: cutout && cutout.mode === "edge" ? "edge" : "legacy",
+      threshold: Util.clamp(Number(cutout && cutout.threshold) || 225, 170, 250),
+      gap: Util.clamp(Number(cutout && cutout.gap) || 0, 0, 8),
+      strokes: Array.isArray(cutout && cutout.strokes) ? cutout.strokes.slice(0, 800) : [],
+    };
+  },
+
+  /* 白っぽい背景を透明に(紙に描いた絵の切りぬき)。
+     edgeは「外周から届く白だけ」を抜き、輪郭の内側にある白い体・服を残す。 */
+  keyImage(img, options = 225) {
+    const cfg = typeof options === "number"
+      ? { mode: "legacy", threshold: options, gap: 0, strokes: [] }
+      : Util.cutoutSettings(options);
+    const thr = cfg.threshold;
     const c = Util.makeCanvas(img.width, img.height);
     const ctx = c.getContext("2d");
     ctx.drawImage(img, 0, 0);
     const id = ctx.getImageData(0, 0, c.width, c.height);
     const d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2];
-      const bright = Math.min(r, g, b);
-      if (bright > thr) {
-        d[i + 3] = 0;
-      } else if (bright > thr - 25) {
-        d[i + 3] = Math.round(255 * (thr - bright) / 25);
+    const w = c.width, h = c.height, n = w * h;
+    const originalAlpha = cfg.strokes.length ? Uint8Array.from({ length: n }, (_, i) => d[i * 4 + 3]) : null;
+
+    if (cfg.mode === "legacy") {
+      for (let i = 0; i < d.length; i += 4) {
+        const bright = Math.min(d[i], d[i + 1], d[i + 2]);
+        if (bright > thr) d[i + 3] = 0;
+        else if (bright > thr - 25) d[i + 3] = Math.round(255 * (thr - bright) / 25);
+      }
+    } else {
+      const wall = new Uint8Array(n);
+      const soft = 25;
+      for (let i = 0; i < n; i++) {
+        const p = i * 4;
+        const bright = Math.min(d[p], d[p + 1], d[p + 2]);
+        if (d[p + 3] > 20 && bright <= thr - soft) wall[i] = 1;
+      }
+
+      // 輪郭の判定だけを少し太らせ、小さな線の切れ目から背景が体内へ漏れるのを防ぐ。
+      if (cfg.gap > 0) {
+        const r = Math.round(cfg.gap);
+        const dist = new Int8Array(n).fill(-1);
+        const growQ = new Int32Array(n);
+        let gh = 0, gt = 0;
+        for (let i = 0; i < n; i++) if (wall[i]) { dist[i] = 0; growQ[gt++] = i; }
+        while (gh < gt) {
+          const i = growQ[gh++], x = i % w, nd = dist[i] + 1;
+          if (nd > r) continue;
+          const grow = (j) => {
+            if (dist[j] >= 0) return;
+            dist[j] = nd; wall[j] = 1; growQ[gt++] = j;
+          };
+          if (x > 0) grow(i - 1);
+          if (x < w - 1) grow(i + 1);
+          if (i >= w) grow(i - w);
+          if (i + w < n) grow(i + w);
+        }
+      }
+
+      const outside = new Uint8Array(n);
+      const q = new Int32Array(n);
+      let qh = 0, qt = 0;
+      const seed = (i) => {
+        if (!outside[i] && !wall[i]) { outside[i] = 1; q[qt++] = i; }
+      };
+      for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+      while (qh < qt) {
+        const i = q[qh++], x = i % w;
+        if (x > 0) seed(i - 1);
+        if (x < w - 1) seed(i + 1);
+        if (i >= w) seed(i - w);
+        if (i + w < n) seed(i + w);
+      }
+
+      for (let i = 0; i < n; i++) {
+        if (!outside[i]) continue;
+        const p = i * 4;
+        const bright = Math.min(d[p], d[p + 1], d[p + 2]);
+        if (bright > thr) d[p + 3] = 0;
+        else if (bright > thr - soft) d[p + 3] = Math.round(255 * (thr - bright) / soft);
+      }
+    }
+
+    // 高度な設定の「残す／消す」筆。元画像に対する正規化座標なので縮小してもずれない。
+    for (const s of cfg.strokes) {
+      const cx = Util.clamp(Number(s.x) || 0, 0, 1) * w;
+      const cy = Util.clamp(Number(s.y) || 0, 0, 1) * h;
+      const rr = Util.clamp(Number(s.r) || 0.02, 0.002, 0.2) * Math.max(w, h);
+      const x0 = Math.max(0, Math.floor(cx - rr)), x1 = Math.min(w - 1, Math.ceil(cx + rr));
+      const y0 = Math.max(0, Math.floor(cy - rr)), y1 = Math.min(h - 1, Math.ceil(cy + rr));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > rr * rr) continue;
+        const i = y * w + x;
+        d[i * 4 + 3] = s.keep ? originalAlpha[i] : 0;
       }
     }
     ctx.putImageData(id, 0, 0);
@@ -203,7 +287,7 @@ const Util = {
      いちらん・キャラえらびの サムネで つかう。 */
   async symCanvas(rec) {
     const img = await this.loadImage(rec.dataURL);
-    const t = this.trimCanvas(this.keyImage(img));
+    const t = this.trimCanvas(this.keyImage(img, rec.cutout));
     const hx = (rec.rig && rec.rig.hingeX) || 0;
     const hinge = Math.min(t.width - 1, Math.round(this.clamp(hx, 0, 0.6) * t.width));
     const wingW = Math.max(1, t.width - hinge);
@@ -312,7 +396,7 @@ const Sound = {
 window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
-   レコード: { id, name, author, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL,
+   レコード: { id, name, author, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL, cutout,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
                diffVariants:[{dataURL,spots:[{x,y,r}]}],
                fukuParts:[{kind,x,y,w,h}],
@@ -1467,6 +1551,7 @@ const Backup = {
       files.push({ name: file, data: bytes });
       const meta = { file, mime, id: r.id, name: r.name, cat: r.cat, created: r.created };
       if (r.author) meta.author = r.author;
+      if (r.cutout) meta.cutout = r.cutout;
       if (r.sampleKey) meta.sampleKey = r.sampleKey;
       if (r.rig) meta.rig = r.rig;
       if (r.diffSpots) meta.diffSpots = r.diffSpots;
@@ -1548,6 +1633,7 @@ const Backup = {
         dataURL: this._bytesToDataURL(m.mime, bytes),
       };
       if (m.sampleKey) rec.sampleKey = m.sampleKey;
+      if (m.cutout) rec.cutout = m.cutout;
       if (m.rig) rec.rig = m.rig;
       if (m.diffSpots) rec.diffSpots = m.diffSpots;
       if (m.diffVariants) {

@@ -24,7 +24,7 @@ const Rig = {
   /* レコード → 分割パーツ一式 */
   async load(rec) {
     const img = await Util.loadImage(rec.dataURL);
-    const keyed = Util.keyImage(img);
+    const keyed = Util.keyImage(img, rec.cutout);
     const trimmed = Util.trimCanvas(keyed);
     return this.makeParts(trimmed, rec.rig || this.DEFAULT, rec.name);
   },
@@ -135,13 +135,55 @@ const Rig = {
     /* biped(にほんあし・現行動作 / 後方互換) */
     const neckY = Math.round(Util.clamp(val(rig.neckY, 0.42), 0.1, 0.9) * H);
     const hipY  = Math.round(Util.clamp(val(rig.hipY, 0.7), val(rig.neckY, 0.42) + 0.05, 0.95) * H);
-    return {
+    const out = {
       ...base, neckY, hipY,
       head:  { ...cut(0, 0, W, neckY + OV),            pivot: { x: cx, y: neckY } },
       torso: { ...cut(0, neckY, W, hipY - neckY + OV), pivot: { x: cx, y: hipY } },
       legL:  { ...cut(0, hipY, cx, H - hipY),          pivot: { x: cx * 0.5, y: hipY } },
       legR:  { ...cut(cx, hipY, W - cx, H - hipY),     pivot: { x: cx + (W - cx) * 0.5, y: hipY } },
     };
+
+    /* 高度な設定:左右の腕を矩形で切り出し、肩の点を支点にする。
+       腕の範囲は頭・胴・脚から消し、肩の周りだけ少し重ねて切れ目を隠す。 */
+    const arms = rig.arms;
+    if (arms && arms.enabled) {
+      const armRect = (a, fallback) => {
+        a = a || fallback;
+        const x = Math.round(Util.clamp(val(a.x, fallback.x), 0, 0.95) * W);
+        const y = Math.round(Util.clamp(val(a.y, fallback.y), 0, 0.95) * H);
+        const x2 = Math.round(Util.clamp(val(a.x, fallback.x) + val(a.w, fallback.w), x / W + 0.03, 1) * W);
+        const y2 = Math.round(Util.clamp(val(a.y, fallback.y) + val(a.h, fallback.h), y / H + 0.03, 1) * H);
+        return {
+          x, y, w: Math.max(1, x2 - x), h: Math.max(1, y2 - y),
+          px: Math.round(Util.clamp(val(a.px, fallback.px), 0, 1) * W),
+          py: Math.round(Util.clamp(val(a.py, fallback.py), 0, 1) * H),
+        };
+      };
+      const left = armRect(arms.left,  { x: 0, y: 0.28, w: 0.4, h: 0.42, px: 0.36, py: 0.46 });
+      const right = armRect(arms.right, { x: 0.6, y: 0.28, w: 0.4, h: 0.42, px: 0.64, py: 0.46 });
+      out.armL = { ...cut(left.x, left.y, left.w, left.h), pivot: { x: left.px, y: left.py } };
+      out.armR = { ...cut(right.x, right.y, right.w, right.h), pivot: { x: right.px, y: right.py } };
+      out.armRects = { left, right };
+
+      const clearFrom = (pt, r) => {
+        const pc = pt.c.getContext("2d");
+        pc.clearRect(r.x - pt.ox, r.y - pt.oy, r.w, r.h);
+      };
+      for (const pt of [out.head, out.torso, out.legL, out.legR]) {
+        clearFrom(pt, left);
+        clearFrom(pt, right);
+      }
+      // 肩の周りは胴体にも残し、回転しても小さな穴が見えにくいようにする。
+      const restoreShoulder = (r) => {
+        const rad = Math.max(OV * 3, Math.round(Math.min(W, H) * 0.025));
+        const sx = Math.max(0, r.px - rad), sy = Math.max(0, r.py - rad);
+        const sw = Math.min(W - sx, rad * 2), sh = Math.min(H - sy, rad * 2);
+        out.torso.c.getContext("2d").drawImage(canvas, sx, sy, sw, sh, sx - out.torso.ox, sy - out.torso.oy, sw, sh);
+      };
+      restoreShoulder(left);
+      restoreShoulder(right);
+    }
+    return out;
   },
 };
 
@@ -232,6 +274,11 @@ class Puppet {
 
     part(p.legL, legPose);
     part(p.legR, -legPose);
+    if (p.armL || p.armR) {
+      const armSwing = inAir ? -0.62 : this.walking ? -swing * 0.72 : Math.sin(this.t * 2.2) * 0.045;
+      part(p.armL, armSwing);
+      part(p.armR, -armSwing);
+    }
     ctx.translate(0, -walkBob / s);
     part(p.torso, rock);
     part(p.head, -rock * 1.4);

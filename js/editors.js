@@ -43,6 +43,34 @@ document.body.insertAdjacentHTML("beforeend", `
         <canvas id="rigPreview" width="220" height="280" style="background:#e7f5ff;border-radius:12px"></canvas>
       </div>
     </div>
+    <details class="advanced-settings" id="rigAdvanced">
+      <summary>高度な設定</summary>
+      <div class="advanced-block">
+        <h3>白い体を残して背景を抜く</h3>
+        <p class="note">まず「外側の白だけ抜く」を選びます。輪郭が薄い・少し切れているときだけ、白の判定と隙間補正を調整してください。</p>
+        <div class="cutout-mode" id="cutoutModes">
+          <label class="radio-row"><input type="radio" name="cutoutMode" value="edge"> <span><b>外側の白だけ抜く</b><small>白い顔・服・体を残す（おすすめ）</small></span></label>
+          <label class="radio-row"><input type="radio" name="cutoutMode" value="legacy"> <span><b>白をすべて抜く</b><small>これまでと同じ方式</small></span></label>
+        </div>
+        <div class="advanced-sliders">
+          <label>白の判定 <output id="cutoutThresholdOut"></output><input id="cutoutThreshold" type="range" min="170" max="250" step="1"></label>
+          <label>輪郭の隙間を閉じる <output id="cutoutGapOut"></output><input id="cutoutGap" type="range" min="0" max="8" step="1"></label>
+        </div>
+        <p class="note">下の市松模様が透明部分です。自動で直らないところだけ筆でなぞれます。</p>
+        <canvas id="cutoutCanvas" class="edit-canvas cutout-canvas" width="520" height="420"></canvas>
+        <div class="cutout-tools">
+          <button class="btn green active" type="button" id="cutoutKeep">白を残す筆</button>
+          <button class="btn gray" type="button" id="cutoutErase">背景を消す筆</button>
+          <label>筆の太さ <input id="cutoutBrush" type="range" min="6" max="54" step="2" value="24"></label>
+          <button class="btn yellow" type="button" id="cutoutReset">筆をリセット</button>
+        </div>
+      </div>
+      <div class="advanced-block" id="armAdvancedBlock">
+        <h3>腕も動かす</h3>
+        <label class="toggle-row"><input id="rigArmsEnabled" type="checkbox"> <span>左右の腕を肩から動かす</span></label>
+        <p class="note">オンにすると、左の絵に腕の範囲と肩の丸が出ます。四角の角と肩の丸をドラッグして合わせてください。</p>
+      </div>
+    </details>
     <div class="row">
       <button class="btn green" id="rigSave">✔ 保存する</button>
       <button class="btn gray" id="rigCancel">キャンセル</button>
@@ -174,7 +202,10 @@ async function importFiles(files, cat, meta) {
       const numberedName = meta.name && files.length > 1 ? `${meta.name} ${ok + 1}` : meta.name;
       const rec = { name: numberedName || `${base}${n}`, cat, dataURL };
       if ((cat === "char" || cat === "bg") && meta.author) rec.author = meta.author;
-      if (cat === "char") rec.rig = { ...Rig.DEFAULT };
+      if (cat === "char") {
+        rec.rig = { ...Rig.DEFAULT };
+        rec.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
+      }
       await Store.put(rec);
       ok++;
     } catch (e) {
@@ -342,7 +373,10 @@ async function saveCropRegion(rect) {
     dataURL: out.toDataURL("image/jpeg", 0.88),
   };
   if ((cat === "char" || cat === "bg") && cropEd.author) rec.author = cropEd.author;
-  if (cat === "char") rec.rig = { ...Rig.DEFAULT };
+  if (cat === "char") {
+    rec.rig = { ...Rig.DEFAULT };
+    rec.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
+  }
   await Store.put(rec);
   Sound.pop();
   Ui.msg("保存しました", 1100, "#51cf66");
@@ -377,24 +411,118 @@ $("cropNext").onclick = () => { Sound.tap(); cropEd.idx++; showCropPage(); };
 $("cropClose").onclick = () => $("cropModal").classList.add("hidden");
 
 /* ---------- リグ編集 ---------- */
-const rigEd = { rec: null, trimmed: null, rig: null, drag: null, parts: null, puppet: null, raf: 0 };
+const rigEd = {
+  rec: null, img: null, keyed: null, trimmed: null, rig: null, cutout: null,
+  drag: null, parts: null, puppet: null, raf: 0, cutoutRaf: 0,
+  brush: "keep", painting: false,
+};
 
 async function openRig(rec) {
   rigEd.rec = rec;
   rigEd.rig = { ...Rig.DEFAULT, ...(rec.rig || {}) };
-  const img = await Util.loadImage(rec.dataURL);
-  rigEd.trimmed = Util.trimCanvas(Util.keyImage(img));
+  if (rigEd.rig.arms) rigEd.rig.arms = JSON.parse(JSON.stringify(rigEd.rig.arms));
+  rigEd.cutout = Util.cutoutSettings(rec.cutout);
+  rigEd.cutout.strokes = rigEd.cutout.strokes.map((s) => ({ ...s }));
+  rigEd.img = await Util.loadImage(rec.dataURL);
+  $("rigAdvanced").open = false;
+  $("rigModal").classList.remove("hidden");
+  syncCutoutControls();
+  refreshRigImage();
+  animPreview();
+}
+
+function refreshRigImage() {
+  rigEd.keyed = Util.keyImage(rigEd.img, rigEd.cutout);
+  rigEd.trimmed = Util.trimCanvas(rigEd.keyed);
   const cv = $("rigCanvas");
   const maxW = Math.min(360, innerWidth - 80);
   const sc = Math.min(maxW / rigEd.trimmed.width, 440 / rigEd.trimmed.height);
   cv.width = Math.round(rigEd.trimmed.width * sc);
   cv.height = Math.round(rigEd.trimmed.height * sc);
-  $("rigModal").classList.remove("hidden");
+
+  const cut = $("cutoutCanvas");
+  const cutW = Math.min(620, innerWidth - 76);
+  const cutSc = Math.min(cutW / rigEd.keyed.width, 430 / rigEd.keyed.height, 1);
+  cut.width = Math.max(1, Math.round(rigEd.keyed.width * cutSc));
+  cut.height = Math.max(1, Math.round(rigEd.keyed.height * cutSc));
+  const cutCtx = cut.getContext("2d");
+  cutCtx.clearRect(0, 0, cut.width, cut.height);
+  cutCtx.drawImage(rigEd.keyed, 0, 0, cut.width, cut.height);
+
   syncTypeButtons();
+  syncAdvancedRig();
   rebuildParts();
   drawRig();
-  animPreview();
 }
+
+function scheduleRigImageRefresh() {
+  cancelAnimationFrame(rigEd.cutoutRaf);
+  rigEd.cutoutRaf = requestAnimationFrame(refreshRigImage);
+}
+
+function syncCutoutControls() {
+  document.querySelectorAll('input[name="cutoutMode"]').forEach((el) => { el.checked = el.value === rigEd.cutout.mode; });
+  $("cutoutThreshold").value = rigEd.cutout.threshold;
+  $("cutoutGap").value = rigEd.cutout.gap;
+  $("cutoutThresholdOut").textContent = String(rigEd.cutout.threshold);
+  $("cutoutGapOut").textContent = rigEd.cutout.gap ? `${rigEd.cutout.gap}px` : "なし";
+  $("cutoutKeep").classList.toggle("active", rigEd.brush === "keep");
+  $("cutoutErase").classList.toggle("active", rigEd.brush === "erase");
+}
+
+document.querySelectorAll('input[name="cutoutMode"]').forEach((el) => {
+  el.onchange = () => {
+    rigEd.cutout.mode = el.value;
+    syncCutoutControls();
+    scheduleRigImageRefresh();
+  };
+});
+$("cutoutThreshold").oninput = (e) => {
+  rigEd.cutout.threshold = +e.target.value;
+  $("cutoutThresholdOut").textContent = e.target.value;
+  scheduleRigImageRefresh();
+};
+$("cutoutGap").oninput = (e) => {
+  rigEd.cutout.gap = +e.target.value;
+  $("cutoutGapOut").textContent = rigEd.cutout.gap ? `${rigEd.cutout.gap}px` : "なし";
+  scheduleRigImageRefresh();
+};
+$("cutoutKeep").onclick = () => { rigEd.brush = "keep"; syncCutoutControls(); };
+$("cutoutErase").onclick = () => { rigEd.brush = "erase"; syncCutoutControls(); };
+$("cutoutReset").onclick = () => {
+  rigEd.cutout.strokes = [];
+  Sound.tap();
+  scheduleRigImageRefresh();
+};
+
+function addCutoutStroke(e) {
+  const cv = $("cutoutCanvas");
+  const p = Util.canvasPos(cv, e);
+  const s = {
+    x: Util.clamp(p.x / cv.width, 0, 1),
+    y: Util.clamp(p.y / cv.height, 0, 1),
+    r: (+$("cutoutBrush").value || 24) / Math.max(cv.width, cv.height),
+    keep: rigEd.brush === "keep",
+  };
+  const prev = rigEd.cutout.strokes[rigEd.cutout.strokes.length - 1];
+  if (prev && prev.keep === s.keep && Math.hypot(prev.x - s.x, prev.y - s.y) < s.r * 0.28) return;
+  rigEd.cutout.strokes.push(s);
+  if (rigEd.cutout.strokes.length > 800) rigEd.cutout.strokes.shift();
+  scheduleRigImageRefresh();
+}
+
+(() => {
+  const cv = $("cutoutCanvas");
+  cv.addEventListener("pointerdown", (e) => {
+    rigEd.painting = true;
+    cv.setPointerCapture(e.pointerId);
+    addCutoutStroke(e);
+  });
+  cv.addEventListener("pointermove", (e) => { if (rigEd.painting) addCutoutStroke(e); });
+  const stop = () => { rigEd.painting = false; };
+  cv.addEventListener("pointerup", stop);
+  cv.addEventListener("pointercancel", stop);
+})();
 
 function syncTypeButtons() {
   const t = rigEd.rig.type || "biped";
@@ -402,10 +530,33 @@ function syncTypeButtons() {
     b.classList.toggle("active", b.dataset.type === t));
 }
 
+function ensureAdvancedArms() {
+  const cur = rigEd.rig.arms || {};
+  const left = { x: 0.02, y: 0.28, w: 0.38, h: 0.42, px: 0.36, py: 0.46, ...(cur.left || {}) };
+  const right = { x: 0.60, y: 0.28, w: 0.38, h: 0.42, px: 0.64, py: 0.46, ...(cur.right || {}) };
+  rigEd.rig.arms = { enabled: !!cur.enabled, ...cur, left, right };
+  return rigEd.rig.arms;
+}
+
+function syncAdvancedRig() {
+  const isBiped = (rigEd.rig.type || "biped") === "biped";
+  if (rigEd.rig.arms) ensureAdvancedArms();
+  $("armAdvancedBlock").classList.toggle("hidden", !isBiped);
+  $("rigArmsEnabled").checked = !!(rigEd.rig.arms && rigEd.rig.arms.enabled);
+}
+
+$("rigArmsEnabled").onchange = (e) => {
+  ensureAdvancedArms().enabled = e.target.checked;
+  Sound.tap();
+  rebuildParts();
+  drawRig();
+};
+
 function setRigType(t) {
   if (!Rig.TYPES.includes(t)) return;
   rigEd.rig.type = t;
   syncTypeButtons();
+  syncAdvancedRig();
   rebuildParts();
   drawRig();
 }
@@ -475,6 +626,26 @@ function drawRig() {
     ctx.fillStyle = "#868e96"; ctx.font = "bold 15px sans-serif";
     ctx.fillText("線なし(そのまま動きます)", 10, 24);
   }
+
+  if (t === "biped" && r.arms && r.arms.enabled) {
+    const drawArm = (a, col, label) => {
+      const x = a.x * W, y = a.y * Hc, w = a.w * W, h = a.h * Hc;
+      const px = a.px * W, py = a.py * Hc;
+      ctx.save();
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.setLineDash([8, 5]);
+      ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
+      ctx.fillStyle = col;
+      for (const [hx, hy] of [[x, y], [x + w, y + h]]) {
+        ctx.fillRect(hx - 7, hy - 7, 14, 14);
+      }
+      ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = "#fff"; ctx.strokeText(label, x + 8, Math.max(18, y + 20));
+      ctx.fillStyle = col; ctx.fillText(label, x + 8, Math.max(18, y + 20));
+      ctx.restore();
+    };
+    drawArm(r.arms.left, "#7950f2", "左うで");
+    drawArm(r.arms.right, "#f76707", "右うで");
+  }
 }
 
 function animPreview() {
@@ -503,6 +674,21 @@ function animPreview() {
       cands.push(["neckY", Math.abs(p.y - r.neckY * cv.height)]);
       cands.push(["hipY", Math.abs(p.y - r.hipY * cv.height)]);
       cands.push(["centerX", Math.abs(p.x - r.centerX * cv.width)]);
+      if (r.arms && r.arms.enabled) {
+        for (const side of ["left", "right"]) {
+          const a = r.arms[side];
+          const pts = {
+            tl: [a.x * cv.width, a.y * cv.height],
+            br: [(a.x + a.w) * cv.width, (a.y + a.h) * cv.height],
+            pivot: [a.px * cv.width, a.py * cv.height],
+          };
+          for (const handle of Object.keys(pts)) {
+            const hp = pts[handle];
+            const d = Math.hypot(p.x - hp[0], p.y - hp[1]);
+            if (d < 22) cands.push([{ arm: side, handle }, d - 8]);
+          }
+        }
+      }
     } else if (ty === "skirt") {
       cands.push(["neckY", Math.abs(p.y - r.neckY * cv.height)]);
       cands.push(["hipY", Math.abs(p.y - r.hipY * cv.height)]);
@@ -522,7 +708,20 @@ function animPreview() {
   cv.addEventListener("pointermove", (e) => {
     if (!rigEd.drag) return;
     const p = Util.canvasPos(cv, e);
-    if (rigEd.drag === "hingeX") rigEd.rig.hingeX = Util.clamp(p.x / cv.width, 0, 0.6);
+    if (rigEd.drag && typeof rigEd.drag === "object") {
+      const a = rigEd.rig.arms[rigEd.drag.arm];
+      const x = Util.clamp(p.x / cv.width, 0, 1);
+      const y = Util.clamp(p.y / cv.height, 0, 1);
+      if (rigEd.drag.handle === "tl") {
+        const x2 = a.x + a.w, y2 = a.y + a.h;
+        a.x = Math.min(x, x2 - 0.04); a.y = Math.min(y, y2 - 0.04);
+        a.w = x2 - a.x; a.h = y2 - a.y;
+      } else if (rigEd.drag.handle === "br") {
+        a.w = Math.max(0.04, x - a.x); a.h = Math.max(0.04, y - a.y);
+      } else {
+        a.px = x; a.py = y;
+      }
+    } else if (rigEd.drag === "hingeX") rigEd.rig.hingeX = Util.clamp(p.x / cv.width, 0, 0.6);
     else if (rigEd.drag === "centerX") rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
     else if (rigEd.drag === "bellyY") rigEd.rig.bellyY = Util.clamp(p.y / cv.height, 0.2, 0.85);
     else rigEd.rig[rigEd.drag] = Util.clamp(p.y / cv.height, 0.1, 0.92);
@@ -537,12 +736,19 @@ function animPreview() {
 
 $("rigSave").onclick = async () => {
   rigEd.rec.rig = { ...rigEd.rig };
+  rigEd.rec.cutout = {
+    ...rigEd.cutout,
+    strokes: rigEd.cutout.strokes.map((s) => ({ ...s })),
+  };
   await Store.put(rigEd.rec);
   $("rigModal").classList.add("hidden");
   Sound.good();
   changed();
 };
-$("rigCancel").onclick = () => $("rigModal").classList.add("hidden");
+$("rigCancel").onclick = () => {
+  cancelAnimationFrame(rigEd.cutoutRaf);
+  $("rigModal").classList.add("hidden");
+};
 
 /* ---------- 差分画像・まちがいスポット編集 ---------- */
 const spotEd = { rec: null, img: null, diffImg: null, variants: [], legacySpots: [], selected: -1 };

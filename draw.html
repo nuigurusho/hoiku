@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>おえかき</title>
 <link rel="icon" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=25">
 <style>
   /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -192,8 +192,8 @@
   </div>
 </aside>
 
-<script src="js/core.js?v=25"></script>
-<script src="js/rig.js?v=15"></script>
+<script src="js/core.js?v=26"></script>
+<script src="js/rig.js?v=16"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -639,6 +639,9 @@ async function saveAsNew() {
   const rec = { name: nm.trim() || base, cat, dataURL: toDataURL(outputCanvas(cat), cat) };
   if (cat === "char") {
     rec.rig = { ...Rig.DEFAULT, ...((editRec && editRec.rig) || {}) };
+    rec.cutout = editRec && editRec.cutout
+      ? { ...editRec.cutout, strokes: (editRec.cutout.strokes || []).map((s) => ({ ...s })) }
+      : { mode: "edge", threshold: 225, gap: 1, strokes: [] };
     /* 「なにを かく?」で えらんだ しゅるいを、そのまま うごきのタイプに する */
     if (!editRec && kindDef && kindDef.type) rec.rig.type = kindDef.type;
   }
