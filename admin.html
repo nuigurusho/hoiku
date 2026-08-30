@@ -6,7 +6,11 @@
 <title>取り込み・設定</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ff922b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ゲームパック">
+<link rel="stylesheet" href="css/style.css?v=26">
 </head>
 <body>
 <header class="bar">
@@ -42,6 +46,15 @@
   <div class="admin-sec"><h3>🖼️ 写真・絵</h3><div id="listPic"></div></div>
   <div class="admin-sec"><h3>🏞️ 背景の絵</h3><div id="listBg"></div></div>
 
+  <div class="panel pwa-admin-panel" style="text-align:left" id="pwaUpdatePanel">
+    <h2>📱 オフライン・更新</h2>
+    <p class="pwa-status" id="pwaStatus" aria-live="polite">準備状況を確認しています…</p>
+    <div class="row" style="justify-content:flex-start">
+      <button class="btn purple" id="pwaCheckBtn" type="button">最新版を確認</button>
+    </div>
+    <p class="note">更新しても、取り込んだ絵・声・動き設定・ランキングは消えません。更新後も、前日に機内モードで起動確認してください。</p>
+  </div>
+
   <div class="panel" style="text-align:left">
     <h2>💾 設定・データのバックアップ</h2>
     <p class="note">
@@ -68,7 +81,7 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=26"></script>
+<script src="js/core.js?v=27"></script>
 <script src="js/rig.js?v=16"></script>
 <script src="js/editors.js?v=16"></script>
 <script>

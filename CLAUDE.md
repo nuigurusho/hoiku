@@ -56,6 +56,16 @@ $("touchpad").classList.toggle("hidden", !!mode.auto);
 grep -rn "core.js?v=" *.html games/*.html   # 数字がそろっているか確認
 ```
 
+PWAの本番キャッシュ番号と公開ファイル一覧は、GitHub Actionsが `tools/build-pwa.mjs` を使って
+コミットIDから自動生成する。`sw.js` の番号を手で直す必要はない。
+ローカルで追加ファイルをオフライン確認するときだけ、サーバー起動前に次を実行する。
+
+```bash
+PWA_BUILD_ID=local-test node tools/build-pwa.mjs
+```
+
+Windows PowerShellでは `$env:PWA_BUILD_ID="local-test"; node tools/build-pwa.mjs`。
+
 ## 5. 書きかた
 
 - **ひらがな中心にするのは、画面に出る子供向けの文言だけ**(対象は1〜6歳)。

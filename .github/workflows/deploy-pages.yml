@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@v4
       # 公開しないもの(設計メモ・デザイン提案・引き継ぎメモ)を配信対象から外す
       - run: rm -rf design notes
+      # コミットごとに別の完成済みキャッシュを作り、古い版との混在を防ぐ
+      - run: PWA_BUILD_ID="$GITHUB_SHA" node tools/build-pwa.mjs
+      - run: rm -rf tools CLAUDE.md README.md serve.bat serve.sh .gitignore
       - uses: actions/configure-pages@v5
         with:
           enablement: true

@@ -1742,3 +1742,37 @@ body.fitstage header.bar { display: none; }
 /* おせない ボタンは 立体の へこみも やめる(おした ように 見えないように) */
 .btn:disabled { box-shadow: 0 4px 0 var(--shade); }
 .btn:disabled:active { transform: none; box-shadow: 0 4px 0 var(--shade); }
+
+/* ---------- PWA更新。遊びを止めず、大人が区切りのよい時に切り替える ---------- */
+.pwa-update-bar {
+  position: fixed;
+  z-index: 10050;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 4px solid #9c6b00;
+  border-radius: 18px;
+  background: #fff1bd;
+  color: #503700;
+  box-shadow: 0 8px 0 rgba(80, 55, 0, .22), 0 12px 30px rgba(54, 37, 0, .22);
+}
+.pwa-update-bar > div { display: grid; gap: 2px; flex: 1; }
+.pwa-update-bar b { font-size: 17px; }
+.pwa-update-bar span { font-size: 13px; }
+.pwa-update-bar .btn { flex: none; padding: 9px 13px; font-size: 14px; }
+.pwa-admin-panel { border-color: #b197fc; background: #f7f3ff; }
+.pwa-status { margin: 8px 0; font-weight: bold; color: #5f3dc4; }
+.pwa-status[data-tone="ready"] { color: #2b8a3e; }
+.pwa-status[data-tone="update"] { color: #9c6b00; }
+.pwa-status[data-tone="error"] { color: #c92a2a; }
+.pwa-status[data-tone="offline"] { color: #495057; }
+@media (max-width: 620px) {
+  .pwa-update-bar { flex-wrap: wrap; justify-content: flex-end; }
+  .pwa-update-bar > div { flex-basis: 100%; }
+}

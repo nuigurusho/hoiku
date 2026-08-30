@@ -5,10 +5,11 @@
    ============================================================ */
 "use strict";
 
-/* core.js から見た内蔵画像フォルダ。ゲーム配下から読んでも同じURLになる */
-const CORE_ASSET_ROOT = document.currentScript
-  ? new URL("../assets/", document.currentScript.src)
-  : new URL("assets/", document.baseURI);
+/* core.js から見たアプリと内蔵画像の場所。ゲーム配下から読んでも同じURLになる */
+const CORE_APP_ROOT = document.currentScript
+  ? new URL("../", document.currentScript.src)
+  : new URL("./", document.baseURI);
+const CORE_ASSET_ROOT = new URL("assets/", CORE_APP_ROOT);
 
 /* ---------------- Util ---------------- */
 const Util = {
@@ -2308,7 +2309,130 @@ const Stage = {
     this.update();
   },
 };
-function initChrome() { Nav.init(); GameChrome.init(); Stage.init(); Fullscreen.init(); Entry.init(); }
+
+/* ---------------- PWA(完全オフライン + 利用者が選べる安全な更新) ---------------- */
+const Pwa = {
+  registration: null,
+  waiting: null,
+  reloadForUpdate: false,
+
+  supported() {
+    return "serviceWorker" in navigator && location.protocol !== "file:";
+  },
+
+  setStatus(text, tone = "") {
+    const el = document.getElementById("pwaStatus");
+    if (!el) return;
+    el.textContent = text;
+    el.dataset.tone = tone;
+  },
+
+  mountBanner() {
+    if (document.getElementById("pwaUpdateBar")) return;
+    const bar = document.createElement("aside");
+    bar.id = "pwaUpdateBar";
+    bar.className = "pwa-update-bar hidden";
+    bar.setAttribute("aria-live", "polite");
+    bar.innerHTML = `
+      <div><b>新しいバージョンがあります</b><span>ゲームが終わってから更新してください。</span></div>
+      <button class="btn green" type="button" data-pwa-apply>最新版に更新</button>
+      <button class="btn gray" type="button" data-pwa-later>あとで</button>`;
+    document.body.appendChild(bar);
+    bar.querySelector("[data-pwa-apply]").onclick = () => this.applyUpdate();
+    bar.querySelector("[data-pwa-later]").onclick = () => bar.classList.add("hidden");
+  },
+
+  showUpdate(worker) {
+    this.waiting = worker;
+    this.setStatus("最新版を準備しました。「最新版に更新」を押すと切り替わります。", "update");
+    const bar = document.getElementById("pwaUpdateBar");
+    if (bar) bar.classList.remove("hidden");
+  },
+
+  watch(worker) {
+    if (!worker) return;
+    worker.addEventListener("statechange", () => {
+      if (worker.state !== "installed") return;
+      if (navigator.serviceWorker.controller) this.showUpdate(worker);
+      else this.setStatus("オフラインで使う準備ができました。", "ready");
+    });
+  },
+
+  async check() {
+    if (!this.registration) {
+      this.setStatus("このブラウザではオフライン版を利用できません。", "error");
+      return;
+    }
+    if (!navigator.onLine) {
+      this.setStatus("オフラインで使用中です。更新確認には通信が必要です。", "offline");
+      return;
+    }
+    const btn = document.getElementById("pwaCheckBtn");
+    if (btn) btn.disabled = true;
+    this.setStatus("最新版を確認しています…");
+    try {
+      await this.registration.update();
+      if (this.registration.waiting) this.showUpdate(this.registration.waiting);
+      else if (this.registration.installing) this.setStatus("最新版をオフライン用に保存しています…");
+      else this.setStatus("最新版です。オフラインでも使えます。", "ready");
+    } catch (_) {
+      this.setStatus("更新を確認できませんでした。通信を確認して、もう一度押してください。", "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  },
+
+  applyUpdate() {
+    const worker = this.waiting || (this.registration && this.registration.waiting);
+    if (!worker) {
+      this.check();
+      return;
+    }
+    this.reloadForUpdate = true;
+    this.setStatus("最新版へ切り替えています…");
+    worker.postMessage({ type: "SKIP_WAITING" });
+  },
+
+  async init() {
+    this.mountBanner();
+    const checkBtn = document.getElementById("pwaCheckBtn");
+    if (checkBtn) checkBtn.onclick = () => this.check();
+    if (!this.supported()) {
+      this.setStatus("ホーム画面版に対応したブラウザで開いてください。", "error");
+      return;
+    }
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (this.reloadForUpdate) location.reload();
+      else this.setStatus("オフラインで使う準備ができました。", "ready");
+    });
+
+    try {
+      this.registration = await navigator.serviceWorker.register(new URL("sw.js", CORE_APP_ROOT), {
+        scope: CORE_APP_ROOT.href,
+        updateViaCache: "none",
+      });
+      if (this.registration.waiting) this.showUpdate(this.registration.waiting);
+      this.watch(this.registration.installing);
+      this.registration.addEventListener("updatefound", () => {
+        this.setStatus("最新版をオフライン用に保存しています…");
+        this.watch(this.registration.installing);
+      });
+      if (navigator.serviceWorker.controller && !this.registration.waiting) {
+        this.setStatus(navigator.onLine ? "最新版です。オフラインでも使えます。" : "オフラインで使用中です。", "ready");
+      }
+      this.registration.update().catch(() => {});
+      setInterval(() => this.registration.update().catch(() => {}), 30 * 60 * 1000);
+    } catch (_) {
+      this.setStatus("オフライン版を準備できませんでした。通信を確認して再読み込みしてください。", "error");
+    }
+
+    addEventListener("online", () => this.check());
+    addEventListener("offline", () => this.setStatus("オフラインで使用中です。", "offline"));
+  },
+};
+
+function initChrome() { Nav.init(); GameChrome.init(); Stage.init(); Fullscreen.init(); Entry.init(); Pwa.init(); }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initChrome);
 } else {
