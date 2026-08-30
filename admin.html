@@ -107,7 +107,7 @@ async function refresh() {
 }
 Editors.onChange = refresh;
 
-/* 一覧の1行。ここは素材の出し入れ専用(編集は「つくる」画面) */
+/* 一覧の1行。キャラクターは取り込み直後に動きまで調整できる。 */
 function row(r) {
   const d = document.createElement("div");
   d.className = "admin-row";
@@ -144,6 +144,7 @@ function row(r) {
     Sound.tap();
   });
   mk("トリミング", "pink", () => Editors.cropRecord(r));
+  if (r.cat === "char") mk("動き設定", "purple", () => Editors.openRig(r));
   mk("カテゴリ", "yellow", async () => {
     const cat = await Ui.choose({
       title: "どの カテゴリに 入れますか?",
