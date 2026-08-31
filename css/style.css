@@ -347,6 +347,8 @@ canvas.stage {
   height: auto;
   mix-blend-mode: multiply;   /* 白地をパステル背景になじませる */
 }
+.logo-home { display: block; width: fit-content; margin: 0 auto; border-radius: 18px; }
+.logo-home:focus-visible { outline: 5px solid var(--blue-d); outline-offset: 4px; }
 .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
 
 /* 設定ボタン(おとなのひと用)。
@@ -678,7 +680,7 @@ canvas.stage {
   z-index: 100;
   padding: 12px;
 }
-.modal .panel { margin: 0; max-height: 92vh; overflow: auto; }
+.modal .panel { margin: 0; max-height: 92vh; overflow: auto; overscroll-behavior: contain; }
 
 /* ---------- おおきなメッセージ ---------- */
 .bigmsg {
@@ -867,10 +869,39 @@ canvas.stage {
   touch-action: none;
   max-width: 100%;
 }
-.rig-flex { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.rig-flex { display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: nowrap; min-height: 0; flex: 1; }
 .rig-types { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 4px 0 12px; }
 .rig-types .btn { opacity: .55; }
 .rig-types .btn.active { opacity: 1; outline: 3px solid #212529; transform: translateY(1px); }
+
+body:has(.modal:not(.hidden)) { overflow: hidden; }
+.editor-modal { padding: 12px; }
+.editor-panel { width: min(1180px, calc(100vw - 24px)); max-width: none; max-height: calc(100dvh - 24px) !important; margin: 0 !important; padding: 18px; }
+.editor-panel > h2 { margin-bottom: 6px; font-size: 22px; }
+.editor-panel > .note { margin: 4px auto 8px; font-size: 14px; line-height: 1.45; }
+.editor-panel > .row { margin: 8px 0; }
+.editor-panel > .row .btn { padding: 10px 16px; font-size: 16px; }
+.spot-panel canvas { max-height: calc(100dvh - 300px); }
+.fuku-panel, .crop-panel { width: min(920px, calc(100vw - 24px)); }
+.fuku-panel canvas, .crop-panel canvas { max-height: calc(100dvh - 250px); width: auto; }
+.voice-panel { width: min(820px, calc(100vw - 24px)); }
+.rig-panel { width: min(1180px, calc(100vw - 24px)); height: min(780px, calc(100dvh - 24px)); max-width: none; overflow: hidden !important; padding: 16px; }
+.rig-workspace { display: grid; grid-template-columns: minmax(0, 1.38fr) minmax(360px, .92fr); gap: 16px; height: 100%; min-height: 0; }
+.rig-visual { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 4px; }
+.rig-visual .rig-types { flex: none; margin: 0 0 10px; }
+.rig-visual .rig-types .btn { padding: 9px 12px; font-size: 14px; border-width: 2px; box-shadow: 0 3px 0 var(--shade); }
+.rig-visual .edit-canvas { max-height: 100%; }
+.rig-preview-wrap { display: grid; justify-items: center; gap: 6px; min-width: 0; }
+.rig-preview-wrap p { margin: 0; }
+.rig-preview-wrap canvas { max-width: 100%; max-height: 100%; background: #e7f5ff; border-radius: 12px; }
+.rig-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
+.rig-side .advanced-settings { display: grid; grid-template-rows: auto minmax(0, 1fr); flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; }
+.rig-advanced-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.rig-actions { flex: none; margin: 0; padding-top: 2px; }
+.rig-actions .btn { padding: 11px 18px; font-size: 17px; }
+.trim-block { display: flex; align-items: center; gap: 10px; padding-block: 10px; }
+.trim-block .btn { flex: none; padding: 9px 13px; font-size: 15px; border-width: 2px; box-shadow: 0 3px 0 var(--shade); }
+.trim-block .note { margin: 0; }
 
 /* 動き設定の高度な調整。閉じている間は従来と同じ簡単な画面だけを見せる。 */
 .advanced-settings {
@@ -882,7 +913,7 @@ canvas.stage {
   overflow: hidden;
   text-align: left;
 }
-.advanced-settings > summary {
+.advanced-settings > summary, .advanced-title {
   cursor: pointer;
   padding: 15px 18px;
   font-size: 19px;
@@ -891,7 +922,7 @@ canvas.stage {
   background: #fff1bd;
   list-style-position: inside;
 }
-.advanced-settings[open] > summary { border-bottom: 3px solid #e3b341; }
+.advanced-settings[open] > summary, .advanced-title { border-bottom: 3px solid #e3b341; }
 .advanced-block { padding: 14px 18px 18px; }
 .advanced-block + .advanced-block { border-top: 3px dashed #e5d2aa; }
 .advanced-block h3 { margin-top: 0 !important; }
@@ -924,6 +955,23 @@ canvas.stage {
   .cutout-mode, .advanced-sliders { grid-template-columns: 1fr; }
   .advanced-block { padding: 12px; }
 }
+@media (max-width: 900px), (orientation: portrait) {
+  .rig-panel { height: calc(100dvh - 20px); overflow: auto !important; padding: 12px; }
+  .rig-workspace { grid-template-columns: 1fr; height: auto; }
+  .rig-visual { min-height: min(520px, 47dvh); }
+  .rig-side .advanced-settings { max-height: 48dvh; }
+  .rig-flex { align-items: center; }
+  .rig-actions { position: sticky; bottom: 0; z-index: 2; padding: 8px; border-radius: 14px; background: rgba(255,255,255,.96); }
+}
+@media (max-width: 620px) {
+  .editor-modal { padding: 6px; }
+  .editor-panel { width: calc(100vw - 12px); max-height: calc(100dvh - 12px) !important; padding: 12px; border-radius: 18px; }
+  .rig-panel { height: calc(100dvh - 12px); }
+  .rig-visual .rig-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rig-visual .rig-types .btn { padding: 7px 5px; font-size: 12px; }
+  .rig-flex { gap: 8px; }
+  .rig-preview-wrap { max-width: 36%; }
+}
 
 /* ---------- ダイアログの ラジオ・メニュー ---------- */
 .radio-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
@@ -946,7 +994,9 @@ canvas.stage {
 
 /* ---------- 管理画面 ---------- */
 .admin-list { max-width: 1000px; margin: 0 auto; }
-.admin-sec h3 { font-size: 20px; border-bottom: 3px dashed #e8cbae; padding-bottom: 6px; }
+.admin-sec { margin: 8px 0; }
+.admin-sec > summary { cursor: pointer; font-size: 20px; font-weight: bold; border-bottom: 3px dashed #e8cbae; padding: 9px 6px; list-style-position: inside; }
+.admin-sec[open] > summary { margin-bottom: 6px; }
 .admin-row {
   display: flex;
   align-items: center;
@@ -956,7 +1006,7 @@ canvas.stage {
   padding: 8px 12px;
   margin: 8px 0;
   box-shadow: 0 3px 0 rgba(150,110,70,.12);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .admin-thumb-btn {
   flex: none;
@@ -972,24 +1022,31 @@ canvas.stage {
 .admin-thumb-btn img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .admin-row > img { width: 80px; height: 60px; object-fit: contain; background: #faf6ee; border-radius: 8px; }
 .admin-thumb-btn:focus-visible { outline: 4px solid var(--blue-d); outline-offset: 3px; }
-.admin-row .nm { font-weight: bold; flex: 1; min-width: 120px; }
+.admin-row .nm { font-weight: bold; flex: 1; min-width: 110px; overflow-wrap: anywhere; }
 .admin-row .btn { font-size: 14px; padding: 8px 14px; border-width: 2px; box-shadow: 0 3px 0 var(--shade); }
 .admin-row .btn:active { transform: translateY(3px); box-shadow: none; }
+.admin-row .icon-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 38px;
+  padding: 7px;
+  border-radius: 12px;
+}
+.icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.admin-category { width: clamp(150px, 22vw, 245px); min-width: 0; font-size: 14px; padding: 7px 32px 7px 9px; border-width: 2px; }
 .admin-row.is-game-hidden { background: rgba(255,255,255,.65); }
 .admin-row.is-game-hidden .admin-thumb-btn,
 .admin-row.is-game-hidden .nm { opacity: .48; }
 .game-visibility {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   min-height: 38px;
-  padding: 5px 10px;
-  border: 2px solid #a5d8ff;
+  padding: 5px;
+  border: 0;
   border-radius: 999px;
   background: #e7f5ff;
-  color: #1864ab;
-  font-size: 13px;
-  font-weight: bold;
   cursor: pointer;
 }
 .game-visibility input { position: absolute; opacity: 0; pointer-events: none; }
@@ -1016,6 +1073,8 @@ canvas.stage {
 .game-visibility input:checked + .game-visibility-track { background: var(--blue-d); }
 .game-visibility input:checked + .game-visibility-track::after { transform: translateX(18px); }
 .game-visibility:has(input:focus-visible) { outline: 4px solid var(--blue-d); outline-offset: 2px; }
+.select-field { display: grid; grid-template-columns: auto minmax(220px, 1fr); align-items: center; gap: 12px; margin: 8px 0 12px; font-weight: bold; }
+.select-field select { width: 100%; }
 .image-preview-panel { width: min(900px, 96vw); text-align: center !important; }
 .image-preview-panel h2 { margin: 0 0 10px; }
 .image-preview-panel img {
@@ -1034,6 +1093,14 @@ input[type="text"], select {
   border-radius: 12px;
   border: 3px solid #e8cbae;
   background: #fff;
+  color: var(--ink);
+}
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 4px solid #1864ab;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-visibility-track, .game-visibility-track::after { transition: none !important; }
 }
 label.radio { font-size: 17px; font-weight: bold; margin: 0 8px; }
 
@@ -1829,6 +1896,27 @@ body.fitstage header.bar { display: none; }
   background: #fff1bd;
   color: #503700;
   box-shadow: 0 8px 0 rgba(80, 55, 0, .22), 0 12px 30px rgba(54, 37, 0, .22);
+}
+@media (max-width: 760px) {
+  .admin-row { display: grid; grid-template-columns: 72px minmax(90px, 1fr) auto auto auto; gap: 8px; }
+  .admin-thumb-btn { width: 72px; height: 58px; grid-row: span 2; }
+  .admin-row .nm { min-width: 0; grid-column: 2 / -1; }
+  .admin-category { width: 100%; grid-column: 2 / span 2; }
+  .admin-row .btn:not(.icon-btn) { padding: 7px 10px; }
+  .select-field { grid-template-columns: 1fr; gap: 5px; }
+}
+@media (max-width: 430px) {
+  main { padding: 9px; }
+  .bar { gap: 6px; padding-inline: 8px; }
+  .bar h1 { font-size: 18px; gap: 5px; }
+  .bar h1 img.bar-icon { width: 36px; height: 36px; }
+  .bar .back { font-size: 14px; padding: 7px 10px; }
+  .bar .spacer { width: 52px; }
+  .panel { padding: 18px; }
+  .panel h2 { font-size: 22px; }
+  .admin-row { grid-template-columns: 64px minmax(80px, 1fr) auto auto; padding: 7px; }
+  .admin-thumb-btn { width: 64px; height: 54px; }
+  .admin-category { grid-column: 2 / -1; }
 }
 .pwa-update-bar > div { display: grid; gap: 2px; flex: 1; }
 .pwa-update-bar b { font-size: 17px; }

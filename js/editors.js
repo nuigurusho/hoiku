@@ -21,66 +21,71 @@ const changed = () => Editors.onChange ? Editors.onChange() : undefined;
 /* モーダルと かくれた ファイル入力を ページに いれておく */
 document.body.insertAdjacentHTML("beforeend", `
 <!-- うごきせってい(リグ編集)モーダル -->
-<div class="modal hidden" id="rigModal">
-  <div class="panel">
-    <h2>動き設定</h2>
-    <p class="note">
-      まず「動きのタイプ」を選んで、線をドラッグして合わせてください。<br>
-      🐕どうぶつ は <b>あたまを左がわ</b> にして 横むきに描いてください。<br>
-      🦋ちょうちょ は <b>はねを1まい</b> 描いた絵を、左右はんてんして ひらひら飛ばします。
-    </p>
-    <div class="rig-types" id="rigTypes">
-      <button class="btn purple" data-type="biped">🧍にんげん</button>
-      <button class="btn pink" data-type="skirt">👗スカート</button>
-      <button class="btn orange" data-type="quad">🐕どうぶつ</button>
-      <button class="btn blue" data-type="float">👻ふわふわ</button>
-      <button class="btn yellow" data-type="butterfly">🦋ちょうちょ</button>
-    </div>
-    <div class="rig-flex">
-      <canvas id="rigCanvas" class="edit-canvas" width="340" height="440"></canvas>
-      <div>
-        <p style="margin:0 0 6px"><b id="rigPvLabel">歩きプレビュー</b></p>
-        <canvas id="rigPreview" width="220" height="280" style="background:#e7f5ff;border-radius:12px"></canvas>
-      </div>
-    </div>
-    <details class="advanced-settings" id="rigAdvanced">
-      <summary>高度な設定</summary>
-      <div class="advanced-block">
-        <h3>白い体を残して背景を抜く</h3>
-        <p class="note">まず「外側の白だけ抜く」を選びます。輪郭が薄い・少し切れているときだけ、白の判定と隙間補正を調整してください。</p>
-        <div class="cutout-mode" id="cutoutModes">
-          <label class="radio-row"><input type="radio" name="cutoutMode" value="edge"> <span><b>外側の白だけ抜く</b><small>白い顔・服・体を残す（おすすめ）</small></span></label>
-          <label class="radio-row"><input type="radio" name="cutoutMode" value="legacy"> <span><b>白をすべて抜く</b><small>これまでと同じ方式</small></span></label>
+<div class="modal editor-modal hidden" id="rigModal" role="dialog" aria-modal="true" aria-label="動き設定">
+  <div class="panel rig-panel">
+    <div class="rig-workspace">
+      <section class="rig-visual" aria-label="キャラクターと動きのプレビュー">
+        <div class="rig-types" id="rigTypes" aria-label="動きのタイプ">
+          <button class="btn purple" data-type="biped">🧍にんげん</button>
+          <button class="btn pink" data-type="skirt">👗スカート</button>
+          <button class="btn orange" data-type="quad">🐕どうぶつ</button>
+          <button class="btn blue" data-type="float">👻ふわふわ</button>
+          <button class="btn yellow" data-type="butterfly">🦋ちょうちょ</button>
         </div>
-        <div class="advanced-sliders">
-          <label>白の判定 <output id="cutoutThresholdOut"></output><input id="cutoutThreshold" type="range" min="170" max="250" step="1"></label>
-          <label>輪郭の隙間を閉じる <output id="cutoutGapOut"></output><input id="cutoutGap" type="range" min="0" max="8" step="1"></label>
+        <div class="rig-flex">
+          <canvas id="rigCanvas" class="edit-canvas" width="380" height="480"></canvas>
+          <div class="rig-preview-wrap">
+            <p><b id="rigPvLabel">歩きプレビュー</b></p>
+            <canvas id="rigPreview" width="240" height="320"></canvas>
+          </div>
         </div>
-        <p class="note">下の市松模様が透明部分です。自動で直らないところだけ筆でなぞれます。</p>
-        <canvas id="cutoutCanvas" class="edit-canvas cutout-canvas" width="520" height="420"></canvas>
-        <div class="cutout-tools">
-          <button class="btn green active" type="button" id="cutoutKeep">白を残す筆</button>
-          <button class="btn gray" type="button" id="cutoutErase">背景を消す筆</button>
-          <label>筆の太さ <input id="cutoutBrush" type="range" min="6" max="54" step="2" value="24"></label>
-          <button class="btn yellow" type="button" id="cutoutReset">筆をリセット</button>
+      </section>
+      <aside class="rig-side">
+        <section class="advanced-settings" id="rigAdvanced">
+          <div class="advanced-title">高度な設定</div>
+          <div class="rig-advanced-scroll">
+            <div class="advanced-block trim-block">
+              <button class="btn blue" type="button" id="rigTrimWhitespace">余白をカット</button>
+              <span class="note">絵のまわりの空白だけを詰めます</span>
+            </div>
+            <div class="advanced-block">
+              <h3>白い体を残して背景を抜く</h3>
+              <p class="note">輪郭が薄いときだけ白の判定と隙間補正を調整します。</p>
+              <div class="cutout-mode" id="cutoutModes">
+                <label class="radio-row"><input type="radio" name="cutoutMode" value="edge"> <span><b>外側の白だけ抜く</b><small>白い顔・服・体を残す</small></span></label>
+                <label class="radio-row"><input type="radio" name="cutoutMode" value="legacy"> <span><b>白をすべて抜く</b><small>これまでと同じ方式</small></span></label>
+              </div>
+              <div class="advanced-sliders">
+                <label>白の判定 <output id="cutoutThresholdOut"></output><input id="cutoutThreshold" type="range" min="170" max="250" step="1"></label>
+                <label>輪郭の隙間を閉じる <output id="cutoutGapOut"></output><input id="cutoutGap" type="range" min="0" max="8" step="1"></label>
+              </div>
+              <canvas id="cutoutCanvas" class="edit-canvas cutout-canvas" width="520" height="420"></canvas>
+              <div class="cutout-tools">
+                <button class="btn green active" type="button" id="cutoutKeep">白を残す筆</button>
+                <button class="btn gray" type="button" id="cutoutErase">背景を消す筆</button>
+                <label>筆の太さ <input id="cutoutBrush" type="range" min="6" max="54" step="2" value="24"></label>
+                <button class="btn yellow" type="button" id="cutoutReset">筆をリセット</button>
+              </div>
+            </div>
+            <div class="advanced-block" id="armAdvancedBlock">
+              <h3>腕も動かす</h3>
+              <label class="toggle-row"><input id="rigArmsEnabled" type="checkbox"> <span>左右の腕を肩から動かす</span></label>
+              <p class="note">左の絵で腕の四角と肩の丸をドラッグして合わせます。</p>
+            </div>
+          </div>
+        </section>
+        <div class="row rig-actions">
+          <button class="btn green" id="rigSave">✔ 保存する</button>
+          <button class="btn gray" id="rigCancel">キャンセル</button>
         </div>
       </div>
-      <div class="advanced-block" id="armAdvancedBlock">
-        <h3>腕も動かす</h3>
-        <label class="toggle-row"><input id="rigArmsEnabled" type="checkbox"> <span>左右の腕を肩から動かす</span></label>
-        <p class="note">オンにすると、左の絵に腕の範囲と肩の丸が出ます。四角の角と肩の丸をドラッグして合わせてください。</p>
-      </div>
-    </details>
-    <div class="row">
-      <button class="btn green" id="rigSave">✔ 保存する</button>
-      <button class="btn gray" id="rigCancel">キャンセル</button>
     </div>
   </div>
 </div>
 
 <!-- まちがいスポット編集モーダル -->
-<div class="modal hidden" id="spotModal">
-  <div class="panel" style="max-width:1180px">
+<div class="modal editor-modal hidden" id="spotModal">
+  <div class="panel editor-panel spot-panel">
     <h2>差分画像と まちがいスポット</h2>
     <p class="note">差分画像を追加し、右の絵で違う場所をタップします。画像ごとに最大8個まで設定できます。</p>
     <div id="spotVariants" style="display:flex;gap:8px;overflow-x:auto;margin:8px 0"></div>
@@ -101,8 +106,8 @@ document.body.insertAdjacentHTML("beforeend", `
 </div>
 
 <!-- ふくわらいパーツ編集モーダル -->
-<div class="modal hidden" id="fukuModal">
-  <div class="panel">
+<div class="modal editor-modal hidden" id="fukuModal">
+  <div class="panel editor-panel fuku-panel">
     <h2>ふくわらいパーツ 設定</h2>
     <p class="note">
       下のボタンで種類を選んで、絵の上をドラッグして目・鼻・口を囲みます(最大8個)。
@@ -124,8 +129,8 @@ document.body.insertAdjacentHTML("beforeend", `
 </div>
 
 <!-- キャラの こえ 登録モーダル -->
-<div class="modal hidden" id="voiceModal">
-  <div class="panel">
+<div class="modal editor-modal hidden" id="voiceModal">
+  <div class="panel editor-panel voice-panel">
     <h2>🎤 こえの とうろく</h2>
     <p class="note">
       キャラの こえを 4しゅるい ろくおんできます(さいちょう10びょう)。
@@ -141,8 +146,8 @@ document.body.insertAdjacentHTML("beforeend", `
 </div>
 
 <!-- きりだし(トリミング)モーダル -->
-<div class="modal hidden" id="cropModal">
-  <div class="panel">
+<div class="modal editor-modal hidden" id="cropModal">
+  <div class="panel editor-panel crop-panel">
     <h2 id="cropTitle">✂ 切り出して取り込む</h2>
     <p class="note">ドラッグで囲んで「切り出して保存」。1枚から何回でも切り出せます。</p>
     <p style="margin:4px 0" id="cropCatRow">
@@ -496,7 +501,7 @@ $("cropMetaBack").onclick = async () => {
 
 /* ---------- リグ編集 ---------- */
 const rigEd = {
-  rec: null, img: null, keyed: null, trimmed: null, rig: null, cutout: null,
+  rec: null, dataURL: "", img: null, keyed: null, trimmed: null, rig: null, cutout: null,
   drag: null, parts: null, puppet: null, raf: 0, cutoutRaf: 0,
   brush: "keep", painting: false, afterSave: null, afterCancel: null,
 };
@@ -510,26 +515,68 @@ async function openRig(rec, opts) {
   if (rigEd.rig.arms) rigEd.rig.arms = JSON.parse(JSON.stringify(rigEd.rig.arms));
   rigEd.cutout = Util.cutoutSettings(rec.cutout);
   rigEd.cutout.strokes = rigEd.cutout.strokes.map((s) => ({ ...s }));
-  rigEd.img = await Util.loadImage(rec.dataURL);
-  $("rigAdvanced").open = false;
+  rigEd.dataURL = rec.dataURL;
+  rigEd.img = await Util.loadImage(rigEd.dataURL);
   $("rigModal").classList.remove("hidden");
   syncCutoutControls();
   refreshRigImage();
   animPreview();
 }
 
+function visibleBounds(cv, pad = 8) {
+  const { width: w, height: h } = cv;
+  const data = cv.getContext("2d").getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (data[(y * w + x) * 4 + 3] <= 20) continue;
+    minX = Math.min(minX, x); minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+  if (maxX < 0) return null;
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+$("rigTrimWhitespace").onclick = async () => {
+  const b = visibleBounds(rigEd.keyed);
+  if (!b || (b.x === 0 && b.y === 0 && b.w === rigEd.img.width && b.h === rigEd.img.height)) {
+    Ui.msg("カットする余白はありません", 1400, "#4dabf7");
+    return;
+  }
+  const oldW = rigEd.img.width, oldH = rigEd.img.height;
+  const out = Util.makeCanvas(b.w, b.h);
+  out.getContext("2d").drawImage(rigEd.img, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  const oldMax = Math.max(oldW, oldH), newMax = Math.max(b.w, b.h);
+  rigEd.cutout.strokes = rigEd.cutout.strokes
+    .filter((s) => s.x * oldW >= b.x && s.x * oldW <= b.x + b.w && s.y * oldH >= b.y && s.y * oldH <= b.y + b.h)
+    .map((s) => ({
+      ...s,
+      x: Util.clamp((s.x * oldW - b.x) / b.w, 0, 1),
+      y: Util.clamp((s.y * oldH - b.y) / b.h, 0, 1),
+      r: Util.clamp(s.r * oldMax / newMax, 0.002, 0.2),
+    }));
+  rigEd.dataURL = out.toDataURL("image/png");
+  rigEd.img = await Util.loadImage(rigEd.dataURL);
+  Sound.good();
+  refreshRigImage();
+  Ui.msg("余白をカットしました", 1200, "#51cf66");
+};
+
 function refreshRigImage() {
   rigEd.keyed = Util.keyImage(rigEd.img, rigEd.cutout);
   rigEd.trimmed = Util.trimCanvas(rigEd.keyed);
   const cv = $("rigCanvas");
-  const maxW = Math.min(360, innerWidth - 80);
-  const sc = Math.min(maxW / rigEd.trimmed.width, 440 / rigEd.trimmed.height);
+  const visualW = $("rigModal").querySelector(".rig-visual").clientWidth || innerWidth;
+  const maxW = Math.min(390, Math.max(210, visualW - 255));
+  const sc = Math.min(maxW / rigEd.trimmed.width, 520 / rigEd.trimmed.height);
   cv.width = Math.round(rigEd.trimmed.width * sc);
   cv.height = Math.round(rigEd.trimmed.height * sc);
 
   const cut = $("cutoutCanvas");
-  const cutW = Math.min(620, innerWidth - 76);
-  const cutSc = Math.min(cutW / rigEd.keyed.width, 430 / rigEd.keyed.height, 1);
+  const sideW = $("rigModal").querySelector(".rig-side").clientWidth || innerWidth;
+  const cutW = Math.min(520, Math.max(240, sideW - 38));
+  const cutSc = Math.min(cutW / rigEd.keyed.width, 360 / rigEd.keyed.height, 1);
   cut.width = Math.max(1, Math.round(rigEd.keyed.width * cutSc));
   cut.height = Math.max(1, Math.round(rigEd.keyed.height * cutSc));
   const cutCtx = cut.getContext("2d");
@@ -822,6 +869,7 @@ function animPreview() {
 })();
 
 $("rigSave").onclick = async () => {
+  rigEd.rec.dataURL = rigEd.dataURL;
   rigEd.rec.rig = { ...rigEd.rig };
   rigEd.rec.cutout = {
     ...rigEd.cutout,

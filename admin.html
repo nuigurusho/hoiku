@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=27">
+<link rel="stylesheet" href="css/style.css?v=32">
 </head>
 <body>
 <header class="bar">
@@ -22,13 +22,15 @@
 <main class="admin-list">
   <div class="panel" style="text-align:left">
     <h2>新しい絵・写真を取り込む<button class="info-btn" type="button" id="importInfo" aria-label="とりこみかたの説明">i</button></h2>
-    <div class="radio-list" id="catRadios">
-      <label class="radio-row"><input type="radio" name="cat" value="src"> <span>✂️ トリミング用の元素材</span></label>
-      <label class="radio-row"><input type="radio" name="cat" value="char" checked> <span>🧍 キャラクターの全身</span></label>
-      <label class="radio-row"><input type="radio" name="cat" value="fuku"> <span>😀 キャラクターの顔(ふくわらい用)</span></label>
-      <label class="radio-row"><input type="radio" name="cat" value="pic"> <span>🖼️ 写真・絵(パズル・まちがいさがし用)</span></label>
-      <label class="radio-row"><input type="radio" name="cat" value="bg"> <span>🏞️ 背景の絵</span></label>
-    </div>
+    <label class="select-field" for="catSelect"><span>取り込み先</span>
+      <select id="catSelect">
+        <option value="src">✂️ トリミング用の元素材</option>
+        <option value="char" selected>🧍 キャラクターの全身</option>
+        <option value="fuku">😀 キャラクターの顔(ふくわらい用)</option>
+        <option value="pic">🖼️ 写真・絵(パズル・まちがいさがし用)</option>
+        <option value="bg">🏞️ 背景の絵</option>
+      </select>
+    </label>
     <div class="import-meta" id="importMeta">
       <label><span id="importNameLabel">キャラクター名</span><input id="importName" type="text" maxlength="40" placeholder="例: にじいろちゃん"></label>
       <label><span>作者名 <small>（任意）</small></span><input id="importAuthor" type="text" maxlength="40" placeholder="例: さくらぐみ"></label>
@@ -40,11 +42,11 @@
     </div>
   </div>
 
-  <div class="admin-sec"><h3>✂️ トリミング用の元素材</h3><div id="listSrc"></div></div>
-  <div class="admin-sec"><h3>🧍 キャラクターの全身</h3><div id="listChar"></div></div>
-  <div class="admin-sec"><h3>😀 キャラクターの顔</h3><div id="listFuku"></div></div>
-  <div class="admin-sec"><h3>🖼️ 写真・絵</h3><div id="listPic"></div></div>
-  <div class="admin-sec"><h3>🏞️ 背景の絵</h3><div id="listBg"></div></div>
+  <details class="admin-sec"><summary>✂️ トリミング用の元素材</summary><div id="listSrc"></div></details>
+  <details class="admin-sec" open><summary>🧍 キャラクターの全身</summary><div id="listChar"></div></details>
+  <details class="admin-sec"><summary>😀 キャラクターの顔</summary><div id="listFuku"></div></details>
+  <details class="admin-sec"><summary>🖼️ 写真・絵</summary><div id="listPic"></div></details>
+  <details class="admin-sec"><summary>🏞️ 背景の絵</summary><div id="listBg"></div></details>
 
   <div class="panel pwa-admin-panel" style="text-align:left" id="pwaUpdatePanel">
     <h2>📱 オフライン・更新</h2>
@@ -83,7 +85,7 @@
 <script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=28"></script>
 <script src="js/rig.js?v=16"></script>
-<script src="js/editors.js?v=17"></script>
+<script src="js/editors.js?v=19"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -125,7 +127,7 @@ Editors.onChange = refresh;
 function row(r) {
   const d = document.createElement("div");
   d.className = "admin-row" + (r.hidden ? " is-game-hidden" : "");
-  d.innerHTML = `<button class="admin-thumb-btn" type="button" aria-label="画像を拡大して見る"><img src="${r.dataURL}" alt=""></button><span class="nm"></span>`;
+  d.innerHTML = `<button class="admin-thumb-btn" type="button" aria-label="画像を拡大して見る"><img src="${r.dataURL}" width="80" height="60" alt=""></button><span class="nm"></span>`;
   const info = r.name || "(名前なし)";
   d.querySelector(".nm").textContent = r.author ? `${info}　作者: ${r.author}` : info;
   const thumb = d.querySelector("img");
@@ -137,8 +139,20 @@ function row(r) {
     b.textContent = label;
     b.onclick = fn;
     d.appendChild(b);
+    return b;
   };
-  mk(r.cat === "char" || r.cat === "bg" ? "作品情報" : "名前", "blue", async () => {
+  const iconButton = (label, cls, svg, fn) => {
+    const b = document.createElement("button");
+    b.className = `btn icon-btn ${cls}`;
+    b.type = "button";
+    b.setAttribute("aria-label", label);
+    b.title = label;
+    b.innerHTML = svg;
+    b.onclick = fn;
+    d.appendChild(b);
+    return b;
+  };
+  const editInfo = async () => {
     const nm = prompt(r.cat === "char" ? "キャラクター名を入力してください" : r.cat === "bg" ? "背景名を入力してください" : "名前を入力してください", r.name || "");
     if (nm === null) return;
     r.name = nm.trim();
@@ -148,8 +162,47 @@ function row(r) {
       r.author = author.trim();
     }
     await Store.put(r); refresh();
-  });
-  mk("DL", "blue", () => {
+  };
+  iconButton("作品情報を編集", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>', editInfo);
+  if (r.cat === "src") mk("トリミング", "blue", () => Editors.cropRecord(r));
+  if (r.cat === "char") mk("動き設定", "blue", () => Editors.openRig(r));
+
+  const category = document.createElement("select");
+  category.className = "admin-category";
+  category.setAttribute("aria-label", `${info}のカテゴリ`);
+  for (const [cat] of CATS) {
+    const option = document.createElement("option");
+    option.value = cat;
+    option.textContent = CAT_LABEL[cat];
+    option.selected = cat === r.cat;
+    category.appendChild(option);
+  }
+  category.onchange = async () => {
+    const cat = category.value;
+    if (cat === r.cat) return;
+    r.cat = cat;
+    if (cat === "char" && !r.rig) r.rig = { ...Rig.DEFAULT };
+    if (cat === "char" && !r.cutout) r.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
+    await Store.put(r);
+    refresh();
+  };
+  d.appendChild(category);
+
+  const visibility = document.createElement("label");
+  visibility.className = "game-visibility";
+  visibility.title = r.hidden ? "ゲームに表示しない" : "ゲームに表示する";
+  visibility.innerHTML = `<input type="checkbox" aria-label="ゲームに表示する"${r.hidden ? "" : " checked"}><span class="game-visibility-track" aria-hidden="true"></span>`;
+  const visibilityInput = visibility.querySelector("input");
+  visibilityInput.onchange = async () => {
+    r.hidden = !visibilityInput.checked;
+    visibility.title = r.hidden ? "ゲームに表示しない" : "ゲームに表示する";
+    await Store.put(r);
+    d.classList.toggle("is-game-hidden", r.hidden);
+    Sound.tap();
+  };
+  d.appendChild(visibility);
+
+  iconButton("画像をダウンロード", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>', () => {
     const ext = /^data:image\/png/i.test(r.dataURL) ? "png" : "jpg";
     const a = document.createElement("a");
     a.href = r.dataURL;
@@ -159,39 +212,6 @@ function row(r) {
     a.remove();
     Sound.tap();
   });
-  mk("トリミング", "blue", () => Editors.cropRecord(r));
-  if (r.cat === "char") mk("動き設定", "blue", () => Editors.openRig(r));
-  mk("カテゴリ", "blue", async () => {
-    const cat = await Ui.choose({
-      title: "どの カテゴリに 入れますか?",
-      note: `「${r.name || "(名前なし)"}」の いまの カテゴリ:${CAT_LABEL[r.cat] || r.cat}`,
-      options: CATS.map(([c]) => ({ value: c, label: CAT_LABEL[c] })),
-      current: r.cat,
-    });
-    if (!cat || cat === r.cat) return;
-    r.cat = cat;
-    if (cat === "char" && !r.rig) r.rig = { ...Rig.DEFAULT };
-    if (cat === "char" && !r.cutout) r.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
-    await Store.put(r);
-    refresh();
-  });
-  const visibility = document.createElement("label");
-  visibility.className = "game-visibility";
-  visibility.innerHTML = `<input type="checkbox"${r.hidden ? "" : " checked"}><span class="game-visibility-track" aria-hidden="true"></span><span></span>`;
-  const visibilityInput = visibility.querySelector("input");
-  const visibilityText = visibility.querySelector("span:last-child");
-  const updateVisibilityText = () => {
-    visibilityText.textContent = visibilityInput.checked ? "ゲームに表示" : "ゲームに表示しない";
-  };
-  updateVisibilityText();
-  visibilityInput.onchange = async () => {
-    r.hidden = !visibilityInput.checked;
-    await Store.put(r);
-    d.classList.toggle("is-game-hidden", r.hidden);
-    updateVisibilityText();
-    Sound.tap();
-  };
-  d.appendChild(visibility);
   mk("削除", "red", async () => {
     if (confirm(`「${r.name}」を削除しますか?`)) { await Store.remove(r.id); refresh(); }
   });
@@ -215,14 +235,14 @@ function showImagePreview(r, src) {
   wrap.querySelector("button").focus();
 }
 
-const curCat = () => document.querySelector('input[name="cat"]:checked').value;
+const curCat = () => $("catSelect").value;
 const importMeta = () => ({ name: $("importName").value.trim(), author: $("importAuthor").value.trim() });
 function updateImportMeta() {
   const cat = curCat();
   $("importMeta").classList.toggle("hidden", cat !== "char" && cat !== "bg");
   $("importNameLabel").textContent = cat === "bg" ? "背景名" : "キャラクター名";
 }
-document.querySelectorAll('input[name="cat"]').forEach((el) => el.addEventListener("change", updateImportMeta));
+$("catSelect").addEventListener("change", updateImportMeta);
 updateImportMeta();
 $("pickBtn").onclick = () => Editors.chooseFiles(curCat(), importMeta());
 $("cameraBtn").onclick = () => Editors.chooseCamera(curCat(), importMeta());
