@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=32">
+<link rel="stylesheet" href="css/style.css?v=33">
 </head>
 <body>
 <header class="bar">
@@ -82,10 +82,31 @@
   </div>
 </main>
 
+<div class="modal hidden" id="workInfoModal" role="dialog" aria-modal="true" aria-labelledby="workInfoTitle">
+  <form class="panel work-info-panel" id="workInfoForm">
+    <h2 id="workInfoTitle">✏️ 作品情報</h2>
+    <label class="work-info-field"><span>作品名</span><input id="workInfoName" type="text" maxlength="40" autocomplete="off" placeholder="例: にじいろちゃん"></label>
+    <label class="work-info-field"><span>作者名 <small>（任意）</small></span><input id="workInfoAuthor" type="text" maxlength="40" autocomplete="off" placeholder="例: さくらぐみ"></label>
+    <label class="work-info-field"><span>絵の種類</span>
+      <select id="workInfoCategory">
+        <option value="src">✂️ トリミング用の元素材</option>
+        <option value="char">🧍 キャラクターの全身</option>
+        <option value="fuku">😀 キャラクターの顔(ふくわらい用)</option>
+        <option value="pic">🖼️ 写真・絵(パズル・まちがいさがし用)</option>
+        <option value="bg">🏞️ 背景の絵</option>
+      </select>
+    </label>
+    <div class="row work-info-actions">
+      <button class="btn green" type="submit">✔ 保存する</button>
+      <button class="btn gray" type="button" id="workInfoCancel">キャンセル</button>
+    </div>
+  </form>
+</div>
+
 <script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=28"></script>
 <script src="js/rig.js?v=16"></script>
-<script src="js/editors.js?v=19"></script>
+<script src="js/editors.js?v=20"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -110,6 +131,38 @@ const CAT_LABEL = {
   pic: "🖼️ 写真・絵(パズル・まちがいさがし用)",
   bg: "🏞️ 背景の絵",
 };
+let workInfoRec = null;
+
+function closeWorkInfo() {
+  $("workInfoModal").classList.add("hidden");
+  workInfoRec = null;
+}
+
+function openWorkInfo(r) {
+  workInfoRec = r;
+  $("workInfoName").value = r.name || "";
+  $("workInfoAuthor").value = r.author || "";
+  $("workInfoCategory").value = r.cat;
+  $("workInfoModal").classList.remove("hidden");
+  requestAnimationFrame(() => $("workInfoName").focus());
+}
+
+$("workInfoForm").onsubmit = async (e) => {
+  e.preventDefault();
+  if (!workInfoRec) return;
+  const r = workInfoRec;
+  r.name = $("workInfoName").value.trim();
+  r.author = $("workInfoAuthor").value.trim();
+  r.cat = $("workInfoCategory").value;
+  if (r.cat === "char" && !r.rig) r.rig = { ...Rig.DEFAULT };
+  if (r.cat === "char" && !r.cutout) r.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
+  await Store.put(r);
+  closeWorkInfo();
+  Sound.good();
+  refresh();
+};
+$("workInfoCancel").onclick = closeWorkInfo;
+$("workInfoModal").onclick = (e) => { if (e.target === $("workInfoModal")) closeWorkInfo(); };
 
 async function refresh() {
   await Store.ensureSamples();
@@ -152,55 +205,14 @@ function row(r) {
     d.appendChild(b);
     return b;
   };
-  const editInfo = async () => {
-    const nm = prompt(r.cat === "char" ? "キャラクター名を入力してください" : r.cat === "bg" ? "背景名を入力してください" : "名前を入力してください", r.name || "");
-    if (nm === null) return;
-    r.name = nm.trim();
-    if (r.cat === "char" || r.cat === "bg") {
-      const author = prompt("作者名を入力してください（任意）", r.author || "");
-      if (author === null) return;
-      r.author = author.trim();
-    }
-    await Store.put(r); refresh();
-  };
-  iconButton("作品情報を編集", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>', editInfo);
+  iconButton("作品情報を編集", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>', () => openWorkInfo(r));
   if (r.cat === "src") mk("トリミング", "blue", () => Editors.cropRecord(r));
-  if (r.cat === "char") mk("動き設定", "blue", () => Editors.openRig(r));
-
-  const category = document.createElement("select");
-  category.className = "admin-category";
-  category.setAttribute("aria-label", `${info}のカテゴリ`);
-  for (const [cat] of CATS) {
-    const option = document.createElement("option");
-    option.value = cat;
-    option.textContent = CAT_LABEL[cat];
-    option.selected = cat === r.cat;
-    category.appendChild(option);
+  if (r.cat === "char") {
+    const p = new URLSearchParams({ edit: r.id, back: "admin.html" });
+    mk("かく", "blue", () => { location.href = `draw.html?${p}`; });
+    mk("こえ", "blue", () => Editors.openVoice(r));
+    mk("うごき", "blue", () => Editors.openRig(r));
   }
-  category.onchange = async () => {
-    const cat = category.value;
-    if (cat === r.cat) return;
-    r.cat = cat;
-    if (cat === "char" && !r.rig) r.rig = { ...Rig.DEFAULT };
-    if (cat === "char" && !r.cutout) r.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
-    await Store.put(r);
-    refresh();
-  };
-  d.appendChild(category);
-
-  const visibility = document.createElement("label");
-  visibility.className = "game-visibility";
-  visibility.title = r.hidden ? "ゲームに表示しない" : "ゲームに表示する";
-  visibility.innerHTML = `<input type="checkbox" aria-label="ゲームに表示する"${r.hidden ? "" : " checked"}><span class="game-visibility-track" aria-hidden="true"></span>`;
-  const visibilityInput = visibility.querySelector("input");
-  visibilityInput.onchange = async () => {
-    r.hidden = !visibilityInput.checked;
-    visibility.title = r.hidden ? "ゲームに表示しない" : "ゲームに表示する";
-    await Store.put(r);
-    d.classList.toggle("is-game-hidden", r.hidden);
-    Sound.tap();
-  };
-  d.appendChild(visibility);
 
   iconButton("画像をダウンロード", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>', () => {
     const ext = /^data:image\/png/i.test(r.dataURL) ? "png" : "jpg";
@@ -215,6 +227,20 @@ function row(r) {
   mk("削除", "red", async () => {
     if (confirm(`「${r.name}」を削除しますか?`)) { await Store.remove(r.id); refresh(); }
   });
+
+  const visibility = document.createElement("label");
+  visibility.className = "game-visibility";
+  visibility.title = r.hidden ? "ゲームに表示しない" : "ゲームに表示する";
+  visibility.innerHTML = `<input type="checkbox" aria-label="ゲームに表示する"${r.hidden ? "" : " checked"}><span class="game-visibility-track" aria-hidden="true"></span>`;
+  const visibilityInput = visibility.querySelector("input");
+  visibilityInput.onchange = async () => {
+    r.hidden = !visibilityInput.checked;
+    visibility.title = r.hidden ? "ゲームに表示しない" : "ゲームに表示する";
+    await Store.put(r);
+    d.classList.toggle("is-game-hidden", r.hidden);
+    Sound.tap();
+  };
+  d.appendChild(visibility);
   return d;
 }
 

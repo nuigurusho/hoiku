@@ -21,10 +21,14 @@ const changed = () => Editors.onChange ? Editors.onChange() : undefined;
 /* モーダルと かくれた ファイル入力を ページに いれておく */
 document.body.insertAdjacentHTML("beforeend", `
 <!-- うごきせってい(リグ編集)モーダル -->
-<div class="modal editor-modal hidden" id="rigModal" role="dialog" aria-modal="true" aria-label="動き設定">
+<div class="modal editor-modal hidden" id="rigModal" role="dialog" aria-modal="true" aria-label="うごき">
   <div class="panel rig-panel">
     <div class="rig-workspace">
-      <section class="rig-visual" aria-label="キャラクターと動きのプレビュー">
+      <div class="rig-preview-wrap">
+        <p><b id="rigPvLabel">歩きプレビュー</b></p>
+        <canvas id="rigPreview" width="240" height="320"></canvas>
+      </div>
+      <section class="rig-visual" aria-label="キャラクターの動き調整">
         <div class="rig-types" id="rigTypes" aria-label="動きのタイプ">
           <button class="btn purple" data-type="biped">🧍にんげん</button>
           <button class="btn pink" data-type="skirt">👗スカート</button>
@@ -32,13 +36,7 @@ document.body.insertAdjacentHTML("beforeend", `
           <button class="btn blue" data-type="float">👻ふわふわ</button>
           <button class="btn yellow" data-type="butterfly">🦋ちょうちょ</button>
         </div>
-        <div class="rig-flex">
-          <canvas id="rigCanvas" class="edit-canvas" width="380" height="480"></canvas>
-          <div class="rig-preview-wrap">
-            <p><b id="rigPvLabel">歩きプレビュー</b></p>
-            <canvas id="rigPreview" width="240" height="320"></canvas>
-          </div>
-        </div>
+        <div class="rig-flex"><canvas id="rigCanvas" class="edit-canvas" width="380" height="480"></canvas></div>
       </section>
       <aside class="rig-side">
         <section class="advanced-settings" id="rigAdvanced">
@@ -74,11 +72,11 @@ document.body.insertAdjacentHTML("beforeend", `
             </div>
           </div>
         </section>
-        <div class="row rig-actions">
-          <button class="btn green" id="rigSave">✔ 保存する</button>
-          <button class="btn gray" id="rigCancel">キャンセル</button>
-        </div>
-      </div>
+      </aside>
+    </div>
+    <div class="row rig-actions">
+      <button class="btn green" id="rigSave">✔ 保存する</button>
+      <button class="btn gray" id="rigCancel">キャンセル</button>
     </div>
   </div>
 </div>
