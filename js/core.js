@@ -397,7 +397,7 @@ const Sound = {
 window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
-   レコード: { id, name, author, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL, cutout,
+   レコード: { id, name, author, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL, hidden, cutout,
                rig:{neckY,hipY,centerX}, diffSpots:[{x,y,r}],
                diffVariants:[{dataURL,spots:[{x,y,r}]}],
                fukuParts:[{kind,x,y,w,h}],
@@ -433,6 +433,12 @@ const Store = {
     });
     list.sort((a, b) => a.created - b.created);
     return cat ? list.filter((r) => r.cat === cat) : list;
+  },
+
+  /* ゲーム・鑑賞画面では、管理画面で非表示にした素材を候補から外す。 */
+  async forGame(cat) {
+    const list = await this.ensureSamples();
+    return list.filter((r) => r.hidden !== true && (!cat || r.cat === cat));
   },
 
   async get(id) {
@@ -502,6 +508,7 @@ const Store = {
         rec.id = existing.id;
         rec.created = existing.created;
         rec.sampleKey = def.id;
+        if (existing.hidden) rec.hidden = true;
         await this.put(rec);
         continue;
       }
@@ -514,6 +521,7 @@ const Store = {
         rec.id = legacy.id;
         rec.created = legacy.created;
         rec.sampleKey = def.id;
+        if (legacy.hidden) rec.hidden = true;
       }
       await this.put(rec);
     }
@@ -1552,6 +1560,7 @@ const Backup = {
       files.push({ name: file, data: bytes });
       const meta = { file, mime, id: r.id, name: r.name, cat: r.cat, created: r.created };
       if (r.author) meta.author = r.author;
+      if (r.hidden) meta.hidden = true;
       if (r.cutout) meta.cutout = r.cutout;
       if (r.sampleKey) meta.sampleKey = r.sampleKey;
       if (r.rig) meta.rig = r.rig;
@@ -1633,6 +1642,7 @@ const Backup = {
         id: m.id, name: m.name, author: m.author || "", cat: m.cat, created: m.created,
         dataURL: this._bytesToDataURL(m.mime, bytes),
       };
+      if (m.hidden) rec.hidden = true;
       if (m.sampleKey) rec.sampleKey = m.sampleKey;
       if (m.cutout) rec.cutout = m.cutout;
       if (m.rig) rec.rig = m.rig;

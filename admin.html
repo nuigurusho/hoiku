@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body>
 <header class="bar">
@@ -35,7 +35,7 @@
       <p class="note">複数枚を選ぶと、名前の後ろに番号がつきます。あとから「作品情報」でも変更できます。</p>
     </div>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn green" id="pickBtn">ファイルを選ぶ(複数可・PDFも可)</button>
+      <button class="btn blue" id="pickBtn">ファイルを選ぶ(複数可・PDFも可)</button>
       <button class="btn blue" id="cameraBtn">カメラで撮る</button>
     </div>
   </div>
@@ -63,7 +63,7 @@
       画像はこの端末の中(IndexedDB)だけに保存されるので、<b>当日使うPCへ移すとき</b>に便利です。
     </p>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn green" id="exportBtn">すべてエクスポート(zip)</button>
+      <button class="btn blue" id="exportBtn">すべてエクスポート(zip)</button>
       <button class="btn blue" id="importBtn">zipからインポート</button>
       <input type="file" id="importInput" accept=".zip,application/zip" hidden>
     </div>
@@ -73,15 +73,15 @@
   <div class="panel" style="text-align:left">
     <h2>その他</h2>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn yellow" id="resampleBtn">サンプルをもう一度入れる</button>
-      <button class="btn gray" id="wipeBtn">すべて削除する</button>
+      <button class="btn blue" id="resampleBtn">サンプルをもう一度入れる</button>
+      <button class="btn red" id="wipeBtn">すべて削除する</button>
     </div>
     <p class="note">クイズは「つくる」画面で追加できます。全端末共通の内蔵問題を変更したい場合のみ、<code>js/quiz-data.js</code> を編集してください。</p>
   </div>
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=27"></script>
+<script src="js/core.js?v=28"></script>
 <script src="js/rig.js?v=16"></script>
 <script src="js/editors.js?v=17"></script>
 <script>
@@ -124,11 +124,13 @@ Editors.onChange = refresh;
 /* 一覧の1行。キャラクターは取り込み直後に動きまで調整できる。 */
 function row(r) {
   const d = document.createElement("div");
-  d.className = "admin-row";
-  d.innerHTML = `<img src="${r.dataURL}"><span class="nm"></span>`;
+  d.className = "admin-row" + (r.hidden ? " is-game-hidden" : "");
+  d.innerHTML = `<button class="admin-thumb-btn" type="button" aria-label="画像を拡大して見る"><img src="${r.dataURL}" alt=""></button><span class="nm"></span>`;
   const info = r.name || "(名前なし)";
   d.querySelector(".nm").textContent = r.author ? `${info}　作者: ${r.author}` : info;
-  Ui.thumbFix(d.querySelector("img"), r);
+  const thumb = d.querySelector("img");
+  Ui.thumbFix(thumb, r);
+  d.querySelector(".admin-thumb-btn").onclick = () => showImagePreview(r, thumb.src);
   const mk = (label, cls, fn) => {
     const b = document.createElement("button");
     b.className = "btn " + cls;
@@ -157,9 +159,9 @@ function row(r) {
     a.remove();
     Sound.tap();
   });
-  mk("トリミング", "pink", () => Editors.cropRecord(r));
-  if (r.cat === "char") mk("動き設定", "purple", () => Editors.openRig(r));
-  mk("カテゴリ", "yellow", async () => {
+  mk("トリミング", "blue", () => Editors.cropRecord(r));
+  if (r.cat === "char") mk("動き設定", "blue", () => Editors.openRig(r));
+  mk("カテゴリ", "blue", async () => {
     const cat = await Ui.choose({
       title: "どの カテゴリに 入れますか?",
       note: `「${r.name || "(名前なし)"}」の いまの カテゴリ:${CAT_LABEL[r.cat] || r.cat}`,
@@ -173,10 +175,44 @@ function row(r) {
     await Store.put(r);
     refresh();
   });
-  mk("削除", "gray", async () => {
+  const visibility = document.createElement("label");
+  visibility.className = "game-visibility";
+  visibility.innerHTML = `<input type="checkbox"${r.hidden ? "" : " checked"}><span class="game-visibility-track" aria-hidden="true"></span><span></span>`;
+  const visibilityInput = visibility.querySelector("input");
+  const visibilityText = visibility.querySelector("span:last-child");
+  const updateVisibilityText = () => {
+    visibilityText.textContent = visibilityInput.checked ? "ゲームに表示" : "ゲームに表示しない";
+  };
+  updateVisibilityText();
+  visibilityInput.onchange = async () => {
+    r.hidden = !visibilityInput.checked;
+    await Store.put(r);
+    d.classList.toggle("is-game-hidden", r.hidden);
+    updateVisibilityText();
+    Sound.tap();
+  };
+  d.appendChild(visibility);
+  mk("削除", "red", async () => {
     if (confirm(`「${r.name}」を削除しますか?`)) { await Store.remove(r.id); refresh(); }
   });
   return d;
+}
+
+function showImagePreview(r, src) {
+  Sound.tap();
+  const wrap = document.createElement("div");
+  wrap.className = "modal";
+  wrap.setAttribute("role", "dialog");
+  wrap.setAttribute("aria-modal", "true");
+  wrap.setAttribute("aria-label", `${r.name || "画像"}の拡大表示`);
+  wrap.innerHTML = `<div class="panel image-preview-panel"><h2></h2><img alt=""><div class="row"><button class="btn blue" type="button">とじる</button></div></div>`;
+  wrap.querySelector("h2").textContent = r.name || "画像";
+  wrap.querySelector("img").src = src;
+  const close = () => wrap.remove();
+  wrap.querySelector("button").onclick = close;
+  wrap.onclick = (e) => { if (e.target === wrap) close(); };
+  document.body.appendChild(wrap);
+  wrap.querySelector("button").focus();
 }
 
 const curCat = () => document.querySelector('input[name="cat"]:checked').value;

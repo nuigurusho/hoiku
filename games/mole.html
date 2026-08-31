@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=26">
+<link rel="stylesheet" href="../css/style.css?v=27">
 </head>
 <body>
 <header class="bar">
@@ -48,7 +48,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=27"></script>
+<script src="../js/core.js?v=28"></script>
 <script src="../js/rig.js?v=16"></script>
 <script>
 "use strict";
@@ -69,7 +69,7 @@ let faces = [], G = null;
 
 async function loadFaces() {
   if (faces.length) return;
-  const recs = await Store.ensureSamples();
+  const recs = await Store.forGame();
   for (const rec of recs.filter((r) => r.cat === "char")) {
     const parts = await Rig.load(rec);
     faces.push(parts.head.c);   // あたまのパーツだけ ひょっこり出す
