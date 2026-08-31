@@ -161,6 +161,21 @@ document.body.insertAdjacentHTML("beforeend", `
     </div>
   </div>
 </div>
+<!-- 切り出したキャラクターの作品情報 -->
+<div class="modal hidden" id="cropMetaModal">
+  <div class="panel" style="width:min(560px, 94vw)">
+    <h2>作品情報</h2>
+    <p class="note">作品名を入力してください。作者名は空欄のままでも保存できます。</p>
+    <div class="import-meta" style="grid-template-columns:1fr;text-align:left">
+      <label><span>作品名</span><input id="cropWorkName" type="text" maxlength="40" placeholder="例: にじいろちゃん"></label>
+      <label><span>作者名 <small>（任意）</small></span><input id="cropAuthor" type="text" maxlength="40" placeholder="例: さくらぐみ"></label>
+    </div>
+    <div class="row">
+      <button class="btn green" id="cropMetaSave">✔ 保存する</button>
+      <button class="btn gray" id="cropMetaBack">動き設定に戻る</button>
+    </div>
+  </div>
+</div>
 <input type="file" id="edFileInput" accept="image/*,.pdf,application/pdf" multiple hidden>
 <input type="file" id="edCameraInput" accept="image/*" capture="environment" hidden>
 `);
@@ -281,7 +296,7 @@ async function pdfToCanvases(file) {
 
 /* ---------- きりだし(トリミング)エディタ ----------
    pages: 元画像のcanvas配列(PDFは複数ページ、画像は1枚) */
-const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null, sc: 1, saved: 0 };
+const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null, sc: 1, saved: 0, pendingRec: null };
 
 function openCrop(pages, baseName, opts) {
   opts = opts || {};
@@ -292,6 +307,7 @@ function openCrop(pages, baseName, opts) {
   cropEd.baseName = baseName || "切り出し";
   cropEd.author = (opts.author || "").trim();
   cropEd.saved = 0;
+  cropEd.pendingRec = null;
   $("cropModal").classList.remove("hidden");
   showCropPage();
 }
@@ -354,6 +370,51 @@ function drawCrop() {
   cv.addEventListener("pointerup", () => { cropEd.drag = null; });
 })();
 
+function nextCropName() {
+  return cropEd.saved === 0 ? cropEd.baseName : `${cropEd.baseName} ${cropEd.saved + 1}`;
+}
+
+function returnToCrop() {
+  cropEd.pendingRec = null;
+  $("cropMetaModal").classList.add("hidden");
+  $("cropModal").classList.remove("hidden");
+  drawCrop();
+}
+
+async function finishCropSave(rec) {
+  await Store.put(rec);
+  cropEd.saved++;
+  cropEd.rect = null;
+  returnToCrop();
+  Sound.good();
+  Ui.msg("保存しました", 1100, "#51cf66");
+  await changed();
+}
+
+async function openCropRig(rec) {
+  $("cropModal").classList.add("hidden");
+  try {
+    await openRig(rec, {
+      afterSave: () => openCropMeta(rec),
+      afterCancel: returnToCrop,
+    });
+  } catch (e) {
+    rigEd.afterSave = null;
+    rigEd.afterCancel = null;
+    returnToCrop();
+    alert("動き設定を開けませんでした:\n" + ((e && e.message) || e));
+  }
+}
+
+function openCropMeta(rec) {
+  cropEd.pendingRec = rec;
+  $("cropWorkName").value = rec.name || "";
+  $("cropAuthor").value = rec.author || "";
+  $("cropMetaModal").classList.remove("hidden");
+  $("cropWorkName").focus();
+  $("cropWorkName").select();
+}
+
 async function saveCropRegion(rect) {
   const src = cropEd.pages[cropEd.idx];
   const cat = cropEd.forceCat || document.querySelector('input[name="cropCat"]:checked').value;
@@ -366,9 +427,8 @@ async function saveCropRegion(rect) {
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, out.width, out.height);
   ctx.drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
-  cropEd.saved++;
   const rec = {
-    name: cropEd.saved === 1 ? cropEd.baseName : `${cropEd.baseName} ${cropEd.saved}`,
+    name: nextCropName(),
     cat,
     dataURL: out.toDataURL("image/jpeg", 0.88),
   };
@@ -376,11 +436,10 @@ async function saveCropRegion(rect) {
   if (cat === "char") {
     rec.rig = { ...Rig.DEFAULT };
     rec.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
+    await openCropRig(rec);
+    return;
   }
-  await Store.put(rec);
-  Sound.pop();
-  Ui.msg("保存しました", 1100, "#51cf66");
-  changed();
+  await finishCropSave(rec);
 }
 
 $("cropSave").onclick = () => {
@@ -389,8 +448,6 @@ $("cropSave").onclick = () => {
     return;
   }
   saveCropRegion(cropEd.rect);
-  cropEd.rect = null;
-  drawCrop();
 };
 $("cropWhole").onclick = () => {
   const cv = $("cropCanvas");
@@ -410,15 +467,45 @@ $("cropRotate").onclick = () => {
 $("cropNext").onclick = () => { Sound.tap(); cropEd.idx++; showCropPage(); };
 $("cropClose").onclick = () => $("cropModal").classList.add("hidden");
 
+$("cropMetaSave").onclick = async () => {
+  const rec = cropEd.pendingRec;
+  if (!rec) return;
+  const name = $("cropWorkName").value.trim();
+  if (!name) {
+    Ui.msg("作品名を入力してください", 1300, "#4dabf7");
+    $("cropWorkName").focus();
+    return;
+  }
+  rec.name = name;
+  rec.author = $("cropAuthor").value.trim();
+  cropEd.pendingRec = null;
+  await finishCropSave(rec);
+};
+$("cropMetaBack").onclick = async () => {
+  const rec = cropEd.pendingRec;
+  if (!rec) return;
+  const name = $("cropWorkName").value.trim();
+  if (name) rec.name = name;
+  rec.author = $("cropAuthor").value.trim();
+  $("cropMetaModal").classList.add("hidden");
+  await openRig(rec, {
+    afterSave: () => openCropMeta(rec),
+    afterCancel: returnToCrop,
+  });
+};
+
 /* ---------- リグ編集 ---------- */
 const rigEd = {
   rec: null, img: null, keyed: null, trimmed: null, rig: null, cutout: null,
   drag: null, parts: null, puppet: null, raf: 0, cutoutRaf: 0,
-  brush: "keep", painting: false,
+  brush: "keep", painting: false, afterSave: null, afterCancel: null,
 };
 
-async function openRig(rec) {
+async function openRig(rec, opts) {
+  opts = opts || {};
   rigEd.rec = rec;
+  rigEd.afterSave = opts.afterSave || null;
+  rigEd.afterCancel = opts.afterCancel || null;
   rigEd.rig = { ...Rig.DEFAULT, ...(rec.rig || {}) };
   if (rigEd.rig.arms) rigEd.rig.arms = JSON.parse(JSON.stringify(rigEd.rig.arms));
   rigEd.cutout = Util.cutoutSettings(rec.cutout);
@@ -740,14 +827,26 @@ $("rigSave").onclick = async () => {
     ...rigEd.cutout,
     strokes: rigEd.cutout.strokes.map((s) => ({ ...s })),
   };
-  await Store.put(rigEd.rec);
   $("rigModal").classList.add("hidden");
-  Sound.good();
-  changed();
+  const afterSave = rigEd.afterSave;
+  rigEd.afterSave = null;
+  rigEd.afterCancel = null;
+  if (afterSave) {
+    Sound.tap();
+    await afterSave(rigEd.rec);
+  } else {
+    await Store.put(rigEd.rec);
+    Sound.good();
+    await changed();
+  }
 };
 $("rigCancel").onclick = () => {
   cancelAnimationFrame(rigEd.cutoutRaf);
   $("rigModal").classList.add("hidden");
+  const afterCancel = rigEd.afterCancel;
+  rigEd.afterSave = null;
+  rigEd.afterCancel = null;
+  if (afterCancel) afterCancel(rigEd.rec);
 };
 
 /* ---------- 差分画像・まちがいスポット編集 ---------- */
