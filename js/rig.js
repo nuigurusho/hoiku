@@ -135,12 +135,15 @@ const Rig = {
     /* biped(にほんあし・現行動作 / 後方互換) */
     const neckY = Math.round(Util.clamp(val(rig.neckY, 0.42), 0.1, 0.9) * H);
     const hipY  = Math.round(Util.clamp(val(rig.hipY, 0.7), val(rig.neckY, 0.42) + 0.05, 0.95) * H);
+    const center = cx / W;
+    const legLeftX = Math.round(Util.clamp(val(rig.legLeftX, center * 0.5), 0.02, center - 0.02) * W);
+    const legRightX = Math.round(Util.clamp(val(rig.legRightX, center + (1 - center) * 0.5), center + 0.02, 0.98) * W);
     const out = {
       ...base, neckY, hipY,
       head:  { ...cut(0, 0, W, neckY + OV),            pivot: { x: cx, y: neckY } },
       torso: { ...cut(0, neckY, W, hipY - neckY + OV), pivot: { x: cx, y: hipY } },
-      legL:  { ...cut(0, hipY, cx, H - hipY),          pivot: { x: cx * 0.5, y: hipY } },
-      legR:  { ...cut(cx, hipY, W - cx, H - hipY),     pivot: { x: cx + (W - cx) * 0.5, y: hipY } },
+      legL:  { ...cut(0, hipY, cx, H - hipY),          pivot: { x: legLeftX, y: hipY } },
+      legR:  { ...cut(cx, hipY, W - cx, H - hipY),     pivot: { x: legRightX, y: hipY } },
     };
 
     /* 高度な設定:左右の腕を矩形で切り出し、肩の点を支点にする。

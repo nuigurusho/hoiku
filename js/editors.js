@@ -70,6 +70,14 @@ document.body.insertAdjacentHTML("beforeend", `
               <label class="toggle-row"><input id="rigArmsEnabled" type="checkbox"> <span>左右の腕を肩から動かす</span></label>
               <p class="note">左の絵で腕の四角と肩の丸をドラッグして合わせます。</p>
             </div>
+            <div class="advanced-block" id="legAdvancedBlock">
+              <h3>足の付け根</h3>
+              <p class="note">左右の足が回る位置を合わせます。中央の絵にある丸もドラッグできます。</p>
+              <div class="advanced-sliders">
+                <label>左足 <output id="rigLegLeftOut"></output><input id="rigLegLeft" type="range" min="5" max="95" step="1"></label>
+                <label>右足 <output id="rigLegRightOut"></output><input id="rigLegRight" type="range" min="5" max="95" step="1"></label>
+              </div>
+            </div>
           </div>
         </section>
       </aside>
@@ -670,11 +678,30 @@ function ensureAdvancedArms() {
   return rigEd.rig.arms;
 }
 
+function ensureLegRoots() {
+  const center = Util.clamp(rigEd.rig.centerX == null ? 0.5 : rigEd.rig.centerX, 0.15, 0.85);
+  if (rigEd.rig.legLeftX == null) rigEd.rig.legLeftX = center * 0.5;
+  if (rigEd.rig.legRightX == null) rigEd.rig.legRightX = center + (1 - center) * 0.5;
+  rigEd.rig.legLeftX = Util.clamp(rigEd.rig.legLeftX, 0.05, center - 0.03);
+  rigEd.rig.legRightX = Util.clamp(rigEd.rig.legRightX, center + 0.03, 0.95);
+  return { left: rigEd.rig.legLeftX, right: rigEd.rig.legRightX };
+}
+
+function syncLegRootControls() {
+  const roots = ensureLegRoots();
+  $("rigLegLeft").value = Math.round(roots.left * 100);
+  $("rigLegRight").value = Math.round(roots.right * 100);
+  $("rigLegLeftOut").textContent = `${Math.round(roots.left * 100)}%`;
+  $("rigLegRightOut").textContent = `${Math.round(roots.right * 100)}%`;
+}
+
 function syncAdvancedRig() {
   const isBiped = (rigEd.rig.type || "biped") === "biped";
   if (rigEd.rig.arms) ensureAdvancedArms();
   $("armAdvancedBlock").classList.toggle("hidden", !isBiped);
+  $("legAdvancedBlock").classList.toggle("hidden", !isBiped);
   $("rigArmsEnabled").checked = !!(rigEd.rig.arms && rigEd.rig.arms.enabled);
+  if (isBiped) syncLegRootControls();
 }
 
 $("rigArmsEnabled").onchange = (e) => {
@@ -683,6 +710,15 @@ $("rigArmsEnabled").onchange = (e) => {
   rebuildParts();
   drawRig();
 };
+
+for (const [id, key] of [["rigLegLeft", "legLeftX"], ["rigLegRight", "legRightX"]]) {
+  $(id).oninput = (e) => {
+    rigEd.rig[key] = +e.target.value / 100;
+    syncLegRootControls();
+    rebuildParts();
+    drawRig();
+  };
+}
 
 function setRigType(t) {
   if (!Rig.TYPES.includes(t)) return;
@@ -737,6 +773,18 @@ function drawRig() {
     hLine("#4dabf7", r.neckY, "首");
     hLine("#51cf66", r.hipY, "腰");
     vLine("#ff6b9d", r.centerX, r.hipY, "中央");
+    const roots = ensureLegRoots();
+    const root = (x, col, label) => {
+      const px = x * W, py = r.hipY * Hc;
+      ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.lineWidth = 5; ctx.strokeStyle = col; ctx.stroke();
+      ctx.font = "bold 15px sans-serif";
+      ctx.lineWidth = 4; ctx.strokeStyle = "#fff"; ctx.strokeText(label, px - 18, py + 30);
+      ctx.fillStyle = col; ctx.fillText(label, px - 18, py + 30);
+    };
+    root(roots.left, "#7950f2", "左足");
+    root(roots.right, "#f76707", "右足");
   } else if (t === "skirt") {
     hLine("#4dabf7", r.neckY, "首");
     hLine("#51cf66", r.hipY, "腰");
@@ -806,6 +854,10 @@ function animPreview() {
       cands.push(["neckY", Math.abs(p.y - r.neckY * cv.height)]);
       cands.push(["hipY", Math.abs(p.y - r.hipY * cv.height)]);
       cands.push(["centerX", Math.abs(p.x - r.centerX * cv.width)]);
+      const roots = ensureLegRoots();
+      const hipY = r.hipY * cv.height;
+      cands.push(["legLeftX", Math.hypot(p.x - roots.left * cv.width, p.y - hipY) - 10]);
+      cands.push(["legRightX", Math.hypot(p.x - roots.right * cv.width, p.y - hipY) - 10]);
       if (r.arms && r.arms.enabled) {
         for (const side of ["left", "right"]) {
           const a = r.arms[side];
@@ -854,7 +906,18 @@ function animPreview() {
         a.px = x; a.py = y;
       }
     } else if (rigEd.drag === "hingeX") rigEd.rig.hingeX = Util.clamp(p.x / cv.width, 0, 0.6);
-    else if (rigEd.drag === "centerX") rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
+    else if (rigEd.drag === "centerX") {
+      rigEd.rig.centerX = Util.clamp(p.x / cv.width, 0.15, 0.85);
+      syncLegRootControls();
+    }
+    else if (rigEd.drag === "legLeftX") {
+      rigEd.rig.legLeftX = Util.clamp(p.x / cv.width, 0.05, rigEd.rig.centerX - 0.03);
+      syncLegRootControls();
+    }
+    else if (rigEd.drag === "legRightX") {
+      rigEd.rig.legRightX = Util.clamp(p.x / cv.width, rigEd.rig.centerX + 0.03, 0.95);
+      syncLegRootControls();
+    }
     else if (rigEd.drag === "bellyY") rigEd.rig.bellyY = Util.clamp(p.y / cv.height, 0.2, 0.85);
     else rigEd.rig[rigEd.drag] = Util.clamp(p.y / cv.height, 0.1, 0.92);
     if ((rigEd.drag === "neckY" || rigEd.drag === "hipY") && rigEd.rig.hipY < rigEd.rig.neckY + 0.08) {
