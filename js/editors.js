@@ -68,7 +68,9 @@ document.body.insertAdjacentHTML("beforeend", `
             <div class="advanced-block" id="armAdvancedBlock">
               <h3>腕も動かす</h3>
               <label class="toggle-row"><input id="rigArmsEnabled" type="checkbox"> <span>左右の腕を肩から動かす</span></label>
-              <p class="note">左の絵で腕の四角と肩の丸をドラッグして合わせます。</p>
+              <div class="advanced-sliders">
+                <label>手の下まで <output id="rigArmBottomOut"></output><input id="rigArmBottom" type="range" min="45" max="100" step="1" disabled></label>
+              </div>
             </div>
             <div class="advanced-block" id="legAdvancedBlock">
               <h3>足の付け根</h3>
@@ -737,18 +739,42 @@ function syncLegRootControls() {
   $("rigLegRightOut").textContent = `${Math.round(roots.right * 100)}%`;
 }
 
+function syncArmBottomControl() {
+  const arms = ensureAdvancedArms();
+  const bottom = Math.max(arms.left.y + arms.left.h, arms.right.y + arms.right.h);
+  $("rigArmBottom").value = Math.round(bottom * 100);
+  $("rigArmBottomOut").textContent = `${Math.round(bottom * 100)}%`;
+  $("rigArmBottom").disabled = !arms.enabled;
+}
+
 function syncAdvancedRig() {
   const isBiped = (rigEd.rig.type || "biped") === "biped";
-  if (rigEd.rig.arms) ensureAdvancedArms();
+  if (isBiped) ensureAdvancedArms();
   $("armAdvancedBlock").classList.toggle("hidden", !isBiped);
   $("legAdvancedBlock").classList.toggle("hidden", !isBiped);
   $("rigArmsEnabled").checked = !!(rigEd.rig.arms && rigEd.rig.arms.enabled);
-  if (isBiped) syncLegRootControls();
+  if (isBiped) {
+    syncArmBottomControl();
+    syncLegRootControls();
+  }
 }
 
 $("rigArmsEnabled").onchange = (e) => {
   ensureAdvancedArms().enabled = e.target.checked;
+  syncArmBottomControl();
   Sound.tap();
+  rebuildParts();
+  drawRig();
+};
+
+$("rigArmBottom").oninput = (e) => {
+  const bottom = +e.target.value / 100;
+  const arms = ensureAdvancedArms();
+  for (const side of ["left", "right"]) {
+    const arm = arms[side];
+    arm.h = Util.clamp(bottom - arm.y, 0.04, 1 - arm.y);
+  }
+  syncArmBottomControl();
   rebuildParts();
   drawRig();
 };
@@ -968,7 +994,12 @@ function animPreview() {
     }
     drawRig();
   });
-  cv.addEventListener("pointerup", () => { rigEd.drag = null; rebuildParts(); });
+  cv.addEventListener("pointerup", () => {
+    const movedArm = rigEd.drag && typeof rigEd.drag === "object";
+    rigEd.drag = null;
+    if (movedArm) syncArmBottomControl();
+    rebuildParts();
+  });
 })();
 
 $("rigSave").onclick = async () => {
@@ -1276,15 +1307,27 @@ $("fukuSave").onclick = async () => {
 $("fukuCancel").onclick = () => $("fukuModal").classList.add("hidden");
 
 /* ---------- クイズを つくる ---------- */
+const QUIZ_SCHOOLS = {
+  hoikuen: { word: "ほいくえん", leader: "えんちょうせんせい", leaderLabel: "園長先生" },
+  youchien: { word: "ようちえん", leader: "えんちょうせんせい", leaderLabel: "園長先生" },
+  shougakkou: { word: "しょうがっこう", leader: "こうちょうせんせい", leaderLabel: "校長先生" },
+};
+function quizSchool() {
+  return QUIZ_SCHOOLS[$("quizSchoolType")?.value] || QUIZ_SCHOOLS.hoikuen;
+}
+
 const QUIZ_TEMPLATES = [
-  { label: "園の名前", ph: "○○ほいくえん",
-    make: (v) => ({ q: "わたしたちの えんの なまえは?", emoji: "🏫",
-      choices: [v, "うちゅうほいくえん", "おかしのくに ほいくえん", "きょうりゅうほいくえん"], answer: 0 }) },
-  { label: "園がある町", ph: "○○区・○○市 など",
-    make: (v) => ({ q: "えんが あるのは どこの まち?", emoji: "🗾",
+  { label: () => `${quizSchool().word}の名前`, ph: () => `○○${quizSchool().word}`,
+    make: (v) => {
+      const word = quizSchool().word;
+      return { q: `わたしたちの ${word}の なまえは?`, emoji: "🏫",
+        choices: [v, `うちゅう${word}`, `おかしのくに ${word}`, `きょうりゅう${word}`], answer: 0 };
+    } },
+  { label: () => `${quizSchool().word}がある町`, ph: "○○区・○○市 など",
+    make: (v) => ({ q: `${quizSchool().word}が あるのは どこの まち?`, emoji: "🗾",
       choices: [v, "ほっかいどう", "おきなわ", "うちゅう"], answer: 0 }) },
-  { label: "園長先生の名前", ph: "○○先生",
-    make: (v) => ({ q: "えんちょうせんせいは だれ?", emoji: "👓",
+  { label: () => `${quizSchool().leaderLabel}の名前`, ph: "○○先生",
+    make: (v) => ({ q: `${quizSchool().leader}は だれ?`, emoji: "👓",
       choices: [v, "サンタさん", "ももたろう", "かぐやひめ"], answer: 0 }) },
   { label: "クラス(組)の名前", ph: "○○ぐみ",
     make: (v) => ({ q: "みんなの くみの なまえは?", emoji: "🎒",
@@ -1299,6 +1342,13 @@ const QUIZ_TEMPLATES = [
 
 function initQuiz() {
   if (!$("quizTemplates")) return;
+  const school = $("quizSchoolType");
+  const savedSchool = localStorage.getItem("quizSchoolType");
+  if (QUIZ_SCHOOLS[savedSchool]) school.value = savedSchool;
+  school.onchange = () => {
+    localStorage.setItem("quizSchoolType", school.value);
+    initQuizTemplates();
+  };
   initQuizTemplates();
   refreshQuizList();
   $("qfAdd").onclick = qfAdd;
@@ -1306,16 +1356,17 @@ function initQuiz() {
 
 function initQuizTemplates() {
   const box = $("quizTemplates");
+  box.innerHTML = "";
   QUIZ_TEMPLATES.forEach((t) => {
     const d = document.createElement("div");
     d.className = "admin-row";
     const label = document.createElement("span");
     label.className = "nm";
     label.style.flex = "0 0 230px";
-    label.textContent = t.label;
+    label.textContent = typeof t.label === "function" ? t.label() : t.label;
     const input = document.createElement("input");
     input.type = "text";
-    input.placeholder = t.ph;
+    input.placeholder = typeof t.ph === "function" ? t.ph() : t.ph;
     input.style.flex = "1 1 180px";
     const btn = document.createElement("button");
     btn.className = "btn green";
@@ -1595,7 +1646,7 @@ function mountLists(defs, opts) {
       const nm = prompt("名前を入力してください", r.name || "");
       if (nm !== null) { r.name = nm.trim(); await Store.put(r); refresh(); }
     });
-    mk("おえかきで なおす", "yellow", () => { location.href = drawURL({ edit: r.id }); });
+    mk("かく", "yellow", () => { location.href = drawURL({ edit: r.id }); });
     const btns = L.btns || [];
     if (btns.includes("rig")) mk("うごきせってい", "purple", () => openRig(r));
     if (btns.includes("voice")) mk("こえ", "orange", () => openVoice(r));

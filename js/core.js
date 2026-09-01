@@ -1280,7 +1280,7 @@ const Ui = {
    あそびかたを えらんだ あと、キャラや えが ひつような ときだけ ひらく。
    さきに キャラを えらばせないので、ちいさい子でも まよいにくい。
      Picker.one({title, note, records, selectedId})   … タッチした しゅんかんに けってい
-     Picker.many({title, note, records, preselect, min, confirmLabel})
+     Picker.many({title, note, records, preselect, min, max, confirmLabel})
                                                      … なんこか えらんで「けってい!」
    えらんだ record(one) / recordの配列(many)を Promise でかえす。
    「← もどる」を おしたときは null(= あそびかた えらびに もどる)。 */
@@ -1328,7 +1328,8 @@ const Picker = {
       if (!recs.length) {
         gal.innerHTML = '<p class="note">えが ないよ。「とりこみ」で とりこんでね</p>';
       } else if (opts.multi) {
-        const sel = new Set(opts.preselect || []);
+        const max = opts.max || Infinity;
+        const sel = new Set((opts.preselect || []).slice(0, max));
         const ok = document.createElement("button");
         ok.className = "btn big pink";
         ok.type = "button";
@@ -1337,7 +1338,15 @@ const Picker = {
 
         /* タッチで えらぶ / はずす */
         Ui.renderGallery(gal, recs, (r, el) => {
-          sel.has(r.id) ? sel.delete(r.id) : sel.add(r.id);
+          if (sel.has(r.id)) {
+            sel.delete(r.id);
+          } else if (sel.size >= max) {
+            Sound.bad();
+            Ui.msg(opts.maxMessage || `${max}つまで えらべるよ`, 1500, "#4dabf7");
+            return;
+          } else {
+            sel.add(r.id);
+          }
           el.classList.toggle("selected", sel.has(r.id));
         });
         [...gal.children].forEach((el, i) => el.classList.toggle("selected", sel.has(recs[i].id)));
@@ -2089,7 +2098,7 @@ const Guide = {
 
     skirt: {
       label: "スカート", emoji: "👗", cat: "char", type: "skirt", cv: [820, 1040],
-      hint: "こしから したは スカートで ひろげよう",
+      hint: "",
       draw(g) {
         g.faint(() => g.line(0.5, 0.05, 0.5, 0.97));
         g.circle(0.5, 0.24, 0.18);
@@ -2106,7 +2115,7 @@ const Guide = {
 
     animal: {
       label: "どうぶつ", emoji: "🐕", cat: "char", type: "quad", cv: [1100, 820],
-      hint: "よこむきに、あたまは かならず ひだり",
+      hint: "",
       draw(g) {
         g.faint(() => g.line(0.5, 0.10, 0.5, 0.95));      // まえあし/うしろあし の さかいめ
         g.oval(0.55, 0.38, 0.30, 0.20);                   // からだ
@@ -2126,7 +2135,7 @@ const Guide = {
 
     fly: {
       label: "ちょうちょ", emoji: "🦋", cat: "char", type: "butterfly", cv: [780, 900],
-      hint: "はねは 1まいだけ。からだは ひだりはしに はんぶん",
+      hint: "",
       draw(g) {
         g.line(0.07, 0.06, 0.07, 0.94);                   // からだ(まんなかの 線)
         g.curve([[0.07, 0.10], [0.55, 0.00], [0.98, 0.18], [0.52, 0.50]]);   // うわばね
@@ -2141,7 +2150,7 @@ const Guide = {
 
     float: {
       label: "ふわふわ", emoji: "👻", cat: "char", type: "float", cv: [820, 1040],
-      hint: "まるく ふんわり。ぷかぷか うかぶよ",
+      hint: "",
       draw(g) {
         g.faint(() => g.line(0.5, 0.08, 0.5, 0.95));
         g.circle(0.5, 0.50, 0.34);                        // まるい からだ
@@ -2152,7 +2161,7 @@ const Guide = {
 
     face: {
       label: "かお", emoji: "😀", cat: "fuku", cv: [900, 1000],
-      hint: "め・はな・くちを 大きく はなして かこう",
+      hint: "",
       draw(g) {
         g.oval(0.5, 0.50, 0.38, 0.42);                    // かおの りんかく
         g.faint(() => {
@@ -2168,7 +2177,7 @@ const Guide = {
 
     bg: {
       label: "はいけい", emoji: "🏞️", cat: "bg", cv: [1200, 760],
-      hint: "そらと じめんを かくと それらしく なるよ",
+      hint: "",
       draw(g) {
         g.line(0.03, 0.66, 0.97, 0.66);                   // ちへいせん
         g.faint(() => { g.circle(0.84, 0.20, 0.10); g.oval(0.24, 0.22, 0.13, 0.07); });  // おひさま・くも

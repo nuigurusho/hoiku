@@ -47,7 +47,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=34"></script>
+<script src="../js/core.js?v=35"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -96,8 +96,9 @@ async function pickChars(mode) {
   const vs = mode.kind === "vs";
   const recs = await Picker.many({
     title: vs ? "1P・2P の キャラを えらんでね" : "はしる キャラを えらんでね",
-    note: vs ? "2にん えらんでね(ひだり=1P・みぎ=2P)" : "なんにんでも えらべるよ(さいだい6にん)",
-    records: allChars, preselect: [...selectedIds], min: 2,
+    note: vs ? "2にん えらんでね(ひだり=1P・みぎ=2P)" : "2〜6にん えらんでね",
+    records: allChars, preselect: [...selectedIds], min: 2, max: vs ? 2 : 6,
+    maxMessage: vs ? "2にん えらんでね" : "6にんまで えらべるよ",
   });
   if (!recs) return false;
   selectedIds = new Set(recs.map((r) => r.id));

@@ -23,6 +23,15 @@
   <div class="make-sec">
     <h2>４たくクイズ<button class="info-btn" type="button" id="quizInfo" aria-label="クイズの説明">i</button></h2>
 
+    <div class="row" style="justify-content:flex-start">
+      <label for="quizSchoolType">しゅるい</label>
+      <select id="quizSchoolType">
+        <option value="hoikuen">ほいくえん</option>
+        <option value="youchien">ようちえん</option>
+        <option value="shougakkou">しょうがっこう</option>
+      </select>
+    </div>
+
     <h3>かんたん作成 — 答えを入れるだけ</h3>
     <div id="quizTemplates"></div>
 
@@ -49,9 +58,9 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=34"></script>
+<script src="js/core.js?v=35"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=24"></script>
+<script src="js/editors.js?v=25"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {

@@ -198,7 +198,7 @@
   </div>
 </aside>
 
-<script src="js/core.js?v=34"></script>
+<script src="js/core.js?v=35"></script>
 <script src="js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -287,8 +287,8 @@ function guideShow(on, autoHide) {
   const k = guide.kind ? Guide.get(guide.kind) : null;
   const cap = $("guideCap");
   gcv.classList.toggle("on", guide.on);
-  cap.textContent = guide.on && k ? k.emoji + " " + k.hint : "";
-  cap.classList.toggle("on", guide.on && !!k);
+  cap.textContent = guide.on && k && k.hint ? k.emoji + " " + k.hint : "";
+  cap.classList.toggle("on", guide.on && !!(k && k.hint));
   $("guideBtn").classList.toggle("green", guide.on);
   $("guideBtn").classList.toggle("blue", !guide.on);
   if (guide.on && autoHide) guide.timer = setTimeout(() => guideShow(false), 2200);
@@ -580,7 +580,6 @@ async function loadForEdit(rec) {
   $("saveBtn").classList.add("hidden");
   $("overwriteBtn").classList.remove("hidden");
   $("saveNewRow").classList.remove("hidden");
-  Ui.msg("なおして いいよ!", 1200, "#51cf66");
 }
 
 /* 「とりこんだ えを なおす」ボタン:えらび がめんを だす */
