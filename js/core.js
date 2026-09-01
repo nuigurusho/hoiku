@@ -329,33 +329,79 @@ const Util = {
 /* ---------------- Sound(WebAudioで合成、音源ファイル不要) ---------------- */
 const Sound = {
   ctx: null,
+  _resuming: null,
+  _blocked: false,
   /* はやおくり(「けっかへ」)の あいだは 音を 出さない。
      何十びょうぶんの 音が いっぺんに 鳴ってしまうため。 */
   muted: false,
   mute(on) { this.muted = !!on; },
-  ensure() {
+
+  /* WebKitでは、同じ停止中のAudioContextへresume()を続けて呼ぶと
+     音声デバイス開始の失敗が連続することがある。再開処理は必ず1本にまとめ、
+     失敗後は自動再試行せず、次のタップで新しいContextを作り直す。 */
+  _discard(ctx) {
+    if (this.ctx !== ctx) return;
+    this.ctx = null;
+    this._blocked = true;
+    try {
+      const closing = ctx.close();
+      if (closing && closing.catch) closing.catch(() => {});
+    } catch (e) { /* すでに使えないContextならそのまま捨てる */ }
+  },
+
+  ensure(fromGesture = false) {
     if (this.muted) return null;
+    if (this.ctx && this.ctx.state === "closed") this.ctx = null;
+    if (this._blocked && !fromGesture) return null;
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) this.ctx = new AC();
+      if (!AC) return null;
+      try {
+        this.ctx = new AC();
+        this._blocked = false;
+      } catch (e) {
+        this._blocked = true;
+        return null;
+      }
     }
-    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
-    return this.ctx;
+    const ctx = this.ctx;
+    if ((ctx.state === "suspended" || ctx.state === "interrupted") && !this._resuming) {
+      try {
+        const resumed = ctx.resume();
+        this._resuming = Promise.resolve(resumed)
+          .then(() => { if (this.ctx === ctx) this._blocked = false; })
+          .catch(() => this._discard(ctx))
+          .finally(() => { this._resuming = null; });
+      } catch (e) {
+        this._discard(ctx);
+        return null;
+      }
+    }
+    return ctx;
+  },
+
+  unlock() {
+    this._blocked = false;
+    this.ensure(true);
   },
   beep(freq, dur = 0.12, type = "sine", vol = 0.2, when = 0, slide = 0) {
     const ctx = this.ensure();
     if (!ctx) return;
-    const t = ctx.currentTime + when;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq, t);
-    if (slide) o.frequency.linearRampToValueAtTime(freq + slide, t + dur);
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g).connect(ctx.destination);
-    o.start(t);
-    o.stop(t + dur + 0.02);
+    try {
+      const t = ctx.currentTime + when;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.linearRampToValueAtTime(freq + slide, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    } catch (e) {
+      this._discard(ctx);
+    }
   },
   tap()  { this.beep(660, 0.07, "square", 0.12); },
   pop()  { this.beep(500, 0.12, "sine", 0.25, 0, 500); },
@@ -394,7 +440,7 @@ const Sound = {
     } catch (e) { return false; }
   },
 };
-window.addEventListener("pointerdown", () => Sound.ensure(), { once: true });
+window.addEventListener("pointerdown", () => Sound.unlock(), { passive: true });
 
 /* ---------------- Store(IndexedDBに画像を保存) ----------------
    レコード: { id, name, author, cat('char'|'bg'|'pic'|'fuku'|'src'), dataURL, hidden, cutout,
