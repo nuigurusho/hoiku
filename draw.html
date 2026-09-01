@@ -175,8 +175,7 @@
     <div class="cat-row" id="catRow">
       <label class="radio"><input type="radio" name="cat" value="char" checked> 🧍 キャラクターの絵</label>
       <label class="radio"><input type="radio" name="cat" value="bg"> 🏞️ はいけいの絵</label>
-      <label class="radio"><input type="radio" name="cat" value="pic"> 🖼️ 写真・絵</label>
-      <label class="radio"><input type="radio" name="cat" value="fuku"> 😀 ふくわらいパーツ</label>
+      <label class="radio"><input type="radio" name="cat" value="fuku"> 😀 キャラクターの顔</label>
     </div>
 
     <div class="tool-row hidden" id="saveNewRow" style="margin-top:14px">
@@ -186,18 +185,20 @@
       <button class="btn yellow" id="openBtn" style="flex:1">とりこんだ えを なおす</button>
     </div>
 
-    <h3>かきかたの コツ</h3>
-    <p class="note" style="line-height:1.7">
-      キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。<br>
-      <b>あたり</b>(うすい 点線)に そって かくと、そのままで きれいに うごきます。<br>
-      🐕どうぶつ は <b>あたまを ひだり</b>、🦋ちょうちょ は <b>はねを 1まいだけ</b> かいてね。
-      むきを まちがえたら <b>↔ 左右はんてん</b> で なおせます。<br>
-      こまかい せってい(うごき・まちがいスポット)は <a href="create.html">つくる</a> でできます。
-    </p>
+    <div id="drawTips">
+      <h3>かきかたの コツ</h3>
+      <p class="note" style="line-height:1.7">
+        キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。<br>
+        <b>あたり</b>(うすい 点線)に そって かくと、そのままで きれいに うごきます。<br>
+        🐕どうぶつ は <b>あたまを ひだり</b>、🦋ちょうちょ は <b>はねを 1まいだけ</b> かいてね。
+        むきを まちがえたら <b>↔ 左右はんてん</b> で なおせます。<br>
+        こまかい せってい(うごき・まちがいスポット)は <a href="create.html">つくる</a> でできます。
+      </p>
+    </div>
   </div>
 </aside>
 
-<script src="js/core.js?v=28"></script>
+<script src="js/core.js?v=29"></script>
 <script src="js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -235,9 +236,11 @@ const gcv = $("guideCanvas");
             かってな ところへ とばないよう、しっている ページだけ うけつける */
 const q = new URLSearchParams(location.search);
 const BACK_PAGES = ["index.html", "create.html", "draw-pick.html",
-                    "draw-pick.html?from=create", "create-diff.html", "admin.html"];
+                    "draw-pick.html?from=create", "create-diff.html", "admin.html",
+                    "admin.html?from=create"];
 const BACK = BACK_PAGES.includes(q.get("back")) ? q.get("back") : "index.html";
 $("backLink").setAttribute("href", BACK);
+if (q.get("diff")) $("saveBtn").disabled = true;
 
 const kindDef = Guide.get(q.get("kind"));
 const fixedCat = kindDef ? kindDef.cat
@@ -550,6 +553,7 @@ if (fixedCat) {
 
 /* ---------- とりこんだ えを なおす ---------- */
 let editRec = null;          // なおしているとき、その レコード
+let diffBaseRec = null;      // 差分を おえかきで つくるときの もとのレコード
 
 async function loadForEdit(rec) {
   editRec = rec;
@@ -593,14 +597,30 @@ $("openBtn").onclick = async () => {
   if (rec) loadForEdit(rec);
 };
 
-/* ?edit=<id> で ちょくせつ ひらく(つくる画面からの ちかみち) */
+/* ?edit=<id> は上書き編集、?diff=<id> は元の絵から差分をつくる。 */
 (async () => {
-  const id = q.get("edit");
+  const id = q.get("diff") || q.get("edit");
   if (!id) return;
   const all = await Store.ensureSamples();
   const rec = all.find((r) => String(r.id) === String(id));
-  if (rec) loadForEdit(rec);
-  else Ui.msg("その えが みつからないよ", 1800, "#4dabf7");
+  if (!rec) {
+    Ui.msg("その えが みつからないよ", 1800, "#4dabf7");
+    return;
+  }
+  await loadForEdit(rec);
+  if (!q.get("diff")) return;
+  diffBaseRec = rec;
+  guide.kind = null;
+  guideSync();
+  guideShow(false);
+  $("catTitle").textContent = `「${rec.name || "なまえなし"}」の さぶんを つくる`;
+  $("openBtn").classList.add("hidden");
+  $("drawTips").classList.add("hidden");
+  $("overwriteBtn").classList.add("hidden");
+  $("saveNewRow").classList.add("hidden");
+  $("saveBtn").classList.remove("hidden");
+  $("saveBtn").disabled = false;
+  $("saveBtn").textContent = "✔ さぶんにする";
 })();
 
 /* ---------- ほぞん ---------- */
@@ -620,14 +640,20 @@ const toDataURL = (out, cat) =>
   cat === "char" ? out.toDataURL("image/png") : out.toDataURL("image/jpeg", 0.9);
 
 /* えらび がめん(つくる・なにを かく?)から きたときは、ほぞんしたら そこへ もどる */
-const RETURN_TO = (fixedCat || q.get("edit")) ? BACK : null;
+const RETURN_TO = (fixedCat || q.get("edit") || q.get("diff")) ? BACK : null;
 
 function afterSave(msg) {
   Sound.good();
   Ui.confetti(1800, 90);
   Ui.msg(msg, 1500, "#51cf66");
   state.dirty = false;
-  if (RETURN_TO) setTimeout(() => { location.href = RETURN_TO; }, 1500);
+  if (diffBaseRec) {
+    const sep = BACK.includes("?") ? "&" : "?";
+    const target = `${BACK}${sep}spot=${encodeURIComponent(diffBaseRec.id)}`;
+    setTimeout(() => { location.href = target; }, 900);
+  } else if (RETURN_TO) {
+    setTimeout(() => { location.href = RETURN_TO; }, 1500);
+  }
 }
 
 /* あたらしく ほぞん(なおしている ときは「べつの えとして」)
@@ -665,7 +691,16 @@ async function saveOverwrite() {
   return true;
 }
 
-$("saveBtn").onclick = saveAsNew;
+/* 元の絵は変えず、編集結果を一時差分として渡す。スポット保存時に正式追加する。 */
+async function saveDiffVariant() {
+  if (!diffBaseRec) return false;
+  diffBaseRec.pendingDiff = toDataURL(outputCanvas(diffBaseRec.cat), diffBaseRec.cat);
+  await Store.put(diffBaseRec);
+  afterSave("さぶんを つくったよ!");
+  return true;
+}
+
+$("saveBtn").onclick = () => diffBaseRec ? saveDiffVariant() : saveAsNew();
 $("saveNewBtn").onclick = saveAsNew;
 $("overwriteBtn").onclick = saveOverwrite;
 
@@ -690,7 +725,7 @@ async function confirmLeave(href) {
     location.href = href;
     return;
   }
-  const saved = editRec ? await saveOverwrite() : await saveAsNew();
+  const saved = diffBaseRec ? await saveDiffVariant() : editRec ? await saveOverwrite() : await saveAsNew();
   /* ほぞんできて、いき先が きまっていない ときだけ ここで もどる
      (きまっている ときは afterSave が もどしてくれる) */
   if (saved && !RETURN_TO) { state.dirty = false; location.href = href; }

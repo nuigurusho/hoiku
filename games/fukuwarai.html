@@ -27,7 +27,7 @@
     <div class="gallery" id="faceGallery"></div>
     <p class="note" id="picNote"></p>
 
-    <p class="note">「とりこみ・せってい」で 顔の絵を とりこんで「ふくわらいパーツ」を せっていすると、みんなの おえかきで あそべます</p>
+    <p class="note">「とりこみ」で 顔の絵を とりこんで「パーツ」を せっていすると、みんなの おえかきで あそべます</p>
   </div>
 
   <div id="playScreen" class="hidden">
@@ -44,7 +44,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=28"></script>
+<script src="../js/core.js?v=29"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -287,7 +287,7 @@ function renderFaces() {
   });
   $("picNote").textContent = faces.length
     ? "かおを タッチすると はじまるよ"
-    : "「ふくわらいパーツ」を せっていした 絵は まだ ないよ。きほんの かおで あそべるよ!";
+    : "「パーツ」を せっていした 絵は まだ ないよ。きほんの かおで あそべるよ!";
 }
 initSelect();
 

@@ -1280,7 +1280,7 @@ const Picker = {
       row.appendChild(back);
 
       if (!recs.length) {
-        gal.innerHTML = '<p class="note">えが ないよ。「とりこみ・せってい」で とりこんでね</p>';
+        gal.innerHTML = '<p class="note">えが ないよ。「とりこみ」で とりこんでね</p>';
       } else if (opts.multi) {
         const sel = new Set(opts.preselect || []);
         const ok = document.createElement("button");

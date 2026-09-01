@@ -69,7 +69,7 @@
   </section>
 </main>
 
-<script src="js/core.js?v=28"></script>
+<script src="js/core.js?v=29"></script>
 <script src="js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -92,8 +92,8 @@ function setupCopy() {
   text($("pageTitle"), isChar ? "📖 キャラクターずかん" : "🖼️ みんなの びじゅつかん");
   text($("pageLead"), isChar ? "きになる キャラクターを えらんでね" : "みたい さくひんを えらんでね");
   $("emptyState").innerHTML = isChar
-    ? "キャラクターが まだ いないよ<br><a href=\"admin.html\">とりこみ・せってい</a>で とうろくしてね"
-    : "はいけいが まだ ないよ<br><a href=\"admin.html\">とりこみ・せってい</a>で とうろくしてね";
+    ? "キャラクターが まだ いないよ<br><a href=\"admin.html\">とりこみ</a>で とうろくしてね"
+    : "はいけいが まだ ないよ<br><a href=\"admin.html\">とりこみ</a>で とうろくしてね";
 }
 
 function renderShelf() {
@@ -237,7 +237,10 @@ $("nextWork").onclick = () => openWork(current + 1);
 
 (async () => {
   setupCopy();
-  works = await Store.forGame(kind);
+  const all = await Store.forGame();
+  works = kind === "char"
+    ? all.filter((r) => r.cat === "char")
+    : all.filter((r) => r.cat === "bg" || r.cat === "pic");
   renderShelf();
   if (kind === "char") raf = requestAnimationFrame(draw);
 })();

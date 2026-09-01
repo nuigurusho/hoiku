@@ -1,7 +1,7 @@
 "use strict";
 /* ============================================================
    editors.js — 絵を さわる ための エディタ ぐんを まとめたもの
-   「とりこみ・せってい(admin)」と「つくる(create)」の りょうほうから つかう。
+   「とりこみ(admin)」と「つくる(create)」の りょうほうから つかう。
      Editors.openRig(rec)        うごきせってい
      Editors.openSpot(rec)       まちがいスポット
      Editors.openFuku(rec)       ふくわらいパーツ
@@ -93,12 +93,13 @@ document.body.insertAdjacentHTML("beforeend", `
 <div class="modal editor-modal hidden" id="spotModal">
   <div class="panel editor-panel spot-panel">
     <h2>差分画像と まちがいスポット</h2>
-    <p class="note">差分画像を追加し、右の絵で違う場所をタップします。画像ごとに最大8個まで設定できます。</p>
+    <p class="note">右の絵で違う場所をタップします。画像ごとに最大8個まで設定できます。</p>
     <div id="spotVariants" style="display:flex;gap:8px;overflow-x:auto;margin:8px 0"></div>
     <div class="row">
       <button class="btn blue" id="spotAdd">＋ 差分画像を追加</button>
       <button class="btn gray hidden" id="spotRemove">この差分を外す</button>
       <input id="spotFiles" type="file" accept="image/*" multiple hidden>
+      <input id="spotCamera" type="file" accept="image/*" capture="environment" hidden>
     </div>
     <div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap">
       <div><p style="text-align:center;margin:4px"><b>もとの絵</b></p><canvas id="spotBaseCanvas" class="edit-canvas" width="520" height="360"></canvas></div>
@@ -114,7 +115,7 @@ document.body.insertAdjacentHTML("beforeend", `
 <!-- ふくわらいパーツ編集モーダル -->
 <div class="modal editor-modal hidden" id="fukuModal">
   <div class="panel editor-panel fuku-panel">
-    <h2>ふくわらいパーツ 設定</h2>
+    <h2>パーツ設定</h2>
     <p class="note">
       下のボタンで種類を選んで、絵の上をドラッグして目・鼻・口を囲みます(最大8個)。
       囲んだ枠をタップすると種類が変わり、「そのほか」の次で消せます。
@@ -158,9 +159,8 @@ document.body.insertAdjacentHTML("beforeend", `
     <p class="note">ドラッグで囲んで「切り出して保存」。1枚から何回でも切り出せます。</p>
     <p style="margin:4px 0" id="cropCatRow">
       <label class="radio"><input type="radio" name="cropCat" value="char" checked> 🧍 キャラ</label>
-      <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ 背景</label>
-      <label class="radio"><input type="radio" name="cropCat" value="pic"> 🖼️ 写真・絵</label>
-      <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 ふくわらい</label>
+      <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ はいけい</label>
+      <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 キャラクターの顔</label>
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
     <div class="row">
@@ -959,15 +959,23 @@ $("rigCancel").onclick = () => {
 };
 
 /* ---------- 差分画像・まちがいスポット編集 ---------- */
-const spotEd = { rec: null, img: null, diffImg: null, variants: [], legacySpots: [], selected: -1 };
+const spotEd = { rec: null, img: null, diffImg: null, variants: [], legacySpots: [], selected: -1, back: "admin.html" };
 
-async function openSpot(rec) {
+async function openSpot(rec, options) {
+  options = options || {};
   spotEd.rec = rec;
+  spotEd.back = options.back || "admin.html";
   spotEd.legacySpots = (rec.diffSpots || []).map((s) => ({ ...s }));
   spotEd.variants = (rec.diffVariants || []).map((v) => ({
     dataURL: v.dataURL,
     spots: (v.spots || []).map((s) => ({ ...s })),
   }));
+  /* おえかきから戻った差分は、スポット設定を保存するまで正式データにしない。 */
+  if (rec.pendingDiff) {
+    spotEd.variants.push({ dataURL: rec.pendingDiff, spots: [] });
+    delete rec.pendingDiff;
+    await Store.put(rec);
+  }
   spotEd.img = await Util.loadImage(rec.dataURL);
   const maxW = Math.min(520, innerWidth - 70);
   const sc = Math.min(maxW / spotEd.img.width, 350 / spotEd.img.height);
@@ -975,11 +983,12 @@ async function openSpot(rec) {
     cv.width = Math.round(spotEd.img.width * sc);
     cv.height = Math.round(spotEd.img.height * sc);
   }
-  spotEd.selected = spotEd.variants.length ? 0 : -1;
-  spotEd.diffImg = spotEd.selected >= 0 ? await Util.loadImage(spotEd.variants[0].dataURL) : spotEd.img;
+  spotEd.selected = spotEd.variants.length ? spotEd.variants.length - 1 : -1;
+  spotEd.diffImg = spotEd.selected >= 0 ? await Util.loadImage(spotEd.variants[spotEd.selected].dataURL) : spotEd.img;
   $("spotModal").classList.remove("hidden");
   renderSpotVariants();
   drawSpots();
+  if (options.promptAdd && !spotEd.variants.length) await openSpotAddMenu();
 }
 
 function currentSpots() {
@@ -1005,7 +1014,7 @@ function renderSpotVariants() {
     b.onclick = () => { Sound.tap(); selectSpotVariant(i); };
     box.appendChild(b);
   });
-  if (!spotEd.variants.length) box.innerHTML = '<p class="note">差分画像はまだありません。「＋ 差分画像を追加」から登録してください。</p>';
+  if (!spotEd.variants.length) box.innerHTML = '<p class="note">差分画像はまだありません。</p>';
   $("spotRemove").classList.toggle("hidden", spotEd.selected < 0);
   $("spotDiffLabel").textContent = spotEd.selected >= 0 ? `差分の絵 ${spotEd.selected + 1}` : "差分の絵(旧形式プレビュー)";
 }
@@ -1040,16 +1049,48 @@ $("spotCanvas").addEventListener("pointerdown", (e) => {
   drawSpots();
 });
 
-$("spotAdd").onclick = () => $("spotFiles").click();
-$("spotFiles").onchange = async (e) => {
-  const files = Array.from(e.target.files || []).slice(0, 8 - spotEd.variants.length);
+async function addSpotFiles(fileList) {
+  const files = Array.from(fileList || []).slice(0, 8 - spotEd.variants.length);
   if (!files.length) return;
   for (const file of files) {
     spotEd.variants.push({ dataURL: await Util.fileToDataURL(file, 1100), spots: [] });
   }
-  e.target.value = "";
   Sound.good();
   await selectSpotVariant(spotEd.variants.length - 1);
+}
+
+async function openSpotAddMenu() {
+  const how = await Ui.menu({
+    title: "差分画像を追加",
+    items: [
+      { value: "draw", label: "おえかきで つくる", color: "pink" },
+      { value: "file", label: "ファイルを えらぶ", color: "green" },
+      { value: "camera", label: "カメラで とる", color: "blue" },
+    ],
+  });
+  if (how === "file") $("spotFiles").click();
+  if (how === "camera") $("spotCamera").click();
+  if (how === "draw") {
+    if (spotEd.variants.some((v) => !v.spots.length)) {
+      Ui.msg("先に いまの差分へスポットをつけて保存してください", 1900, "#f59f00");
+      return;
+    }
+    spotEd.rec.diffSpots = spotEd.legacySpots;
+    if (spotEd.variants.length) spotEd.rec.diffVariants = spotEd.variants;
+    await Store.put(spotEd.rec);
+    const p = new URLSearchParams({ diff: spotEd.rec.id, back: spotEd.back });
+    location.href = `draw.html?${p}`;
+  }
+}
+
+$("spotAdd").onclick = openSpotAddMenu;
+$("spotFiles").onchange = async (e) => {
+  await addSpotFiles(e.target.files);
+  e.target.value = "";
+};
+$("spotCamera").onchange = async (e) => {
+  await addSpotFiles(e.target.files);
+  e.target.value = "";
 };
 
 $("spotRemove").onclick = async () => {
@@ -1462,11 +1503,12 @@ async function cropRecord(rec, cat) {
    おなじ「1行 = 1まいの え + 編集ボタン」を どのページでも 同じ形で出す。
 
      defs: [{ cat, el, what, btns, kind }]
-       cat  … Store の カテゴリ("char" / "fuku" / "pic" / "bg")
+       cat  … 新しく保存する Store の カテゴリ("char" / "fuku" / "bg")
+       cats … 一覧へまとめて出すカテゴリ(省略時は cat だけ)
        el   … いちらんを 入れる 要素の id
        what … ふやすボタンの ことば(「キャラクターの ぜんしん」など)
        btns … その行に 出す 編集ボタン("rig" / "voice" / "fuku" / "spot")
-              ※ 名前かえ・DL・トリミング・削除は「とりこみ・せってい」の しごと
+              ※ 名前かえ・DL・トリミング・削除は「とりこみ」の しごと
        kind … おえかきに わたす あたりの しゅるい(Guide.KINDS のキー。なくてもよい)
      opts: { back } … おえかきから もどってくる ページ(いま ひらいている ページ)
 
@@ -1487,7 +1529,9 @@ function mountLists(defs, opts) {
       const el = $(L.el);
       if (!el) continue;
       el.innerHTML = "";
-      const recs = await Store.all(L.cat);
+      const all = await Store.all();
+      const cats = L.cats || [L.cat];
+      const recs = all.filter((r) => cats.includes(r.cat));
       for (const r of recs) el.appendChild(row(r, L));
       el.appendChild(addButton(L));
     }
@@ -1513,8 +1557,14 @@ function mountLists(defs, opts) {
     const btns = L.btns || [];
     if (btns.includes("rig")) mk("うごきせってい", "purple", () => openRig(r));
     if (btns.includes("voice")) mk("こえ", "orange", () => openVoice(r));
-    if (btns.includes("fuku")) mk("ふくわらいパーツ", "green", () => openFuku(r));
-    if (btns.includes("spot")) mk("差分画像・スポット", "orange", () => openSpot(r));
+    if (btns.includes("fuku")) mk("パーツ", "green", () => openFuku(r));
+    if (btns.includes("spot")) {
+      const hasDiff = Array.isArray(r.diffVariants) && r.diffVariants.length > 0;
+      mk(hasDiff ? "さぶん" : "＋", "orange", () => openSpot(r, {
+        back: opts.back,
+        promptAdd: !hasDiff,
+      }));
+    }
     return d;
   }
 

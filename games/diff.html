@@ -86,7 +86,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=28"></script>
+<script src="../js/core.js?v=29"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -102,7 +102,10 @@ let G = null, selPic = null, allPics = [];
 
 async function initSelect() {
   const recs = await Store.forGame();
-  allPics = recs.filter((r) => r.cat === "pic");
+  allPics = recs.filter((r) =>
+    (r.cat === "pic" || r.cat === "bg") &&
+    ((r.diffVariants && r.diffVariants.length) || (r.diffSpots && r.diffSpots.length))
+  );
   selPic = allPics[0] || null;
   refreshLocks();
 }

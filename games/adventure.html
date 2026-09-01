@@ -62,7 +62,7 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=28"></script>
+<script src="../js/core.js?v=29"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -83,7 +83,7 @@ let allChars = [], allBgs = [];
 async function initSelect() {
   const recs = await Store.forGame();
   allChars = recs.filter((r) => r.cat === "char");
-  allBgs = recs.filter((r) => r.cat === "bg");
+  allBgs = recs.filter((r) => r.cat === "bg" || r.cat === "pic");
   selChar = allChars[0] || null;
   selBg = allBgs[0] || null;
   refreshLocks();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>取り込み・設定</title>
+<title>取り込み</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -15,7 +15,7 @@
 <body>
 <header class="bar">
   <a class="back" href="index.html" id="backLink">← もどる</a>
-  <h1><img class="bar-icon" src="assets/buttons/admin.png" alt=""> 取り込み・設定</h1>
+  <h1><img class="bar-icon" src="assets/buttons/import.svg" alt=""> 取り込み</h1>
   <div class="spacer"></div>
 </header>
 
@@ -26,9 +26,8 @@
       <select id="catSelect">
         <option value="src">✂️ トリミング用の元素材</option>
         <option value="char" selected>🧍 キャラクターの全身</option>
-        <option value="fuku">😀 キャラクターの顔(ふくわらい用)</option>
-        <option value="pic">🖼️ 写真・絵(パズル・まちがいさがし用)</option>
-        <option value="bg">🏞️ 背景の絵</option>
+        <option value="fuku">😀 キャラクターの顔</option>
+        <option value="bg">🏞️ はいけい</option>
       </select>
     </label>
     <div class="import-meta" id="importMeta">
@@ -45,41 +44,7 @@
   <details class="admin-sec"><summary>✂️ トリミング用の元素材</summary><div id="listSrc"></div></details>
   <details class="admin-sec" open><summary>🧍 キャラクターの全身</summary><div id="listChar"></div></details>
   <details class="admin-sec"><summary>😀 キャラクターの顔</summary><div id="listFuku"></div></details>
-  <details class="admin-sec"><summary>🖼️ 写真・絵</summary><div id="listPic"></div></details>
-  <details class="admin-sec"><summary>🏞️ 背景の絵</summary><div id="listBg"></div></details>
-
-  <div class="panel pwa-admin-panel" style="text-align:left" id="pwaUpdatePanel">
-    <h2>📱 オフライン・更新</h2>
-    <p class="pwa-status" id="pwaStatus" aria-live="polite">準備状況を確認しています…</p>
-    <div class="row" style="justify-content:flex-start">
-      <button class="btn purple" id="pwaCheckBtn" type="button">最新版を確認</button>
-    </div>
-    <p class="note">更新しても、取り込んだ絵・声・動き設定・ランキングは消えません。更新後も、前日に機内モードで起動確認してください。</p>
-  </div>
-
-  <div class="panel" style="text-align:left">
-    <h2>💾 設定・データのバックアップ</h2>
-    <p class="note">
-      取り込んだ絵・写真、動き設定、まちがいスポット、オリジナルクイズ、ランキングを
-      まとめて1つの <b>zipファイル</b>に書き出せます。別のPCで「インポート」すれば、まるごと移行できます。
-      画像はこの端末の中(IndexedDB)だけに保存されるので、<b>当日使うPCへ移すとき</b>に便利です。
-    </p>
-    <div class="row" style="justify-content:flex-start">
-      <button class="btn blue" id="exportBtn">すべてエクスポート(zip)</button>
-      <button class="btn blue" id="importBtn">zipからインポート</button>
-      <input type="file" id="importInput" accept=".zip,application/zip" hidden>
-    </div>
-    <p class="note">インポートすると、現在の絵・設定は <b>すべて置き換えられます</b>(実行前に確認します)。</p>
-  </div>
-
-  <div class="panel" style="text-align:left">
-    <h2>その他</h2>
-    <div class="row" style="justify-content:flex-start">
-      <button class="btn blue" id="resampleBtn">サンプルをもう一度入れる</button>
-      <button class="btn red" id="wipeBtn">すべて削除する</button>
-    </div>
-    <p class="note">クイズは「つくる」画面で追加できます。全端末共通の内蔵問題を変更したい場合のみ、<code>js/quiz-data.js</code> を編集してください。</p>
-  </div>
+  <details class="admin-sec"><summary>🏞️ はいけい</summary><div id="listBg"></div></details>
 </main>
 
 <div class="modal hidden" id="workInfoModal" role="dialog" aria-modal="true" aria-labelledby="workInfoTitle">
@@ -91,9 +56,8 @@
       <select id="workInfoCategory">
         <option value="src">✂️ トリミング用の元素材</option>
         <option value="char">🧍 キャラクターの全身</option>
-        <option value="fuku">😀 キャラクターの顔(ふくわらい用)</option>
-        <option value="pic">🖼️ 写真・絵(パズル・まちがいさがし用)</option>
-        <option value="bg">🏞️ 背景の絵</option>
+        <option value="fuku">😀 キャラクターの顔</option>
+        <option value="bg">🏞️ はいけい</option>
       </select>
     </label>
     <div class="row work-info-actions">
@@ -104,9 +68,9 @@
 </div>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=28"></script>
+<script src="js/core.js?v=29"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=21"></script>
+<script src="js/editors.js?v=22"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -119,18 +83,15 @@ if (new URLSearchParams(location.search).get("from") === "create") {
   $("backLink").setAttribute("href", "create.html");
 }
 
-/* 一覧の並び順:元素材 → キャラ全身 → キャラ顔 → 写真・絵 → 背景 */
+const FROM_CREATE = new URLSearchParams(location.search).get("from") === "create";
+const IMPORT_SELF = FROM_CREATE ? "admin.html?from=create" : "admin.html";
+
+/* 一覧の並び順:元素材 → キャラ全身 → キャラ顔 → はいけい。
+   旧「写真・絵」も同じ一覧に残し、既存データを壊さない。 */
 const CATS = [
-  ["src", "listSrc"], ["char", "listChar"], ["fuku", "listFuku"],
-  ["pic", "listPic"], ["bg", "listBg"],
+  [["src"], "listSrc"], [["char"], "listChar"], [["fuku"], "listFuku"],
+  [["bg", "pic"], "listBg"],
 ];
-const CAT_LABEL = {
-  src: "✂️ トリミング用の元素材",
-  char: "🧍 キャラクターの全身",
-  fuku: "😀 キャラクターの顔(ふくわらい用)",
-  pic: "🖼️ 写真・絵(パズル・まちがいさがし用)",
-  bg: "🏞️ 背景の絵",
-};
 let workInfoRec = null;
 
 function closeWorkInfo() {
@@ -142,7 +103,7 @@ function openWorkInfo(r) {
   workInfoRec = r;
   $("workInfoName").value = r.name || "";
   $("workInfoAuthor").value = r.author || "";
-  $("workInfoCategory").value = r.cat;
+  $("workInfoCategory").value = r.cat === "pic" ? "bg" : r.cat;
   $("workInfoModal").classList.remove("hidden");
   requestAnimationFrame(() => $("workInfoName").focus());
 }
@@ -166,10 +127,11 @@ $("workInfoModal").onclick = (e) => { if (e.target === $("workInfoModal")) close
 
 async function refresh() {
   await Store.ensureSamples();
-  for (const [cat, elId] of CATS) {
+  const all = await Store.all();
+  for (const [cats, elId] of CATS) {
     const el = $(elId);
     el.innerHTML = "";
-    const recs = await Store.all(cat);
+    const recs = all.filter((r) => cats.includes(r.cat));
     if (!recs.length) el.innerHTML = '<p class="note">まだありません</p>';
     for (const r of recs) el.appendChild(row(r));
   }
@@ -208,10 +170,18 @@ function row(r) {
   iconButton("作品情報を編集", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>', () => openWorkInfo(r));
   if (r.cat === "src") mk("トリミング", "blue", () => Editors.cropRecord(r));
   if (r.cat === "char") {
-    const p = new URLSearchParams({ edit: r.id, back: "admin.html" });
+    const p = new URLSearchParams({ edit: r.id, back: IMPORT_SELF });
     mk("かく", "blue", () => { location.href = `draw.html?${p}`; });
     mk("こえ", "blue", () => Editors.openVoice(r));
     mk("うごき", "blue", () => Editors.openRig(r));
+  }
+  if (r.cat === "fuku") mk("パーツ", "blue", () => Editors.openFuku(r));
+  if (r.cat === "bg" || r.cat === "pic") {
+    const hasDiff = Array.isArray(r.diffVariants) && r.diffVariants.length > 0;
+    mk(hasDiff ? "さぶん" : "＋", "blue", () => Editors.openSpot(r, {
+      back: IMPORT_SELF,
+      promptAdd: !hasDiff,
+    }));
   }
 
   iconButton("画像をダウンロード", "blue", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>', () => {
@@ -281,9 +251,8 @@ $("importInfo").onclick = () => {
     <ul class="info-list">
       <li><b>✂️ トリミング用の元素材</b> … 大きな紙に何人分も描いてある絵・写真の置き場。ここから何枚でも切り出せます</li>
       <li><b>🧍 キャラクターの全身</b> … 走る・跳ぶゲームで動く絵。取り込んだら「つくる」画面で <b>動き設定</b>(首・腰・中央の3本線)を合わせてください</li>
-      <li><b>😀 キャラクターの顔</b> … ふくわらい用。「つくる」画面で目・眉・鼻・口を四角く囲みます</li>
-      <li><b>🖼️ 写真・絵</b> … パズル・まちがいさがし・カードあわせで使います</li>
-      <li><b>🏞️ 背景の絵</b> … 「おえかきのたび」の舞台になります</li>
+      <li><b>😀 キャラクターの顔</b> … ふくわらい用。「パーツ」で目・眉・鼻・口を四角く囲みます</li>
+      <li><b>🏞️ はいけい</b> … パズル・まちがいさがし・カードあわせ・「おえかきのたび」で使います</li>
     </ul>
     <h3>きれいに取り込むコツ</h3>
     <ul class="info-list">
@@ -297,7 +266,7 @@ $("importInfo").onclick = () => {
     <h3>画像のサイズ</h3>
     <ul class="info-list">
       <li>取り込むと自動で縮小されるので、<b>元の大きさは気にしなくて大丈夫</b>です</li>
-      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、写真・絵・背景は <b>1100px</b>、元素材は <b>1600px</b></li>
+      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、はいけいは <b>1100px</b>、元素材は <b>1600px</b></li>
       <li>比率の決まりはありません。キャラクターは <b>たて長</b>、背景は <b>よこ長(16:9くらい)</b> が画面に収まりやすいです</li>
       <li>スマホやカメラの写真をそのまま入れてOK。PDFはページごとに読み込みます</li>
       <li>PDFを2ファイル以上まとめて選ぶと、全ページを「トリミング用の元素材」へ一括で保存します</li>
@@ -305,60 +274,15 @@ $("importInfo").onclick = () => {
   `);
 };
 
-/* ---------- バックアップ(zipエクスポート/インポート) ---------- */
-$("exportBtn").onclick = async () => {
-  try {
-    Ui.msg("zipを作成しています…", 1200, "#4dabf7");
-    const blob = await Backup.exportZip();
-    const d = new Date();
-    const p = (n) => String(n).padStart(2, "0");
-    const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
-    Backup.download(blob, `hoiku-settings-${stamp}.zip`);
-    Sound.good();
-    Ui.msg("エクスポートしました", 1500, "#51cf66");
-  } catch (e) {
-    alert("エクスポートに失敗しました:\n" + ((e && e.message) || e));
-  }
-};
-
-$("importBtn").onclick = () => $("importInput").click();
-$("importInput").onchange = async (e) => {
-  const file = e.target.files[0];
-  e.target.value = "";
-  if (!file) return;
-  const ok = confirm(
-    `「${file.name}」から設定を読み込みます。\n\n` +
-    `現在の絵・写真・動き設定・クイズ・ランキングは\n` +
-    `すべて置き換えられます(この端末だけ)。\n\n` +
-    `よろしいですか?`
-  );
-  if (!ok) return;
-  try {
-    Ui.msg("読み込んでいます…", 1200, "#4dabf7");
-    const res = await Backup.importZip(file, { replace: true });
-    Sound.good();
-    Ui.msg(`インポートしました(絵 ${res.images}枚)`, 1800, "#51cf66");
-    await refresh();
-    refreshQuizList();
-  } catch (err) {
-    alert("インポートに失敗しました:\n" + ((err && err.message) || err));
-  }
-};
-
-/* ---------- そのほか ---------- */
-$("resampleBtn").onclick = async () => {
-  for (const r of await Samples.makeAll()) await Store.put(r);
-  Sound.good();
-  refresh();
-};
-$("wipeBtn").onclick = async () => {
-  if (!confirm("取り込んだ画像をすべて削除します。よろしいですか?")) return;
-  for (const r of await Store.all()) await Store.remove(r.id);
-  refresh();
-};
-
-
-refresh();
+async function init() {
+  await refresh();
+  const spotId = new URLSearchParams(location.search).get("spot");
+  if (!spotId) return;
+  const rec = (await Store.all()).find((r) => String(r.id) === String(spotId));
+  history.replaceState({}, "", IMPORT_SELF);
+  if (rec) Editors.openSpot(rec, { back: IMPORT_SELF });
+}
+init();
 </script>
 </body>
 </html>

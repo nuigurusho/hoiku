@@ -38,7 +38,7 @@
   <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
 </main>
 
-<script src="../js/core.js?v=28"></script>
+<script src="../js/core.js?v=29"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -76,7 +76,7 @@ const bubs = [];           // さかなが はく あわ
 /* ---------------- よみこみ ---------------- */
 async function init() {
   const recs = await Store.forGame();
-  const bgs = recs.filter((r) => r.cat === "bg");
+  const bgs = recs.filter((r) => r.cat === "bg" || r.cat === "pic");
   const [land, water, house] = await Promise.all([
     Util.loadImage("../assets/backgrounds/world-land.jpg"),
     Util.loadImage("../assets/backgrounds/world-water.jpg"),
