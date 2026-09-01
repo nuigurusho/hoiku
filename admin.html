@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=39">
+<link rel="stylesheet" href="css/style.css?v=40">
 </head>
 <body>
 <header class="bar">
@@ -64,7 +64,7 @@
 <script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=34"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=23"></script>
+<script src="js/editors.js?v=24"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -166,8 +166,8 @@ function row(r) {
   if (r.cat === "char") {
     const p = new URLSearchParams({ edit: r.id, back: IMPORT_SELF });
     mk("かく", "blue", () => { location.href = `draw.html?${p}`; });
-    mk("こえ", "blue", () => Editors.openVoice(r));
     mk("うごき", "blue", () => Editors.openRig(r));
+    mk("こえ", "blue", () => Editors.openVoice(r));
   }
   if (r.cat === "fuku") mk("パーツ", "blue", () => Editors.openFuku(r));
   if (r.cat === "bg" || r.cat === "pic") {

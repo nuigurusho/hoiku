@@ -2185,10 +2185,11 @@ body.fitstage header.bar { display: none; }
   box-shadow: 0 8px 0 rgba(80, 55, 0, .22), 0 12px 30px rgba(54, 37, 0, .22);
 }
 @media (max-width: 760px) {
-  .admin-row { display: grid; grid-template-columns: 72px minmax(90px, 1fr) auto auto auto; gap: 8px; }
-  .admin-thumb-btn { width: 72px; height: 58px; grid-row: span 2; }
-  .admin-row .nm { min-width: 0; grid-column: 2 / -1; }
+  .admin-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .admin-thumb-btn { width: 72px; height: 58px; }
+  .admin-row .nm { flex: 1 1 calc(100% - 80px); min-width: 0; }
   .admin-row .btn:not(.icon-btn) { padding: 7px 10px; }
+  .admin-row .btn, .admin-row .game-visibility { flex: none; }
   .select-field { grid-template-columns: 1fr; gap: 5px; }
 }
 @media (max-width: 430px) {
@@ -2200,7 +2201,7 @@ body.fitstage header.bar { display: none; }
   .bar .spacer { width: 52px; }
   .panel { padding: 18px; }
   .panel h2 { font-size: 22px; }
-  .admin-row { grid-template-columns: 64px minmax(80px, 1fr) auto auto; padding: 7px; }
+  .admin-row { padding: 7px; }
   .admin-thumb-btn { width: 64px; height: 54px; }
 }
 .pwa-update-bar > div { display: grid; gap: 2px; flex: 1; }

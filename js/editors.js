@@ -83,6 +83,7 @@ document.body.insertAdjacentHTML("beforeend", `
       </aside>
     </div>
     <div class="row rig-actions">
+      <button class="btn orange" type="button" id="rigFlip">↔ 左右はんてん</button>
       <button class="btn green" id="rigSave">✔ 保存する</button>
       <button class="btn gray" id="rigCancel">キャンセル</button>
     </div>
@@ -574,6 +575,40 @@ $("rigTrimWhitespace").onclick = async () => {
   Sound.good();
   refreshRigImage();
   Ui.msg("余白をカットしました", 1200, "#51cf66");
+};
+
+/* 絵と調整位置をまとめて反転する。画像だけ反転して関節位置がずれないようにする。 */
+$("rigFlip").onclick = async () => {
+  const out = Util.makeCanvas(rigEd.img.width, rigEd.img.height);
+  const ctx = out.getContext("2d");
+  ctx.translate(out.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(rigEd.img, 0, 0);
+
+  const r = rigEd.rig;
+  if (r.centerX != null) r.centerX = 1 - r.centerX;
+  if (r.legLeftX != null || r.legRightX != null) {
+    const oldLeft = r.legLeftX == null ? 0.25 : r.legLeftX;
+    const oldRight = r.legRightX == null ? 0.75 : r.legRightX;
+    r.legLeftX = 1 - oldRight;
+    r.legRightX = 1 - oldLeft;
+  }
+  if (r.arms) {
+    const mirrorArm = (arm) => arm ? {
+      ...arm,
+      x: 1 - arm.x - arm.w,
+      px: 1 - arm.px,
+    } : arm;
+    const oldLeft = r.arms.left;
+    r.arms.left = mirrorArm(r.arms.right);
+    r.arms.right = mirrorArm(oldLeft);
+  }
+  rigEd.cutout.strokes = rigEd.cutout.strokes.map((s) => ({ ...s, x: 1 - s.x }));
+  rigEd.dataURL = out.toDataURL("image/png");
+  rigEd.img = await Util.loadImage(rigEd.dataURL);
+  Sound.pop();
+  refreshRigImage();
+  Ui.msg("左右を いれかえたよ", 1000, "#ff922b");
 };
 
 function refreshRigImage() {
