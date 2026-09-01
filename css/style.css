@@ -416,30 +416,25 @@ canvas.stage {
 .view-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 980px; }
 .view-tiles .tile { min-height: 174px; justify-content: center; }
 .view-tiles .meet-tile {
-  grid-column: span 2;
-  display: grid;
-  grid-template-columns: minmax(130px, .8fr) 1.2fr;
   background: var(--yellow);
   border-color: var(--yellow-d);
   box-shadow: 0 7px 0 var(--yellow-d);
   color: #6b5100;
 }
-.meet-title { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 23px; }
-.meet-events { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.meet-event {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 7px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.72);
-  font-size: 13px;
-}
-.meet-event img { width: 34px; height: 34px; object-fit: contain; }
 
 .play-gates { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: min(760px, 100%); margin: 0 auto; }
-.play-gate { min-height: 132px; font-size: clamp(24px, 4vw, 34px); }
+.play-gate { position: relative; min-height: 132px; padding-inline: 54px; font-size: clamp(24px, 4vw, 34px); }
+.play-gate::after {
+  content: "";
+  position: absolute;
+  right: 28px;
+  width: 15px;
+  height: 15px;
+  border-right: 5px solid currentColor;
+  border-bottom: 5px solid currentColor;
+  transform: rotate(-45deg);
+  border-radius: 2px;
+}
 .play-gate:nth-child(1) { --gate: var(--pink); --gate-d: var(--pink-d); }
 .play-gate:nth-child(2) { --gate: var(--blue); --gate-d: var(--blue-d); }
 .play-gate:nth-child(3) { --gate: var(--purple); --gate-d: var(--purple-d); }
@@ -462,9 +457,9 @@ canvas.stage {
   .hub-logo { margin-top: -20px; }
   .view-tiles, .play-list-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .view-tiles .tile { font-size: 17px; }
-  .view-tiles .meet-tile { grid-column: 1 / -1; grid-template-columns: 1fr; }
   .play-gates { gap: 13px; }
-  .play-gate { min-height: 104px; padding: 12px; }
+  .play-gate { min-height: 104px; padding: 12px 42px 12px 16px; }
+  .play-gate::after { right: 20px; width: 13px; height: 13px; border-width: 0 4px 4px 0; }
   .section-link { min-width: 0; flex: 1 1 0; padding-inline: 12px; font-size: 16px; }
 }
 .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
@@ -473,7 +468,7 @@ canvas.stage {
    フローティングにせず、ゲーム一覧と同じ幅(980px・中央寄せ)のバーの中で右端に置き、
    1行目の右端のタイルと 右はしを そろえる。 */
 .settings-bar {
-  max-width: 980px;
+  width: min(980px, 100%);
   margin: 0 auto;
   display: flex;
   justify-content: flex-end;
