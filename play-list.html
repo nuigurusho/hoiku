@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>あそぶ — みんなの ゲームパック</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ff922b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ゲームパック">
+<link rel="stylesheet" href="css/style.css?v=39">
+</head>
+<body>
+<main class="hub-page">
+  <div class="settings-bar">
+    <a class="settings-fab" href="settings.html" title="せってい(おとなのひとよう)" aria-label="せってい おとなのひとよう">
+      <img src="assets/buttons/settings.png" alt="せってい">
+    </a>
+  </div>
+  <h1 style="margin:0"><a class="logo-home" href="index.html" aria-label="表紙へ戻る"><img class="logo hub-logo" src="assets/logo.png" width="900" height="600" alt="みんなの ゲームパック"></a></h1>
+  <h2 class="play-list-title" id="listTitle"></h2>
+  <div class="tiles play-list-tiles" id="gameList"></div>
+  <nav class="section-links" aria-label="あそぶへ戻る">
+    <a class="section-link" href="play.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>あそぶ</a>
+  </nav>
+</main>
+<script src="js/core.js?v=34"></script>
+<script>
+"use strict";
+const TYPE = ["solo", "duo", "multi", "games"].includes(new URLSearchParams(location.search).get("type"))
+  ? new URLSearchParams(location.search).get("type") : "games";
+const LABELS = { solo: "ひとりで", duo: "ふたりで", multi: "みんなで", games: "ゲーム別" };
+const GAMES = {
+  solo: [
+    ["race", "かけっこ", "tier=gachi"], ["janken", "じゃんけん", "tier=gachi"],
+    ["quiz", "４たくクイズ", "tier=gachi"], ["silhouette", "かげえクイズ", "tier=gachi"],
+    ["diff", "まちがいさがし", "tier=gachi"], ["memory", "カードあわせ", "tier=gachi"],
+    ["puzzle", "おえかきパズル", "tier=gachi"], ["adventure", "おえかきのたび", "tier=gachi"],
+    ["mole", "もぐらたたき", "tier=gachi"], ["voice", "こえで ジャンプ", "tier=gachi"],
+    ["rope", "なわとび", "tier=gachi"],
+  ],
+  duo: [["race", "かけっこ", "mode=vs"], ["sakasa", "さかさクイズ", ""]],
+  multi: [
+    ["quiz", "４たくクイズ", "mode=miru"], ["silhouette", "かげえクイズ", "mode=miru"],
+    ["diff", "まちがいさがし", "mode=miru"], ["janken", "じゃんけん", "mode=crowd"],
+    ["voice", "こえで ジャンプ", "mode=ren"],
+  ],
+  games: [
+    ["fukuwarai", "ふくわらい", ""], ["race", "かけっこ", ""], ["janken", "じゃんけん", ""],
+    ["quiz", "４たくクイズ", ""], ["silhouette", "かげえクイズ", ""], ["sakasa", "さかさクイズ", ""],
+    ["diff", "まちがいさがし", ""], ["memory", "カードあわせ", ""], ["puzzle", "おえかきパズル", ""],
+    ["adventure", "おえかきのたび", ""], ["mole", "もぐらたたき", ""],
+    ["voice", "こえで ジャンプ", ""], ["rope", "なわとび", ""],
+  ],
+};
+document.title = `${LABELS[TYPE]} — みんなの ゲームパック`;
+document.getElementById("listTitle").textContent = LABELS[TYPE];
+const list = document.getElementById("gameList");
+for (const [key, label, query] of GAMES[TYPE]) {
+  const a = document.createElement("a");
+  a.className = "tile";
+  const params = [query, `from=play-${TYPE}`].filter(Boolean).join("&");
+  a.href = `games/${key}.html?${params}`;
+  a.innerHTML = `<img class="icon" src="assets/buttons/${key}.png" alt="">`;
+  a.append(label);
+  list.appendChild(a);
+}
+Store.ensureSamples();
+</script>
+</body>
+</html>

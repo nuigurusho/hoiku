@@ -339,7 +339,7 @@ canvas.stage {
 .panel h2 { margin-top: 0; font-size: 26px; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
 
-/* ---------- トップの みだし(ロゴ・せってい)。index.html と create.html で つかう ---------- */
+/* ---------- 表紙・カテゴリページのロゴと入口 ---------- */
 .logo {
   display: block;
   margin: 10px auto 0;
@@ -349,6 +349,124 @@ canvas.stage {
 }
 .logo-home { display: block; width: fit-content; margin: 0 auto; border-radius: 18px; }
 .logo-home:focus-visible { outline: 5px solid var(--blue-d); outline-offset: 4px; }
+.cover-page main { min-height: 100vh; display: flex; flex-direction: column; }
+.cover-page .logo { width: min(560px, 88vw); margin-top: clamp(4px, 2vh, 20px); }
+.home-gates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  width: min(980px, 100%);
+  margin: clamp(10px, 2vh, 24px) auto 24px;
+}
+.home-gate, .play-gate {
+  --gate: var(--blue);
+  --gate-d: var(--blue-d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 112px;
+  padding: 18px;
+  border: 4px solid var(--gate-d);
+  border-radius: 28px;
+  background: var(--gate);
+  color: #fff;
+  box-shadow: 0 8px 0 var(--gate-d);
+  font-size: clamp(27px, 4vw, 38px);
+  font-weight: 900;
+  text-decoration: none;
+  transition: transform .08s, box-shadow .08s;
+}
+.home-gate:active, .play-gate:active { transform: translateY(8px); box-shadow: none; }
+.home-gate.create { --gate: var(--pink); --gate-d: var(--pink-d); }
+.home-gate.see { --gate: var(--blue); --gate-d: var(--blue-d); }
+.home-gate.play { --gate: var(--green); --gate-d: var(--green-d); }
+
+.hub-page { max-width: 1100px; margin: 0 auto; }
+.hub-page .settings-bar { max-width: 980px; }
+.hub-logo { width: min(300px, 58vw); margin: -24px auto 12px; }
+.hub-tiles { align-items: stretch; }
+.hub-tiles .tile { min-height: 174px; justify-content: center; }
+.section-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  width: min(980px, 100%);
+  margin: 28px auto 10px;
+}
+.section-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 150px;
+  padding: 12px 18px;
+  border: 3px solid var(--cream-d);
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--cream-d);
+  font-size: 18px;
+  font-weight: bold;
+  text-decoration: none;
+}
+.section-link svg { width: 22px; height: 22px; flex: none; }
+.section-link:active { transform: translateY(4px); box-shadow: none; }
+.section-link.next { margin-left: auto; }
+
+.view-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 980px; }
+.view-tiles .tile { min-height: 174px; justify-content: center; }
+.view-tiles .meet-tile {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: minmax(130px, .8fr) 1.2fr;
+  background: var(--yellow);
+  border-color: var(--yellow-d);
+  box-shadow: 0 7px 0 var(--yellow-d);
+  color: #6b5100;
+}
+.meet-title { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 23px; }
+.meet-events { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.meet-event {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.72);
+  font-size: 13px;
+}
+.meet-event img { width: 34px; height: 34px; object-fit: contain; }
+
+.play-gates { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; width: min(760px, 100%); margin: 0 auto; }
+.play-gate { min-height: 132px; font-size: clamp(24px, 4vw, 34px); }
+.play-gate:nth-child(1) { --gate: var(--pink); --gate-d: var(--pink-d); }
+.play-gate:nth-child(2) { --gate: var(--blue); --gate-d: var(--blue-d); }
+.play-gate:nth-child(3) { --gate: var(--purple); --gate-d: var(--purple-d); }
+.play-gate:nth-child(4) { --gate: var(--orange); --gate-d: var(--orange-d); }
+.play-list-title { margin: 0 auto 16px; text-align: center; font-size: clamp(24px, 4vw, 34px); }
+.play-list-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 980px; }
+.play-list-tiles .tile { min-height: 170px; justify-content: center; }
+
+@media (hover: hover) {
+  .home-gate:hover:not(:active), .play-gate:hover:not(:active) { transform: translateY(2px); box-shadow: 0 6px 0 var(--gate-d); }
+  .section-link:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
+}
+@media (max-width: 860px) {
+  .view-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .play-list-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 620px) {
+  .home-gates { grid-template-columns: 1fr; gap: 13px; }
+  .home-gate { min-height: 78px; }
+  .hub-logo { margin-top: -20px; }
+  .view-tiles, .play-list-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .view-tiles .tile { font-size: 17px; }
+  .view-tiles .meet-tile { grid-column: 1 / -1; grid-template-columns: 1fr; }
+  .play-gates { gap: 13px; }
+  .play-gate { min-height: 104px; padding: 12px; }
+  .section-link { min-width: 0; flex: 1 1 0; padding-inline: 12px; font-size: 16px; }
+}
 .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
 
 /* 設定ボタン(おとなのひと用)。
@@ -429,12 +547,6 @@ canvas.stage {
   color: #7a5b00;
   box-shadow: 0 4px 0 var(--yellow-d);
 }
-
-/* ---------- みる:図鑑・美術館 ---------- */
-.collection-tile { min-height: 190px; }
-.collection-tile.char { background: #fff7cf; border-color: #efc84b; box-shadow: 0 7px 0 #d9ad2c; }
-.collection-tile.bg { background: #eaf7ff; border-color: #75bce8; box-shadow: 0 7px 0 #4597cb; }
-.collection-tile img.icon { width: 112px; height: 112px; filter: drop-shadow(0 4px 0 rgba(90,60,20,.12)); }
 
 .collection-page { background: #f5f0e8; }
 .collection-main { max-width: 1180px; margin: 0 auto; }

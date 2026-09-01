@@ -13,7 +13,7 @@
 | 中身 | 保育園のイベント用に、子ども(1〜6歳)が iPad で遊ぶオフラインのゲーム集 |
 | 公開 | GitHub Pages。`main` にマージすると `.github/workflows/deploy-pages.yml` が走って自動で本番反映 |
 | 作業ブランチ | `main` |
-| 直近の版 | `core.js?v=33` / `style.css?v=38` / `meet.js?v=15` / `rig.js?v=17` / `editors.js?v=23` |
+| 直近の版 | `core.js?v=34` / `style.css?v=39` / `meet.js?v=15` / `rig.js?v=17` / `editors.js?v=23` |
 | ゲーム数 | 17本(`games/`)+ うんどうかい(`undoukai.html`)+ おえかき(`draw.html`) |
 
 ### 直近のセッションでやったこと(PR #23〜#31)
@@ -31,18 +31,29 @@
 | #31 | おえかきに「やりなおし」を追加。もどすの連打で崩れないように |
 | (次) | つくる画面をハブ+子ページに分割。おえかきに「なにを かく?」と あたり。まちがいさがし・じゃんけんの遊びかた改善 |
 
-### つくる画面まわりの構成(このセッションで変更)
+### 表紙・つくる・みる・あそぶのページ分割(2026-09-01)
 
 ```
-index.html ──右上の歯車────────→ settings.html                  設定・更新・バックアップ
-           └─「つくる」タブ─→ create.html(4つの入口だけ)
+index.html ──つくる──→ create.html(4つの入口だけ)
                                  ├─ admin.html?from=create        とりこみ・素材編集
                                  ├─ draw-pick.html?from=create    おえかき(なにを かく? の見本選択)
                                  │     └─ draw.html?kind=..&back=..
                                  ├─ create-quiz.html              ４たくクイズ
                                  └─ create-diff.html              まちがいさがし
                                        └─ draw.html?cat=pic&back=..
+           ├─みる────→ view.html
+           │             ├─ gallery.html?type=char|bg
+           │             ├─ 観戦ゲーム
+           │             └─ undoukai.html
+           └─あそぶ──→ play.html(4つの入口だけ)
+                         └─ play-list.html?type=solo|duo|multi|games
 ```
+
+- 表紙は現在の大きなロゴと、同じ幅の「つくる／みる／あそぶ」3ボタンだけに整理した。古い `#miru` 等のURLは対応する新ページへ転送する
+- 子ページは小さいロゴに統一し、旧タブ列と説明文を置かない。つくる・みるの下部はSVG矢印つきのページ移動ボタン
+- みるのキャラしょうかい・びじゅつかんは通常タイルと同じサイズ・色。うんどうかいは黄色の2マス幅で、4競技の小アイコンを内包する
+- あそぶは「ひとりで／ふたりで／みんなで／ゲーム別」の4入口を挟む。ゲーム別から、おえかき・みんなのせかい・たまいれ・ドッヂボール・リレーを除外した
+- 各ゲームURLへ `from=` を付け、ゲーム内の戻るボタンで元の「みる」または「あそぶ」の一覧へ戻る
 
 - **`Nav._closeOverlay` が「もどる」を食べていたのを修正**(`js/core.js`)。
   `document.querySelector(".picker, .modal")` が editors.js の **hidden なモーダル** まで拾い、
@@ -53,11 +64,6 @@ index.html ──右上の歯車────────→ settings.html       
   点線の位置は `Rig.DEFAULT`(くび0.42・こし0.70・まんなか0.5・おなか0.55)に合わせてあるので、
   **あたりに沿って描けば うごきせっていを触らなくても正しく動く**
 - **`Editors.mountLists`(`js/editors.js`)** … 「1行=1まいの絵+編集ボタン」の一覧を各ページで共通化
-- **`create.html` はトップの「つくる」タブそのもの** … `index.html` と同じ体裁で出す
-  (みだしバーなし・ロゴ・同じタブ列・右上のせっていボタン)。そのため
-  `.logo` / `.subtitle` / `.settings-bar` / `.settings-fab` / `.tab-undoukai` は
-  index.html のインラインCSSから `css/style.css` へ移した(2ページで共有するため)。
-  `.tiles.four` の幅もトップのゲーム一覧と同じ 980px にして、右上のボタンと右はしをそろえてある
 - **`draw.html` の `?back=`** … 戻り先。飛び先を勝手に増やさないよう `BACK_PAGES` の
   ホワイトリストでしか受け付けない。ページを増やしたらここに足すこと
 
@@ -276,7 +282,9 @@ browser.newContext({ viewport: {...}, hasTouch: true, isMobile: true });
 
 | ファイル | 役割 |
 |---|---|
-| `index.html` | トップ。タブでゲームを選ぶ |
+| `index.html` | 表紙。つくる・みる・あそぶの3入口だけ |
+| `view.html` | みる。図鑑・美術館・観戦ゲーム・うんどうかい |
+| `play.html` / `play-list.html` | あそぶ。4分類の入口と分類別ゲーム一覧 |
 | `undoukai.html` | うんどうかいの番組進行。`EVENTS` 配列 / `card()` / `runProgramme()` / `finale()` |
 | `js/meet.js` | 4競技(かけっこ・たまいれ・ドッヂ・リレー)のエンジン。`Meet.run` / `rush`(けっかへ) / `celebrate` / `ui` |
 | `js/core.js` | 基盤。`Util` `Sound` `Store`(IndexedDB) `Samples` `Pad` `Ui` `Nav` `GameChrome` `Stage`(画面いっぱい表示) `Fullscreen` `Rotate` |

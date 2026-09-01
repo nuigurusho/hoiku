@@ -2493,9 +2493,22 @@ const GameChrome = {
     const bar = document.querySelector("header.bar");
     if (!bar) return;
     const back = bar.querySelector(".back");
+    const from = new URLSearchParams(location.search).get("from");
+    const backPages = {
+      view: "view.html",
+      "play-solo": "play-list.html?type=solo",
+      "play-duo": "play-list.html?type=duo",
+      "play-multi": "play-list.html?type=multi",
+      "play-games": "play-list.html?type=games",
+    };
+    let backHref = (back && back.getAttribute("href")) || "../index.html";
+    if (backPages[from]) {
+      backHref = (location.pathname.includes("/games/") ? "../" : "") + backPages[from];
+      if (back) back.href = backHref;
+    }
     const f = document.createElement("a");
     f.className = "back-float";
-    f.href = (back && back.getAttribute("href")) || "../index.html";
+    f.href = backHref;
     f.innerHTML = this.BACK_ICON;                 /* 文字なし・アイコンだけ */
     f.title = "もどる";
     f.setAttribute("aria-label", "もどる");
