@@ -157,6 +157,7 @@ document.body.insertAdjacentHTML("beforeend", `
   <div class="panel editor-panel crop-panel">
     <h2 id="cropTitle">✂ 切り出して取り込む</h2>
     <p class="note">ドラッグで囲んで「切り出して保存」。1枚から何回でも切り出せます。</p>
+    <div class="crop-destination"><span>取り込み先</span><strong id="cropDestination"></strong></div>
     <p style="margin:4px 0" id="cropCatRow">
       <label class="radio"><input type="radio" name="cropCat" value="char" checked> 🧍 キャラ</label>
       <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ はいけい</label>
@@ -164,8 +165,8 @@ document.body.insertAdjacentHTML("beforeend", `
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
     <div class="row">
-      <button class="btn green" id="cropSave">✂ 切り出して保存</button>
       <button class="btn yellow" id="cropRotate">↻ 回転</button>
+      <button class="btn green" id="cropSave">✂ 切り出して保存</button>
       <button class="btn blue" id="cropWhole">□ ページ全体を保存</button>
       <button class="btn purple hidden" id="cropNext">次のページ ▶</button>
       <button class="btn gray" id="cropClose">閉じる</button>
@@ -175,15 +176,14 @@ document.body.insertAdjacentHTML("beforeend", `
 <!-- 切り出したキャラクターの作品情報 -->
 <div class="modal hidden" id="cropMetaModal">
   <div class="panel" style="width:min(560px, 94vw)">
-    <h2>作品情報</h2>
-    <p class="note">作品名を入力してください。作者名は空欄のままでも保存できます。</p>
+    <h2>名前設定</h2>
     <div class="import-meta" style="grid-template-columns:1fr;text-align:left">
       <label><span>作品名</span><input id="cropWorkName" type="text" maxlength="40" placeholder="例: にじいろちゃん"></label>
       <label><span>作者名 <small>（任意）</small></span><input id="cropAuthor" type="text" maxlength="40" placeholder="例: さくらぐみ"></label>
     </div>
     <div class="row">
       <button class="btn green" id="cropMetaSave">✔ 保存する</button>
-      <button class="btn gray" id="cropMetaBack">動き設定に戻る</button>
+      <button class="btn gray" id="cropMetaBack">もどる</button>
     </div>
   </div>
 </div>
@@ -204,7 +204,7 @@ async function importFiles(files, cat, meta) {
       const f = pdfs[0];
       const pages = await pdfToCanvases(f);
       openCrop(pages, meta.name || (f.name || "スキャン").replace(/\.pdf$/i, ""), {
-        cat: cat === "src" ? null : cat,
+        cat,
         author: meta.author || "",
       });
     } catch (e) {
@@ -308,6 +308,23 @@ async function pdfToCanvases(file) {
 /* ---------- きりだし(トリミング)エディタ ----------
    pages: 元画像のcanvas配列(PDFは複数ページ、画像は1枚) */
 const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null, sc: 1, saved: 0, pendingRec: null };
+const CROP_CAT_LABELS = {
+  src: "✂️ トリミング用の元素材",
+  char: "🧍 キャラクターの全身",
+  fuku: "😀 キャラクターの顔",
+  bg: "🏞️ はいけい",
+};
+
+function cropCategory() {
+  return cropEd.forceCat || document.querySelector('input[name="cropCat"]:checked').value;
+}
+
+function syncCropDestination() {
+  $("cropDestination").textContent = CROP_CAT_LABELS[cropCategory()] || "";
+}
+
+document.querySelectorAll('input[name="cropCat"]').forEach((input) =>
+  input.addEventListener("change", syncCropDestination));
 
 function openCrop(pages, baseName, opts) {
   opts = opts || {};
@@ -320,6 +337,7 @@ function openCrop(pages, baseName, opts) {
   cropEd.saved = 0;
   cropEd.pendingRec = null;
   $("cropModal").classList.remove("hidden");
+  syncCropDestination();
   showCropPage();
 }
 
@@ -402,25 +420,12 @@ async function finishCropSave(rec) {
   await changed();
 }
 
-async function openCropRig(rec) {
-  $("cropModal").classList.add("hidden");
-  try {
-    await openRig(rec, {
-      afterSave: () => openCropMeta(rec),
-      afterCancel: returnToCrop,
-    });
-  } catch (e) {
-    rigEd.afterSave = null;
-    rigEd.afterCancel = null;
-    returnToCrop();
-    alert("動き設定を開けませんでした:\n" + ((e && e.message) || e));
-  }
-}
-
 function openCropMeta(rec) {
   cropEd.pendingRec = rec;
+  $("cropModal").classList.add("hidden");
   $("cropWorkName").value = rec.name || "";
   $("cropAuthor").value = rec.author || "";
+  $("cropMetaSave").textContent = rec.cat === "char" ? "✔ つぎへ" : "✔ 保存する";
   $("cropMetaModal").classList.remove("hidden");
   $("cropWorkName").focus();
   $("cropWorkName").select();
@@ -428,10 +433,10 @@ function openCropMeta(rec) {
 
 async function saveCropRegion(rect) {
   const src = cropEd.pages[cropEd.idx];
-  const cat = cropEd.forceCat || document.querySelector('input[name="cropCat"]:checked').value;
+  const cat = cropCategory();
   const sx = rect.x / cropEd.sc, sy = rect.y / cropEd.sc;
   const sw = rect.w / cropEd.sc, sh = rect.h / cropEd.sc;
-  const max = cat === "char" ? 900 : 1100;
+  const max = cat === "src" ? 1600 : cat === "char" || cat === "fuku" ? 900 : 1100;
   const outSc = Math.min(1, max / Math.max(sw, sh));
   const out = Util.makeCanvas(Math.max(1, Math.round(sw * outSc)), Math.max(1, Math.round(sh * outSc)));
   const ctx = out.getContext("2d");
@@ -447,10 +452,8 @@ async function saveCropRegion(rect) {
   if (cat === "char") {
     rec.rig = { ...Rig.DEFAULT };
     rec.cutout = { mode: "edge", threshold: 225, gap: 1, strokes: [] };
-    await openCropRig(rec);
-    return;
   }
-  await finishCropSave(rec);
+  openCropMeta(rec);
 }
 
 $("cropSave").onclick = () => {
@@ -489,21 +492,25 @@ $("cropMetaSave").onclick = async () => {
   }
   rec.name = name;
   rec.author = $("cropAuthor").value.trim();
-  cropEd.pendingRec = null;
-  await finishCropSave(rec);
-};
-$("cropMetaBack").onclick = async () => {
-  const rec = cropEd.pendingRec;
-  if (!rec) return;
-  const name = $("cropWorkName").value.trim();
-  if (name) rec.name = name;
-  rec.author = $("cropAuthor").value.trim();
+  if (rec.cat !== "char") {
+    cropEd.pendingRec = null;
+    await finishCropSave(rec);
+    return;
+  }
   $("cropMetaModal").classList.add("hidden");
-  await openRig(rec, {
-    afterSave: () => openCropMeta(rec),
-    afterCancel: returnToCrop,
-  });
+  try {
+    await openRig(rec, {
+      afterSave: () => finishCropSave(rec),
+      afterCancel: () => openCropMeta(rec),
+    });
+  } catch (e) {
+    rigEd.afterSave = null;
+    rigEd.afterCancel = null;
+    openCropMeta(rec);
+    alert("動き設定を開けませんでした:\n" + ((e && e.message) || e));
+  }
 };
+$("cropMetaBack").onclick = returnToCrop;
 
 /* ---------- リグ編集 ---------- */
 const rigEd = {
@@ -1485,7 +1492,7 @@ $("edCameraInput").onchange = async (e) => {
     }
   }
   if (pages.length) openCrop(pages, pickMeta.name || "写真", {
-    cat: pickCat === "src" ? null : pickCat,
+    cat: pickCat,
     author: pickMeta.author || "",
   });
   pickMeta = {};
