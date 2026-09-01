@@ -1376,6 +1376,134 @@ const Tiers = {
     }
     return parts.length ? "🏆 ランキング<br>" + parts.join("<br>") : "";
   },
+
+  /* ランキングを、難易度タブと横スワイプで切り替える大きな表彰台にする。 */
+  bindRankButton(button, game, labels, opts) {
+    if (!button || button.dataset.rankBound) return;
+    button.dataset.rankBound = "1";
+    button.addEventListener("click", () => {
+      Sound.tap();
+      this.openRankDialog(game, labels, opts);
+    });
+  },
+
+  openRankDialog(game, labels, opts) {
+    opts = opts || {};
+    const unit = opts.unit || "";
+    let active = 0;
+    let downX = 0;
+    let downY = 0;
+
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-label", "ランキング");
+
+    const panel = document.createElement("div");
+    panel.className = "panel rank-dialog";
+    const head = document.createElement("div");
+    head.className = "rank-head";
+    const title = document.createElement("h2");
+    title.textContent = "🏆 ランキング";
+    const close = document.createElement("button");
+    close.className = "rank-close";
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "とじる");
+    head.append(title, close);
+
+    const tabs = document.createElement("div");
+    tabs.className = "rank-tabs";
+    tabs.setAttribute("role", "tablist");
+    const body = document.createElement("div");
+    body.className = "rank-body";
+    const dots = document.createElement("div");
+    dots.className = "rank-swipe-dots";
+    dots.setAttribute("aria-hidden", "true");
+
+    labels.forEach((label, i) => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "rank-tab";
+      tab.textContent = label;
+      tab.setAttribute("role", "tab");
+      tab.onclick = () => { Sound.tap(); show(i); };
+      tabs.appendChild(tab);
+      dots.appendChild(document.createElement("i"));
+    });
+
+    const makePlace = (place, entry) => {
+      const el = document.createElement("div");
+      el.className = `rank-place p${place}` + (entry ? "" : " empty");
+      const player = document.createElement("div");
+      player.className = "rank-player";
+      const name = document.createElement("strong");
+      name.textContent = entry ? entry.name : "—";
+      const score = document.createElement("span");
+      score.textContent = entry ? `${entry.score}${unit}` : "";
+      player.append(name, score);
+      const step = document.createElement("div");
+      step.className = "rank-step";
+      step.textContent = String(place);
+      el.append(player, step);
+      return el;
+    };
+
+    const show = (index) => {
+      active = Math.max(0, Math.min(labels.length - 1, index));
+      [...tabs.children].forEach((tab, i) => {
+        tab.classList.toggle("active", i === active);
+        tab.setAttribute("aria-selected", i === active ? "true" : "false");
+      });
+      [...dots.children].forEach((dot, i) => dot.classList.toggle("active", i === active));
+      body.replaceChildren();
+      const level = document.createElement("div");
+      level.className = "rank-level";
+      level.textContent = labels[active];
+      const list = this.rank(game, active + 1);
+      const podium = document.createElement("div");
+      podium.className = "rank-podium";
+      podium.append(makePlace(2, list[1]), makePlace(1, list[0]), makePlace(3, list[2]));
+      body.append(level, podium);
+      if (list.length > 3) {
+        const rest = document.createElement("div");
+        rest.className = "rank-rest";
+        list.slice(3, 5).forEach((entry, i) => {
+          const row = document.createElement("div");
+          row.className = "rank-rest-row";
+          const num = document.createElement("span");
+          num.className = "num";
+          num.textContent = `${i + 4}`;
+          const name = document.createElement("span");
+          name.textContent = entry.name;
+          const score = document.createElement("span");
+          score.textContent = `${entry.score}${unit}`;
+          row.append(num, name, score);
+          rest.appendChild(row);
+        });
+        body.appendChild(rest);
+      }
+    };
+
+    body.addEventListener("pointerdown", (e) => { downX = e.clientX; downY = e.clientY; });
+    body.addEventListener("pointerup", (e) => {
+      const dx = e.clientX - downX;
+      const dy = e.clientY - downY;
+      if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      show(active + (dx < 0 ? 1 : -1));
+      Sound.tap();
+    });
+
+    const shut = () => modal.remove();
+    close.onclick = () => { Sound.tap(); shut(); };
+    modal.addEventListener("pointerdown", (e) => { if (e.target === modal) shut(); });
+    panel.append(head, tabs, body, dots);
+    modal.appendChild(panel);
+    document.body.appendChild(modal);
+    show(0);
+    close.focus();
+  },
 };
 
 /* ---------------- CustomQuiz(この端末だけのオリジナルクイズ) ----------------

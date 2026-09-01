@@ -10,12 +10,25 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=33">
+<link rel="stylesheet" href="../css/style.css?v=34">
 <style>
   .stages { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
   .stages .btn { width: 78px; height: 78px; padding: 5px; opacity: .55; }
   .stages .btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 15px; }
   .stages .btn.active { opacity: 1; outline: 3px solid #212529; transform: translateY(1px); }
+  .world-view { position: relative; overflow: hidden; border-radius: 18px; }
+  .world-view canvas { transform-origin: center center; will-change: transform; }
+  .zoom-tools {
+    position: absolute; right: 14px; bottom: 14px; z-index: 4; display: flex; align-items: center; gap: 7px;
+    padding: 8px; border-radius: 22px; background: rgba(255,255,255,.9); box-shadow: 0 5px 18px rgba(70,45,20,.25);
+  }
+  .zoom-tools button {
+    width: 56px; height: 56px; padding: 0; border: 3px solid var(--blue-d); border-radius: 17px;
+    background: var(--blue); color: #fff; box-shadow: 0 5px 0 var(--blue-d);
+    font-family: inherit; font-size: 32px; font-weight: 900; line-height: 1; cursor: pointer;
+  }
+  .zoom-tools button:active { transform: translateY(5px); box-shadow: none; }
+  .zoom-tools .zoom-reset { width: 64px; border-color: var(--cream-d); background: #fff; color: var(--ink); box-shadow: 0 5px 0 var(--cream-d); font-size: 18px; }
 </style>
 </head>
 <body data-chrome="game">
@@ -32,13 +45,17 @@
     <button class="btn orange" data-stage="house" aria-label="いえの なか"><img src="../assets/stages/world-house.png?v=4" alt=""></button>
     <button class="btn yellow" data-stage="flower" aria-label="ひまわり ばたけ"><img src="../assets/stages/world-flower.svg" alt=""></button>
   </div>
-  <p style="text-align:center;font-weight:bold;margin:6px" id="hint">
-    とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!
-  </p>
-  <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
+  <div class="stage-wrap world-view" id="worldView">
+    <canvas id="cv" class="stage" width="1280" height="720"></canvas>
+    <div class="zoom-tools" aria-label="かくだい・しゅくしょう">
+      <button id="zoomOut" type="button" aria-label="ちいさくする">−</button>
+      <button id="zoomReset" class="zoom-reset" type="button" aria-label="もとの おおきさ">1×</button>
+      <button id="zoomIn" type="button" aria-label="おおきくする">＋</button>
+    </div>
+  </div>
 </main>
 
-<script src="../js/core.js?v=29"></script>
+<script src="../js/core.js?v=30"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -54,13 +71,6 @@ const SURFACE = 250;    // みずの せかいの 水面
 function depthScale(y) {
   return 0.78 + 0.34 * Util.clamp((y - GROUND_FAR) / (GROUND - GROUND_FAR), 0, 1);
 }
-
-const HINTS = {
-  land:  "とりこんだ みんなの えが あそんでいるよ。タッチすると よろこぶよ!",
-  water: "みんなで およぎの じかん。タッチすると ぱしゃぱしゃ すすむよ!",
-  house: "ごはん・おふろ・おしゃべり・おひるね。みんなの くらしを のぞいてみよう!",
-  flower: "ひまわり ばたけを ちょうちょが たくさん とんでいるよ。タッチしてみてね!",
-};
 
 let stage = "land";
 const stageBgs = { land: null, water: null, house: null };
@@ -1035,8 +1045,8 @@ function splash(x, y, n, dir) {
   if (n > 2) rings.push({ x, y, t: 0, life: 0.8, r: 10 });
 }
 
-/* ---------------- タッチ ---------------- */
-cv.addEventListener("pointerdown", (e) => {
+/* ---------------- タッチ・かくだい ---------------- */
+function touchActor(e) {
   const p = Util.canvasPos(cv, e);
   for (let i = actors.length - 1; i >= 0; i--) {
     const a = actors[i];
@@ -1067,7 +1077,86 @@ cv.addEventListener("pointerdown", (e) => {
       return;
     }
   }
+}
+
+const zoomState = { scale: 1, x: 0, y: 0 };
+const zoomPointers = new Map();
+let gestureMoved = false;
+let multiGesture = false;
+let pinchDistance = 0;
+let pinchCenter = null;
+
+function applyZoom() {
+  const maxX = Math.max(0, (zoomState.scale - 1) * cv.clientWidth / 2);
+  const maxY = Math.max(0, (zoomState.scale - 1) * cv.clientHeight / 2);
+  zoomState.x = Util.clamp(zoomState.x, -maxX, maxX);
+  zoomState.y = Util.clamp(zoomState.y, -maxY, maxY);
+  cv.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px) scale(${zoomState.scale})`;
+  document.getElementById("zoomReset").textContent = `${zoomState.scale.toFixed(1)}×`;
+}
+
+function setZoom(next) {
+  zoomState.scale = Util.clamp(Math.round(next * 10) / 10, 1, 3);
+  if (zoomState.scale === 1) { zoomState.x = 0; zoomState.y = 0; }
+  applyZoom();
+}
+
+document.getElementById("zoomIn").onclick = () => { Sound.tap(); setZoom(zoomState.scale + 0.5); };
+document.getElementById("zoomOut").onclick = () => { Sound.tap(); setZoom(zoomState.scale - 0.5); };
+document.getElementById("zoomReset").onclick = () => { Sound.tap(); setZoom(1); };
+
+cv.addEventListener("pointerdown", (e) => {
+  cv.setPointerCapture(e.pointerId);
+  zoomPointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY });
+  if (zoomPointers.size === 1) gestureMoved = false;
+  if (zoomPointers.size >= 2) {
+    multiGesture = true;
+    const [a, b] = [...zoomPointers.values()];
+    pinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
+    pinchCenter = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
 });
+
+cv.addEventListener("pointermove", (e) => {
+  const p = zoomPointers.get(e.pointerId);
+  if (!p) return;
+  const oldX = p.x, oldY = p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (Math.hypot(p.x - p.sx, p.y - p.sy) > 7) gestureMoved = true;
+
+  if (zoomPointers.size >= 2) {
+    const [a, b] = [...zoomPointers.values()];
+    const distance = Math.hypot(a.x - b.x, a.y - b.y);
+    const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (pinchDistance > 0) zoomState.scale = Util.clamp(zoomState.scale * distance / pinchDistance, 1, 3);
+    if (pinchCenter) {
+      zoomState.x += center.x - pinchCenter.x;
+      zoomState.y += center.y - pinchCenter.y;
+    }
+    pinchDistance = distance;
+    pinchCenter = center;
+    applyZoom();
+  } else if (zoomState.scale > 1) {
+    zoomState.x += p.x - oldX;
+    zoomState.y += p.y - oldY;
+    applyZoom();
+  }
+});
+
+function endZoomPointer(e) {
+  const canTap = zoomPointers.size === 1 && !gestureMoved && !multiGesture;
+  zoomPointers.delete(e.pointerId);
+  if (canTap) touchActor(e);
+  if (zoomPointers.size === 0) {
+    gestureMoved = false; multiGesture = false; pinchDistance = 0; pinchCenter = null;
+  } else {
+    const p = [...zoomPointers.values()][0];
+    p.sx = p.x; p.sy = p.y;
+    pinchDistance = 0; pinchCenter = null;
+  }
+}
+cv.addEventListener("pointerup", endZoomPointer);
+cv.addEventListener("pointercancel", endZoomPointer);
 
 /* ---------------- ステージ きりかえ ---------------- */
 document.getElementById("stages").querySelectorAll("button").forEach((b) => {
@@ -1077,7 +1166,7 @@ document.getElementById("stages").querySelectorAll("button").forEach((b) => {
     stage = b.dataset.stage;
     document.getElementById("stages").querySelectorAll("button")
       .forEach((x) => x.classList.toggle("active", x.dataset.stage === stage));
-    document.getElementById("hint").textContent = HINTS[stage];
+    setZoom(1);
     build();
   };
 });

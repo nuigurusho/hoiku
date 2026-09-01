@@ -331,7 +331,7 @@ canvas.stage {
   background: rgba(255,255,255,.92);
   border-radius: 26px;
   box-shadow: 0 8px 24px rgba(120,80,40,.18);
-  max-width: 760px;
+  max-width: 1040px;
   margin: 20px auto;
   padding: 26px;
   text-align: center;
@@ -659,7 +659,7 @@ canvas.stage {
   background: linear-gradient(160deg, #fff6e5 0%, #ffe9f3 50%, #e5f4ff 100%);
   animation: pickerIn .16s ease-out;
 }
-.picker .panel { max-width: 900px; margin: 12px auto; }
+.picker .panel { max-width: 1040px; margin: 12px auto; }
 @keyframes pickerIn { from { opacity: 0; transform: translateY(16px); } }
 
 /* ---------- モードのカテゴリ(🌈ゆるふわ/🔥ガチンコ) ---------- */
@@ -668,6 +668,82 @@ canvas.stage {
 .btn.locked { opacity: .4; }
 .btn.sel { outline: 4px solid #fff; box-shadow: 0 0 0 4px var(--pink), 0 6px 0 var(--shade); }
 .rank { font-size: 15px; color: #6a5c4c; margin: 10px 0 0; line-height: 1.5; }
+
+/* ---------- ランキング(大きな表彰台 + 難易度スワイプ) ---------- */
+.rank-open { margin-top: 16px; background: #fff; color: #765400; --shade: var(--yellow-d); border-color: var(--yellow-d); }
+.rank-dialog {
+  width: min(960px, 96vw);
+  min-height: min(650px, 88vh);
+  padding: 18px 22px 22px;
+  overflow: hidden !important;
+  background: linear-gradient(180deg, #fffdf5 0%, #fff6cf 100%);
+  border: 6px solid var(--yellow);
+}
+.rank-head { display: grid; grid-template-columns: 58px 1fr 58px; align-items: center; gap: 10px; }
+.rank-head h2 { grid-column: 2; margin: 0; font-size: clamp(30px, 5vw, 48px); color: #765400; }
+.rank-close {
+  grid-column: 3; width: 52px; height: 52px; padding: 0; border: 3px solid var(--cream-d);
+  border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 4px 0 var(--cream-d);
+  font-family: inherit; font-size: 30px; font-weight: 900; line-height: 1; cursor: pointer;
+}
+.rank-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px auto 8px; max-width: 760px; }
+.rank-tab {
+  min-width: 0; padding: 12px 8px; border: 4px solid var(--shade); border-radius: 18px;
+  background: #fff; color: var(--ink); box-shadow: 0 5px 0 var(--shade);
+  font-family: inherit; font-size: 20px; font-weight: 900; line-height: 1.1; cursor: pointer;
+}
+.rank-tab:nth-child(1) { --shade: var(--green-d); }
+.rank-tab:nth-child(2) { --shade: var(--orange-d); }
+.rank-tab:nth-child(3) { --shade: var(--purple-d); }
+.rank-tab.active { color: #fff; transform: translateY(5px); box-shadow: none; }
+.rank-tab:nth-child(1).active { background: var(--green); }
+.rank-tab:nth-child(2).active { background: var(--orange); }
+.rank-tab:nth-child(3).active { background: var(--purple); }
+.rank-body { min-height: 430px; padding: 8px 8px 0; touch-action: pan-y; }
+.rank-level { margin: 2px 0 8px; font-size: 22px; font-weight: 900; color: #806b51; }
+.rank-podium {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end;
+  gap: clamp(8px, 2vw, 20px); max-width: 720px; height: 285px; margin: 0 auto;
+}
+.rank-place { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+.rank-player { min-height: 88px; display: grid; place-content: center; gap: 4px; padding: 7px; }
+.rank-player strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(18px, 3vw, 28px); }
+.rank-player span { font-size: clamp(17px, 2.5vw, 24px); font-weight: 900; color: #7b5b17; }
+.rank-step {
+  display: grid; place-content: center; min-height: var(--height); border: 5px solid var(--edge);
+  border-bottom: 0; border-radius: 22px 22px 0 0; background: var(--metal);
+  box-shadow: inset 0 7px 0 rgba(255,255,255,.42); font-size: clamp(54px, 9vw, 86px); font-weight: 1000; color: #fff;
+  text-shadow: 0 5px 0 rgba(80,50,10,.22);
+}
+.rank-place.p1 { --height: 176px; --metal: #ffd43b; --edge: #d69e00; grid-column: 2; grid-row: 1; }
+.rank-place.p2 { --height: 126px; --metal: #bfc8d2; --edge: #8994a0; grid-column: 1; grid-row: 1; }
+.rank-place.p3 { --height: 96px; --metal: #d7955d; --edge: #a86132; grid-column: 3; grid-row: 1; }
+.rank-place.empty .rank-player { opacity: .35; }
+.rank-place.empty .rank-step { filter: saturate(.35); }
+.rank-rest { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 720px; margin: 12px auto 0; }
+.rank-rest-row { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 16px; background: #fff; border: 3px solid #ead9b1; font-size: 19px; font-weight: 900; }
+.rank-rest-row .num { font-size: 26px; color: #9a7040; }
+.rank-swipe-dots { display: flex; justify-content: center; gap: 9px; margin-top: 12px; }
+.rank-swipe-dots i { width: 11px; height: 11px; border-radius: 50%; background: #d8c8aa; }
+.rank-swipe-dots i.active { width: 28px; border-radius: 999px; background: var(--orange); }
+
+@media (orientation: landscape) and (min-width: 720px) {
+  #gachiRow { flex-wrap: nowrap; }
+  #gachiRow .btn.big { flex: 1 1 0; min-width: 0; padding-left: 18px; padding-right: 18px; }
+}
+@media (max-width: 600px) {
+  .rank-dialog { min-height: min(670px, 94vh); padding: 13px 10px 16px; }
+  .rank-head { grid-template-columns: 48px 1fr 48px; }
+  .rank-close { width: 44px; height: 44px; font-size: 25px; }
+  .rank-tab { font-size: 16px; padding: 10px 3px; }
+  .rank-body { min-height: 410px; padding-left: 0; padding-right: 0; }
+  .rank-podium { height: 275px; gap: 5px; }
+  .rank-player strong { font-size: 16px; }
+  .rank-player span { font-size: 15px; }
+  .rank-step { border-width: 4px; font-size: 52px; }
+  .rank-rest { grid-template-columns: 1fr; gap: 6px; }
+  .rank-rest-row { padding: 8px 12px; font-size: 16px; }
+}
 
 /* ---------- モーダル ---------- */
 .modal {

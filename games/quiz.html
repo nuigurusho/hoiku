@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=33">
+<link rel="stylesheet" href="../css/style.css?v=34">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -37,21 +37,20 @@
 <main>
   <div id="startScreen" class="panel">
     <h2>クイズたいかい!</h2>
-    <p class="note hidden" id="customNote"></p>
-    <p style="font-size:22px">4つのなかから こたえは どれかな?</p>
+    <p style="font-size:22px">4つのなかから こたえを えらぼう!</p>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ<span class="tag">えらばずに ながめて、「こたえを みる」で こたえが 出るよ</span></div>
+    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ</div>
     <div class="row" data-tier="yuru">
       <button class="btn big yellow" data-mode="miru">みんなで</button>
     </div>
 
-    <div class="mode-sec">🔥 ガチンコ<span class="tag">れんぞくせいかいノルマ&ランキング・クリアで つぎが とけるよ</span></div>
+    <div class="mode-sec">🔥 ガチンコ</div>
     <div class="row" id="gachiRow">
       <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">5もん れんぞく</span></button>
       <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">8もん れんぞく</span></button>
       <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">10もん れんぞく</span></button>
     </div>
-    <div class="rank" id="rankView"></div>
+    <button class="btn rank-open" id="rankBtn" type="button">🏆 ランキング</button>
   </div>
 
   <div id="quizScreen" class="hidden">
@@ -77,7 +76,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=29"></script>
+<script src="../js/core.js?v=30"></script>
 <script src="../js/quiz-data.js?v=11"></script>
 <script>
 "use strict";
@@ -102,19 +101,9 @@ function refreshLocks() {
     b.classList.toggle("locked", need > lv);
     b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
   });
-  $("rankView").innerHTML = Tiers.rankHtml(GAME, RANK_LABELS, { unit: "もん" });
+  Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "もん" });
 }
 refreshLocks();
-
-/* この端末のオリジナル問題があれば知らせる */
-(() => {
-  const n = CustomQuiz.all().length;
-  if (n > 0) {
-    const el = $("customNote");
-    el.textContent = `このたんまつの オリジナルもんだい ${n}もん も でてくるよ!`;
-    el.classList.remove("hidden");
-  }
-})();
 
 document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
   b.onclick = () => {
@@ -169,11 +158,10 @@ function show() {
   box.innerHTML = "";
   const order = Util.shuffle([0, 1, 2, 3]);
   order.forEach((ci, i) => {
-    /* みるモードは おせる ボタンではなく、ながめるだけの フレームに する */
-    const b = document.createElement(mode.view ? "div" : "button");
-    b.className = mode.view ? `choice frame c${i}` : `choice c${i}`;
+    const b = document.createElement("button");
+    b.className = `choice c${i}`;
     b.textContent = q.choices[ci];
-    if (!mode.view) b.onclick = () => answer(ci, b);
+    b.onclick = () => mode.view ? chooseView(ci, b) : answer(ci, b);
     box.appendChild(b);
   });
   if (mode.view) {
@@ -184,7 +172,7 @@ function show() {
 }
 
 /* ---------- みるモード:「こたえを みる」で こたえを おおきく出す ---------- */
-$("revealBtn").onclick = () => {
+function revealViewAnswer(chosen) {
   if (busy) return;
   busy = true;
   const q = queue[idx];
@@ -202,12 +190,24 @@ $("revealBtn").onclick = () => {
   text.textContent = ans;
   box.append(label, text);
   box.classList.remove("hidden");
-  Sound.pon();
+  if (chosen) {
+    const pickedCorrect = chosen.textContent === ans;
+    pickedCorrect ? Sound.good() : Sound.bad();
+  } else {
+    Sound.pon();
+  }
   Ui.confetti(1500, 60);
   $("revealBtn").classList.add("hidden");
   $("nextQBtn").textContent = idx + 1 < queue.length ? "つぎ ▶" : "おしまい ▶";
   $("nextQBtn").classList.remove("hidden");
-};
+}
+
+function chooseView(ci, button) {
+  if (busy) return;
+  revealViewAnswer(button);
+}
+
+$("revealBtn").onclick = () => revealViewAnswer(null);
 
 $("nextQBtn").onclick = () => {
   Sound.tap();
