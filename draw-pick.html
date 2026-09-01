@@ -13,7 +13,6 @@
 <link rel="stylesheet" href="css/style.css?v=33">
 <style>
   .pick-h { text-align: center; font-size: 20px; font-weight: bold; margin: 18px 0 8px; color: #7a6a58; }
-  .pick-h .tag { font-size: 14px; color: #8a7a68; font-weight: normal; margin-left: 8px; }
   .tiles.pick { max-width: 900px; }
   .tiles.pick .tile { padding: 14px 8px 12px; font-size: 19px; gap: 6px; }
 </style>
@@ -28,40 +27,16 @@
 <main class="admin-list">
   <p class="pick-h" style="font-size:24px;color:var(--ink)">なにを かく?</p>
 
-  <p class="pick-h">キャラクター<span class="tag">はしる・とぶ ゲームで うごく え</span></p>
+  <p class="pick-h">キャラクター</p>
   <div class="tiles pick" id="charPick"></div>
 
   <p class="pick-h">そのほか</p>
   <div class="tiles pick" id="otherPick" style="max-width:440px"></div>
-
-  <p class="note" style="max-width:900px;margin:18px auto;text-align:center">
-    えらぶと、かく ばしょの めやす(<b>あたり</b>)が うっすら 出て、2びょうくらいで すーっと 消えます。<br>
-    もういちど 見たいときは、「どうぐ」の <b>あたり</b> で いつでも 出したり 消したり できます。
-  </p>
-
-  <div class="make-sec" style="margin-top:26px">
-    <h2>いままでに つくった え<button class="info-btn" type="button" id="charInfo" aria-label="キャラクターの説明">i</button></h2>
-
-    <h3>キャラクターの ぜんしん<span class="make-tag">うごきせってい・こえ は ここから</span></h3>
-    <div id="listChar"></div>
-
-    <h3>キャラクターの かお<span class="make-tag">ふくわらいで つかう え</span></h3>
-    <div id="listFuku"></div>
-
-    <h3>はいけいの え<span class="make-tag">みんなの せかい などの うしろの え</span></h3>
-    <div id="listBg"></div>
-  </div>
 </main>
 
-<script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=28"></script>
-<script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=21"></script>
 <script>
 "use strict";
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "js/vendor/pdf.worker.min.js";
-}
 const $ = (id) => document.getElementById(id);
 
 /* 「つくる」から きたときは「つくる」へ、トップから きたときは トップへ もどる */
@@ -98,53 +73,11 @@ function tile(kind) {
   ctx.restore();
   const nm = document.createElement("span");
   nm.textContent = k.emoji + " " + k.label;
-  const sub = document.createElement("span");
-  sub.className = "sub";
-  sub.textContent = k.hint;
-  a.append(cv, nm, sub);
+  a.append(cv, nm);
   return a;
 }
 Guide.CHAR_ORDER.forEach((k) => $("charPick").appendChild(tile(k)));
 ["face", "bg"].forEach((k) => $("otherPick").appendChild(tile(k)));
-
-/* ---------- いままでに つくった え ---------- */
-Editors.mountLists([
-  { cat: "char", el: "listChar", what: "キャラクターの ぜんしん", btns: ["rig", "voice"], kind: "human" },
-  { cat: "fuku", el: "listFuku", what: "キャラクターの かお", btns: ["fuku"], kind: "face" },
-  { cat: "bg", el: "listBg", what: "はいけいの え", btns: [], kind: "bg" },
-], { back: SELF });
-
-/* ---------- せつめい(iボタン) ---------- */
-$("charInfo").onclick = () => {
-  Sound.tap();
-  Ui.info("キャラクターの つくりかた", `
-    <h3>ぜんしん</h3>
-    <ul class="info-list">
-      <li>走る・跳ぶゲームで <b>手足を動かして歩く</b> 絵です</li>
-      <li>「なにを かく?」で選んだ種類が、そのまま <b>うごきのタイプ</b> になります
-          (あとから <b>うごきせってい</b> で変えられます)</li>
-      <li>あたり(点線)は <b>うごきせっていの初期値</b>(くび・こし・まんなか)に合わせてあります。
-          そって描けば、設定をさわらなくてもきれいに歩きます</li>
-      <li>🐕<b>どうぶつ</b> は <b>あたまを左がわ</b> にして 横むきに描いてください
-          (まえあし・うしろあしを 正しく うごかすためです)</li>
-      <li>🦋<b>ちょうちょ</b> は べつのつくりかた … <b>はねを1まいだけ</b>(からだは左はしに半分)描くと、
-          左右はんてんした はねと あわせて ひらひら飛びます</li>
-      <li><b>こえ</b> で よろこび・あいさつ・おどろき・しっぱい を録音できます(1つ10秒まで)</li>
-    </ul>
-    <h3>かお</h3>
-    <ul class="info-list">
-      <li>ふくわらい専用の絵です。ぜんしんとは別に管理します</li>
-      <li><b>ふくわらいパーツ</b> で 目・まゆげ・鼻・口 を四角く囲むと、パーツが抜けた顔で遊べます</li>
-    </ul>
-    <h3>きれいに つくるコツ</h3>
-    <ul class="info-list">
-      <li>白い紙に <b>濃く・はっきり</b>、紙いっぱいに <b>大きく</b> 描く</li>
-      <li>明るい場所で <b>影が入らないよう</b> 真上からまっすぐ撮る</li>
-      <li>白い部分は自動で透明になります</li>
-      <li>大きさは自動で縮小(長辺 <b>900px</b>)</li>
-    </ul>
-  `);
-};
 </script>
 </body>
 </html>
