@@ -29,6 +29,23 @@
   .uk-mem:active { transform: scale(.94); }
   .uk-skip { text-align: center; margin: 6px 0 0; }
   .uk-skip button { font-size: 14px; padding: 8px 16px; }
+  .uk-timer {
+    position: absolute;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    z-index: 4;
+    min-width: 74px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.92);
+    color: #6b5d4d;
+    box-shadow: 0 3px 0 rgba(107,93,77,.18);
+    font-size: clamp(17px, 2.2vw, 23px);
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -78,11 +95,12 @@
 
   <!-- ============ ほんばん の がめん ============ -->
   <div id="playScreen" class="hidden">
-    <!-- あそんでいる あいだ、ステージの 上には なにも 置かない。
-         てんすう・きょうぎの すすみぐあいは、きょうぎの あいだの
-         カード(インサート)の 中で 見せる。 -->
+    <!-- あそんでいる あいだ、ステージの 上には得点や進行を置かない。
+         たまいれの残り時間だけ右上に小さく出し、それ以外は競技のあいだの
+         カード(インサート)の中で見せる。 -->
     <div class="mt-stage">
       <canvas id="cv" class="stage" width="1280" height="720"></canvas>
+      <div class="uk-timer hidden" id="timer" aria-label="のこりじかん"></div>
       <div class="mt-banner hidden" id="banner"></div>
       <div class="mt-over hidden" id="over"></div>
     </div>
@@ -111,9 +129,14 @@ const EVENTS = [
 const WIN_PT = 2, DRAW_PT = 1;
 
 const ui = Meet.ui({ banner: $("banner") });
-/* あそんでいる あいだ 画面には 出さない。きょうぎが おわった ときの
-   すうじだけ おぼえておいて、けっかカード(インサート)で 見せる。 */
-ui.hud = (s) => { hudLast = s; };
+/* 競技中は基本的にステージへ情報を重ねない。たまいれだけは区切りが
+   分かるよう残り時間を右上へ小さく出し、得点は結果カードまで隠す。 */
+ui.hud = (s) => {
+  hudLast = s;
+  const sec = Number.isFinite(s.sec) ? s.sec : null;
+  $("timer").textContent = sec == null ? "" : `⏱ ${sec}`;
+  $("timer").classList.toggle("hidden", sec == null);
+};
 
 /* ---- したくの じょうたい ---- */
 let allChars = [];
@@ -320,6 +343,7 @@ async function runProgramme() {
   log = [];
   show("playScreen");
   $("banner").classList.add("hidden");
+  $("timer").classList.add("hidden");
   $("skipRow").classList.add("hidden");
   $("finaleList").classList.add("hidden");
   $("finaleRow").classList.add("hidden");
@@ -357,6 +381,7 @@ async function runProgramme() {
     skipReq = false;
     let res = await Meet.run({ key: ev.key, cv, actors, names, ui, quick: true });
     if (myRun !== runId) return;
+    $("timer").classList.add("hidden");
     $("skipRow").classList.add("hidden");
     if (!res) {
       if (!skipReq) return;                       // やめた
@@ -462,6 +487,7 @@ function backToSetup() {
   Meet.stop();
   hideCard();
   $("banner").classList.add("hidden");
+  $("timer").classList.add("hidden");
   $("finaleList").classList.add("hidden");
   $("finaleRow").classList.add("hidden");
   show("setupScreen");
