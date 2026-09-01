@@ -155,10 +155,12 @@ const Meet = (() => {
       const pu = a.puppet;
       pu.walking = false; pu.jumpT = 0; pu.roll = 0; pu.kick = false;
       pu.facing = a.team === "red" ? 1 : -1;
-      a.fall = 0; a.emo = ""; a.rank = 0;
+      a.fall = 0; a.emo = ""; a.rank = 0; a.nameT = 0;
     }
 
-    const token = {};
+    const token = { cv: M.cv };
+    token.tap = (e) => ActorTouch.hit(M.all, M.cv, e);
+    M.cv.addEventListener("pointerdown", token.tap);
     cur = token;
     curM = M;
 
@@ -170,11 +172,15 @@ const Meet = (() => {
         if (cur !== token) return;                       // とめられた
         const dt = Math.min(0.04, (now - last) / 1000); last = now;
         M.t += dt;
+        for (const a of M.all) ActorTouch.tick(a, dt);
         engine.update(M, dt);
         engine.draw(M);
         if (M.result) {
           M.endWait -= dt;
-          if (M.endWait <= 0) { cur = null; rafId = 0; resolve(M.result); return; }
+          if (M.endWait <= 0) {
+            M.cv.removeEventListener("pointerdown", token.tap);
+            cur = null; rafId = 0; resolve(M.result); return;
+          }
         }
         rafId = requestAnimationFrame(loop);
       })(last);
@@ -189,6 +195,7 @@ const Meet = (() => {
     curM = null;
     const c = cur;
     cur = null;
+    if (c && c.cv && c.tap) c.cv.removeEventListener("pointerdown", c.tap);
     if (c && c.resolve) { const r = c.resolve; c.resolve = null; r(null); }
   }
 
@@ -497,11 +504,11 @@ const Meet = (() => {
       pu.y = laneY;
       pu.facing = 1;
       pu.draw(ctx);
-      // なまえ
-      ctx.font = `bold ${Util.clamp(laneH * 0.34, 13, 24)}px sans-serif`;
-      ctx.textAlign = "left";
-      ctx.fillStyle = COLD[a.team];
-      ctx.fillText(a.name, 14, top + Math.min(26, h * 0.6));
+      ActorTouch.drawName(ctx, a, {
+        y: laneY + 12,
+        fontSize: Util.clamp(laneH * 0.30, 13, 21),
+        color: COLD[a.team], edge: COL[a.team],
+      });
       // メダル・ハプニング
       ctx.textAlign = "center";
       if (a.rank) {
@@ -752,10 +759,7 @@ const Meet = (() => {
     for (const a of order) {
       const pu = a.puppet;
       pu.draw(ctx);
-      ctx.font = "bold 19px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillStyle = COLD[a.team];
-      ctx.fillText(a.name, pu.x, pu.y + 22);
+      ActorTouch.drawName(ctx, a, { fontSize: 19, color: COLD[a.team], edge: COL[a.team] });
     }
 
     // とんでる 玉
@@ -1114,10 +1118,7 @@ const Meet = (() => {
       } else {
         pu.draw(ctx);
       }
-      ctx.font = "bold 20px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillStyle = COLD[a.team];
-      ctx.fillText(a.name, pu.x, pu.y + 22);
+      ActorTouch.drawName(ctx, a, { color: COLD[a.team], edge: COL[a.team] });
       ctx.restore();
     }
 
@@ -1706,10 +1707,10 @@ const Meet = (() => {
       ctx.fillText(t.ev.emo, pu.x, pu.y - pu.h - 14);
     }
 
-    ctx.font = `bold ${running ? 20 : 15}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillStyle = COLD[a.team];
-    ctx.fillText(a.name, pu.x, pu.y + (running ? 22 : 18));
+    ActorTouch.drawName(ctx, a, {
+      y: pu.y + (running ? 22 : 18), fontSize: running ? 20 : 15,
+      color: COLD[a.team], edge: COL[a.team],
+    });
     ctx.restore();
   }
 
@@ -1751,13 +1752,17 @@ const Meet = (() => {
                        : Util.clamp(300 - list.length * 20, 140, 240);
     placeRow(list, rows > 1 ? 360 : 520, h, Math.ceil(list.length / rows));
 
-    const token = {};
+    for (const a of list) a.nameT = 0;
+    const token = { cv };
+    token.tap = (e) => ActorTouch.hit(list, cv, e);
+    cv.addEventListener("pointerdown", token.tap);
     cur = token;
     let last = performance.now();
     (function loop(now) {
       if (cur !== token) return;
       const dt = Math.min(0.04, (now - last) / 1000); last = now;
       for (const a of list) {
+        ActorTouch.tick(a, dt);
         a.puppet.walking = false;
         if (!opts.teamKey || a.team === opts.teamKey) {
           a.hopCd -= dt;
@@ -1791,9 +1796,10 @@ const Meet = (() => {
           ctx.font = `${Math.round(a.puppet.h * 0.34)}px serif`;
           ctx.fillText("👏", a.puppet.x, a.puppet.y - a.puppet.h - 6);
         }
-        ctx.font = "bold 24px sans-serif";
-        ctx.fillStyle = COLD[a.team];
-        ctx.fillText(a.name, a.puppet.x, a.puppet.y + 26);
+        ActorTouch.drawName(ctx, a, {
+          y: a.puppet.y + 26, fontSize: 24,
+          color: COLD[a.team], edge: COL[a.team],
+        });
       }
       ctx.textAlign = "left";
       rafId = requestAnimationFrame(loop);

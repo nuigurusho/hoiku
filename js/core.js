@@ -1316,6 +1316,62 @@ const Picker = {
   },
 };
 
+/* ---------------- ActorTouch(キャラを押したときだけ名前を見せる) ----------------
+   競技中は絵を主役にし、名前は足もとの小さな札として一時表示する。 */
+const ActorTouch = {
+  DURATION: 1.7,
+
+  show(actor, opts) {
+    if (!actor || !actor.puppet) return false;
+    opts = opts || {};
+    actor.nameT = opts.duration || this.DURATION;
+    if (opts.hop !== false) actor.puppet.hop();
+    if (opts.voice !== false && !Sound.playVoice(actor.voices, ["joy", "greet", "ouch"])) Sound.pop();
+    return true;
+  },
+
+  hit(list, canvas, e, opts) {
+    const p = Util.canvasPos(canvas, e);
+    const ordered = (list || []).slice().sort((a, b) => (b.puppet.y || 0) - (a.puppet.y || 0));
+    const actor = ordered.find((a) => {
+      const box = a.puppet.bbox();
+      return p.x >= box.x && p.x <= box.x + box.w && p.y >= box.y && p.y <= box.y + box.h;
+    });
+    return actor && this.show(actor, opts) ? actor : null;
+  },
+
+  tick(actor, dt) {
+    if (actor && actor.nameT > 0) actor.nameT = Math.max(0, actor.nameT - dt);
+  },
+
+  drawName(ctx, actor, opts) {
+    if (!actor || !actor.name || !(actor.nameT > 0)) return;
+    opts = opts || {};
+    const pu = actor.puppet;
+    const fontSize = opts.fontSize || 20;
+    const y = opts.y == null ? pu.y + 22 : opts.y;
+    const color = opts.color || "#4a3f35";
+    const edge = opts.edge || "#d8c8aa";
+    const alpha = Math.min(1, actor.nameT / 0.28);
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const w = Math.min(240, ctx.measureText(actor.name).width + 22);
+    const h = fontSize + 13;
+    ctx.fillStyle = "rgba(255,253,245,.95)";
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(pu.x - w / 2, y - h / 2, w, h, h / 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillText(actor.name, pu.x, y + 1);
+    ctx.restore();
+  },
+};
+
 /* ---------------- Tiers(ガチンコの解放レベル & ランキング) ----------------
    ゲームを 🌈ゆるふわ / 🔥ガチンコ の2層で あそぶための共通基盤。
    ガチンコは「かんたん→ふつう→むずかしい」を クリアで順に解放し、
@@ -1398,6 +1454,9 @@ const Tiers = {
     let active = 0;
     let downX = 0;
     let downY = 0;
+    let rankGeneration = 0;
+    let rankActors = [];
+    let lastFrame = performance.now();
 
     const modal = document.createElement("div");
     modal.className = "modal";
@@ -1438,19 +1497,42 @@ const Tiers = {
       dots.appendChild(document.createElement("i"));
     });
 
-    const makePlace = (place, entry) => {
+    const mountPuppet = async (canvas, rec, player, generation) => {
+      if (typeof Rig === "undefined" || typeof Puppet === "undefined") return;
+      try {
+        const parts = await Rig.load(rec);
+        if (generation !== rankGeneration || !canvas.isConnected) return;
+        const puppet = new Puppet(parts, {
+          x: canvas.width / 2,
+          y: canvas.height - 4,
+          h: parts.type === "butterfly" ? 260 : 145,
+        });
+        puppet.walking = false;
+        const actor = { canvas, puppet, voices: rec.voices || null, reactT: 0, baseFacing: puppet.facing };
+        player._rankActor = actor;
+        rankActors.push(actor);
+      } catch (_) { /* 読みこめない絵は静止画のまま使う */ }
+    };
+
+    const makePlace = (place, entry, generation) => {
       const el = document.createElement("div");
       el.className = `rank-place p${place}` + (entry ? "" : " empty");
       const player = document.createElement(entry ? "button" : "div");
       player.className = "rank-player";
       if (entry) player.type = "button";
       const rec = entry ? characters.get(entry.name) : null;
-      const avatar = rec ? document.createElement("img") : document.createElement("span");
+      const canMove = rec && typeof Rig !== "undefined" && typeof Puppet !== "undefined";
+      const avatar = canMove ? document.createElement("canvas") : rec ? document.createElement("img") : document.createElement("span");
       avatar.className = rec ? "rank-avatar" : "rank-avatar rank-avatar-fallback";
       if (rec) {
-        avatar.src = rec.dataURL;
-        avatar.alt = "";
-        Ui.thumbFix(avatar, rec);
+        if (canMove) {
+          avatar.width = 180; avatar.height = 160;
+          mountPuppet(avatar, rec, player, generation);
+        } else {
+          avatar.src = rec.dataURL;
+          avatar.alt = "";
+          Ui.thumbFix(avatar, rec);
+        }
       } else {
         avatar.textContent = entry ? "⭐" : "？";
       }
@@ -1462,12 +1544,27 @@ const Tiers = {
       score.textContent = entry ? `${entry.score}${unit}` : "";
       player.append(name, avatar, score);
       if (entry) {
-        player.setAttribute("aria-label", `${place}い ${entry.name} ${entry.score}${unit}。なまえをみる`);
+        player.setAttribute("aria-label", `${place}い ${entry.name} ${entry.score}${unit}。さわると うごく`);
         player.setAttribute("aria-expanded", "false");
+        let nameTimer = 0;
         player.addEventListener("click", () => {
-          const shown = player.classList.toggle("show-name");
-          player.setAttribute("aria-expanded", shown ? "true" : "false");
-          Sound.tap();
+          clearTimeout(nameTimer);
+          player.classList.add("show-name", "react");
+          player.setAttribute("aria-expanded", "true");
+          const actor = player._rankActor;
+          if (actor) {
+            actor.reactT = 0.75;
+            actor.puppet.facing *= -1;
+            actor.puppet.hop();
+            if (!Sound.playVoice(actor.voices, ["joy", "greet", "ouch"])) Sound.pop();
+          } else {
+            Sound.pop();
+          }
+          setTimeout(() => player.classList.remove("react"), 760);
+          nameTimer = setTimeout(() => {
+            player.classList.remove("show-name");
+            player.setAttribute("aria-expanded", "false");
+          }, 1700);
         });
       }
       const step = document.createElement("div");
@@ -1485,10 +1582,12 @@ const Tiers = {
       });
       [...dots.children].forEach((dot, i) => dot.classList.toggle("active", i === active));
       body.replaceChildren();
+      rankActors = [];
+      const generation = ++rankGeneration;
       const list = this.rank(game, active + 1);
       const podium = document.createElement("div");
       podium.className = "rank-podium";
-      podium.append(makePlace(2, list[1]), makePlace(1, list[0]), makePlace(3, list[2]));
+      podium.append(makePlace(2, list[1], generation), makePlace(1, list[0], generation), makePlace(3, list[2], generation));
       body.append(podium);
       if (list.length > 3) {
         const rest = document.createElement("div");
@@ -1519,13 +1618,36 @@ const Tiers = {
       Sound.tap();
     });
 
-    const shut = () => modal.remove();
+    const animateRanks = (now) => {
+      if (!modal.isConnected) return;
+      const dt = Math.min(0.04, (now - lastFrame) / 1000); lastFrame = now;
+      for (const actor of rankActors) {
+        const { canvas, puppet } = actor;
+        if (!canvas.isConnected) continue;
+        if (actor.reactT > 0) {
+          actor.reactT = Math.max(0, actor.reactT - dt);
+          puppet.walking = true;
+          puppet.roll = Math.sin(actor.reactT * 22) * 0.09;
+        } else {
+          puppet.walking = false;
+          puppet.roll *= 0.72;
+        }
+        puppet.update(dt);
+        const cctx = canvas.getContext("2d");
+        cctx.clearRect(0, 0, canvas.width, canvas.height);
+        puppet.draw(cctx);
+      }
+      requestAnimationFrame(animateRanks);
+    };
+
+    const shut = () => { rankGeneration++; rankActors = []; modal.remove(); };
     close.onclick = () => { Sound.tap(); shut(); };
     modal.addEventListener("pointerdown", (e) => { if (e.target === modal) shut(); });
     panel.append(head, tabs, body, dots);
     modal.appendChild(panel);
     document.body.appendChild(modal);
     show(0);
+    requestAnimationFrame(animateRanks);
     close.focus();
   },
 };

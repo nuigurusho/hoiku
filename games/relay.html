@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=37">
+<link rel="stylesheet" href="../css/style.css?v=38">
 <style>
   /* ===== リレー専用スタイル(1ファイル完結) ===== */
 
@@ -104,8 +104,8 @@
     font-weight: bold;
     font-size: clamp(15px, 3.2vw, 28px);
     line-height: 1.2;
-    color: #fff;
-    background: linear-gradient(to top, rgba(18,12,6,.86), rgba(18,12,6,.62));
+    color: var(--ink);
+    background: rgba(255,253,245,.96);
     padding: 9px 16px 11px;
     border-top: 5px solid var(--yellow);
     pointer-events: none;
@@ -114,8 +114,8 @@
   .rl-banner.red  { border-top-color: var(--pink); }
   .rl-banner.blue { border-top-color: var(--blue); }
   .rl-banner .rl-nm { font-weight: 800; }
-  .rl-banner .rl-nm.red  { color: #ff9ec7; }
-  .rl-banner .rl-nm.blue { color: #74c0fc; }
+  .rl-banner .rl-nm.red  { color: var(--pink-d); }
+  .rl-banner .rl-nm.blue { color: var(--blue-d); }
   @keyframes rl-banner-in { from { transform: translateY(100%); opacity: 0; } }
 
   /* --- 勝利オーバーレイ --- */
@@ -211,7 +211,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=31"></script>
+<script src="../js/core.js?v=32"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -404,7 +404,7 @@ async function startRace() {
         state: "idle", tx: 640, ty: 470, hBase,
         fall: 0, wob: Util.rand(0, 9), prevX: 0,
         spd: Util.rand(300, 380),          // この子の きほんの はやさ(px/s)
-        hopCd: Util.rand(1.5, 4),
+        hopCd: Util.rand(1.5, 4), nameT: 0,
       };
       members.push(c);
       chars.push(c);
@@ -461,6 +461,9 @@ async function startRace() {
   })(last);
 }
 function stopLoop() { if (rafId) cancelAnimationFrame(rafId); rafId = 0; if (M) M.stop = true; }
+cv.addEventListener("pointerdown", (e) => {
+  if (M) ActorTouch.hit(M.phase === "over" ? M.celebrants : M.chars, cv, e);
+});
 
 /* ベンチ(トラック うちがわ)の 立ちいち。あか=左はんぶん、あお=右はんぶん */
 function layoutBench(t, snap) {
@@ -766,6 +769,7 @@ function leadWatch(dt) {
 /* ---- まいフレーム こうしん ---- */
 function update(dt) {
   M.t += dt;
+  for (const c of M.chars) ActorTouch.tick(c, dt);
   for (const f of M.floats) f.t += dt;
   M.floats = M.floats.filter((f) => f.t < f.dur);
 
@@ -1035,11 +1039,11 @@ function drawRunner(c) {
     ctx.fillText(t.ev.emo, pu.x, pu.y - pu.h - 14);
   }
 
-  // なまえ
-  ctx.font = `bold ${running ? 20 : 15}px sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillStyle = c.team === "red" ? "#d6336c" : "#1c7ed6";
-  ctx.fillText(c.name, pu.x, pu.y + (running ? 22 : 18));
+  ActorTouch.drawName(ctx, c, {
+    y: pu.y + (running ? 22 : 18), fontSize: running ? 20 : 15,
+    color: c.team === "red" ? "#d6336c" : "#1c7ed6",
+    edge: c.team === "red" ? "#ff6b9d" : "#4dabf7",
+  });
   ctx.restore();
 }
 
@@ -1101,10 +1105,11 @@ function drawVictory() {
   const order = M.celebrants.slice().sort((a, b) => a.puppet.y - b.puppet.y);
   for (const c of order) {
     c.puppet.draw(ctx);
-    ctx.font = "bold 24px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillStyle = c.team === "red" ? "#d6336c" : "#1c7ed6";
-    ctx.fillText(c.name, c.puppet.x, c.puppet.y + 26);
+    ActorTouch.drawName(ctx, c, {
+      y: c.puppet.y + 26, fontSize: 24,
+      color: c.team === "red" ? "#d6336c" : "#1c7ed6",
+      edge: c.team === "red" ? "#ff6b9d" : "#4dabf7",
+    });
   }
   ctx.textAlign = "left";
 }

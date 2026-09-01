@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=37">
+<link rel="stylesheet" href="../css/style.css?v=38">
 <style>
   /* ===== ドッヂボール専用スタイル(1ファイル完結) ===== */
 
@@ -88,8 +88,8 @@
     font-weight: bold;
     font-size: clamp(15px, 3.2vw, 28px);
     line-height: 1.2;
-    color: #fff;
-    background: linear-gradient(to top, rgba(18,12,6,.86), rgba(18,12,6,.62));
+    color: var(--ink);
+    background: rgba(255,253,245,.96);
     padding: 9px 16px 11px;
     border-top: 5px solid var(--yellow);
     pointer-events: none;
@@ -98,8 +98,8 @@
   .db-banner.red  { border-top-color: var(--pink); }
   .db-banner.blue { border-top-color: var(--blue); }
   .db-banner .db-nm { font-weight: 800; }
-  .db-banner .db-nm.red  { color: #ff9ec7; }
-  .db-banner .db-nm.blue { color: #74c0fc; }
+  .db-banner .db-nm.red  { color: var(--pink-d); }
+  .db-banner .db-nm.blue { color: var(--blue-d); }
   @keyframes db-banner-in { from { transform: translateY(100%); opacity: 0; } }
 
   /* --- 勝利オーバーレイ(canvasの上に タイトル+ボタン) --- */
@@ -247,7 +247,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=31"></script>
+<script src="../js/core.js?v=32"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -435,7 +435,7 @@ async function startMatch() {
         name: b.name, voices: b.voices, team,
         puppet: new Puppet(parts, { h: hBase, facing: 1 }),
         zone: "inner", outState: null, fall: 0, hBase,
-        tx: 640, ty: 360, homeX: 640, homeY: 360, wander: 0, hopCd: 0,
+        tx: 640, ty: 360, homeX: 640, homeY: 360, wander: 0, hopCd: 0, nameT: 0,
       });
     }
   }
@@ -469,6 +469,9 @@ async function startMatch() {
   })(last);
 }
 function stopLoop() { if (rafId) cancelAnimationFrame(rafId); rafId = 0; if (M) M.stop = true; }
+cv.addEventListener("pointerdown", (e) => {
+  if (M) ActorTouch.hit(M.over ? M.celebrants : M.players, cv, e);
+});
 
 function innerP(team) { return M.players.filter((p) => p.team === team && p.zone === "inner"); }
 function outP(team) { return M.players.filter((p) => p.team === team && p.zone === "out"); }
@@ -629,6 +632,7 @@ function hideBanner() { $("banner").classList.add("hidden"); }
 
 function updateMatch(dt) {
   M.phaseT += dt;
+  for (const p of M.players) ActorTouch.tick(p, dt);
   if (!M.over && M.phase !== "intro") M.matchT += dt;
 
   if (!M.over) {
@@ -811,10 +815,11 @@ function drawVictory() {
     ctx.save();
     if (!win.has(p)) ctx.globalAlpha = 0.9;   // ほかの子は ほんの少しだけ ひかえめ
     p.puppet.draw(ctx);
-    ctx.font = win.has(p) ? "bold 24px sans-serif" : "bold 17px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillStyle = p.team === "red" ? "#d6336c" : "#1c7ed6";
-    ctx.fillText(p.name, p.puppet.x, p.puppet.y + (win.has(p) ? 26 : 18));
+    ActorTouch.drawName(ctx, p, {
+      y: p.puppet.y + (win.has(p) ? 26 : 18), fontSize: win.has(p) ? 24 : 17,
+      color: p.team === "red" ? "#d6336c" : "#1c7ed6",
+      edge: p.team === "red" ? "#ff6b9d" : "#4dabf7",
+    });
     ctx.restore();
   }
   ctx.textAlign = "left";
@@ -843,11 +848,10 @@ function drawPlayer(p) {
   } else {
     pu.draw(ctx);
   }
-  // なまえ
-  ctx.font = "bold 20px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillStyle = p.team === "red" ? "#d6336c" : "#1c7ed6";
-  ctx.fillText(p.name, pu.x, pu.y + 22);
+  ActorTouch.drawName(ctx, p, {
+    color: p.team === "red" ? "#d6336c" : "#1c7ed6",
+    edge: p.team === "red" ? "#ff6b9d" : "#4dabf7",
+  });
   ctx.restore();
 }
 

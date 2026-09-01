@@ -719,6 +719,13 @@ canvas.stage {
   opacity: 0; transform: translate(-50%, -5px) scale(.9); transition: opacity .16s, transform .16s; pointer-events: none;
 }
 .rank-player.show-name .rank-name { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.rank-player.react img.rank-avatar,
+.rank-player.react .rank-avatar-fallback { animation: rank-avatar-pop .72s cubic-bezier(.2,1.25,.4,1); }
+@keyframes rank-avatar-pop {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  38% { transform: translateY(-18px) rotate(-5deg); }
+  68% { transform: translateY(-5px) rotate(5deg); }
+}
 .rank-player:focus-visible { outline: 4px solid var(--orange); outline-offset: 2px; border-radius: 18px; }
 .rank-score { font-size: clamp(17px, 2.5vw, 24px); font-weight: 900; color: #7b5b17; }
 .rank-step {
@@ -1371,8 +1378,8 @@ body.ingame .back-float { display: flex; }
   pointer-events: none;
   animation: mt-banner-in .22s cubic-bezier(.2,1.3,.5,1) both;
 }
-.mt-banner.red  { border-color: var(--pink); box-shadow: 0 6px 0 rgba(214,51,108,.3);  color: var(--pink-d); }
-.mt-banner.blue { border-color: var(--blue); box-shadow: 0 6px 0 rgba(28,126,214,.3); color: var(--blue-d); }
+.mt-banner.red  { border-color: var(--pink); box-shadow: 0 6px 0 rgba(214,51,108,.3); }
+.mt-banner.blue { border-color: var(--blue); box-shadow: 0 6px 0 rgba(28,126,214,.3); }
 .mt-banner.out  { animation: mt-banner-out .2s ease-in both; }
 .mt-banner .mt-nm { font-weight: 800; }
 .mt-banner .mt-nm.red  { color: var(--pink-d); }
