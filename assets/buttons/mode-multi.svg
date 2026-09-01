@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="みんなで">
+  <circle cx="32" cy="17" r="8" fill="#d0bfff" stroke="#5a4632" stroke-width="4"/>
+  <circle cx="15" cy="28" r="7" fill="#9ed0ff" stroke="#5a4632" stroke-width="4"/>
+  <circle cx="49" cy="28" r="7" fill="#ffb3c9" stroke="#5a4632" stroke-width="4"/>
+  <path d="M20 56c1-15 5-24 12-24s11 9 12 24M3 56c1-12 5-19 12-19 4 0 7 2 9 7M61 56c-1-12-5-19-12-19-4 0-7 2-9 7" fill="#eadfff" stroke="#5a4632" stroke-width="4" stroke-linejoin="round"/>
+</svg>

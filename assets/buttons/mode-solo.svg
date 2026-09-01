@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ひとりで">
+  <circle cx="32" cy="19" r="10" fill="#ffb3c9" stroke="#5a4632" stroke-width="4"/>
+  <path d="M14 55c1-15 8-23 18-23s17 8 18 23Z" fill="#ffd6e2" stroke="#5a4632" stroke-width="4" stroke-linejoin="round"/>
+</svg>

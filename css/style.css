@@ -359,17 +359,18 @@ canvas.stage {
   margin: clamp(10px, 2vh, 24px) auto 24px;
 }
 .home-gate, .play-gate {
-  --gate: var(--blue);
-  --gate-d: var(--blue-d);
+  --gate: #fff;
+  --gate-d: var(--cream-d);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 14px;
   min-height: 112px;
   padding: 18px;
   border: 4px solid var(--gate-d);
   border-radius: 28px;
   background: var(--gate);
-  color: #fff;
+  color: var(--ink);
   box-shadow: 0 8px 0 var(--gate-d);
   font-size: clamp(27px, 4vw, 38px);
   font-weight: 900;
@@ -377,9 +378,7 @@ canvas.stage {
   transition: transform .08s, box-shadow .08s;
 }
 .home-gate:active, .play-gate:active { transform: translateY(8px); box-shadow: none; }
-.home-gate.create { --gate: var(--pink); --gate-d: var(--pink-d); }
-.home-gate.see { --gate: var(--blue); --gate-d: var(--blue-d); }
-.home-gate.play { --gate: var(--green); --gate-d: var(--green-d); }
+.gate-icon { width: 52px; height: 52px; flex: none; object-fit: contain; }
 
 .hub-page { max-width: 1100px; margin: 0 auto; }
 .hub-page .settings-bar { max-width: 980px; }
@@ -435,10 +434,6 @@ canvas.stage {
   transform: rotate(-45deg);
   border-radius: 2px;
 }
-.play-gate:nth-child(1) { --gate: var(--pink); --gate-d: var(--pink-d); }
-.play-gate:nth-child(2) { --gate: var(--blue); --gate-d: var(--blue-d); }
-.play-gate:nth-child(3) { --gate: var(--purple); --gate-d: var(--purple-d); }
-.play-gate:nth-child(4) { --gate: var(--orange); --gate-d: var(--orange-d); }
 .play-list-title { margin: 0 auto 16px; text-align: center; font-size: clamp(24px, 4vw, 34px); }
 .play-list-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 980px; }
 .play-list-tiles .tile { min-height: 170px; justify-content: center; }
@@ -454,6 +449,7 @@ canvas.stage {
 @media (max-width: 620px) {
   .home-gates { grid-template-columns: 1fr; gap: 13px; }
   .home-gate { min-height: 78px; }
+  .gate-icon { width: 44px; height: 44px; }
   .hub-logo { margin-top: -20px; }
   .view-tiles, .play-list-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .view-tiles .tile { font-size: 17px; }

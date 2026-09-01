@@ -13,7 +13,7 @@
 | 中身 | 保育園のイベント用に、子ども(1〜6歳)が iPad で遊ぶオフラインのゲーム集 |
 | 公開 | GitHub Pages。`main` にマージすると `.github/workflows/deploy-pages.yml` が走って自動で本番反映 |
 | 作業ブランチ | `main` |
-| 直近の版 | `core.js?v=35` / `style.css?v=41` / `meet.js?v=15` / `rig.js?v=17` / `editors.js?v=25` |
+| 直近の版 | `core.js?v=35` / `style.css?v=42` / `meet.js?v=15` / `rig.js?v=17` / `editors.js?v=25` |
 | ゲーム数 | 17本(`games/`)+ うんどうかい(`undoukai.html`)+ おえかき(`draw.html`) |
 
 ### 直近のセッションでやったこと(PR #23〜#31)
@@ -64,6 +64,7 @@ index.html ──つくる──→ create.html(4つの入口だけ)
 - 4たくクイズ作成で、ほいくえん・ようちえん・しょうがっこうを選択でき、かんたん作成の学校名・所在地・校長名へ反映
 - かけっこの選択をオート2〜6人、2P対戦2人に制限し、上限を超えて選択できないよう修正
 - 人型の高度な設定に「手の下まで」を追加。腕の切り出し下端を伸ばし、足側に入っていた手を腕パーツへ含められる
+- 表紙の3入口と「あそぶ」の4入口を白い標準ボタンへ統一し、先頭に小型SVGアイコンを追加。うんどうかい見出しも新しいPNGアイコンへ統一
 
 - **`Nav._closeOverlay` が「もどる」を食べていたのを修正**(`js/core.js`)。
   `document.querySelector(".picker, .modal")` が editors.js の **hidden なモーダル** まで拾い、
