@@ -366,7 +366,7 @@ canvas.stage {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  padding: 5px;
   background: #fff;
   border: 3px solid var(--cream-d);
   border-radius: 50%;
@@ -374,7 +374,7 @@ canvas.stage {
   box-shadow: 0 4px 0 var(--cream-d);
   transition: transform .08s, box-shadow .08s;
 }
-.settings-fab img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+.settings-fab img { width: 100%; height: 100%; object-fit: contain; }
 .settings-fab:active { transform: translateY(4px); box-shadow: none; }
 @media (hover: hover) {
   .settings-fab:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
@@ -434,7 +434,7 @@ canvas.stage {
 .collection-tile { min-height: 190px; }
 .collection-tile.char { background: #fff7cf; border-color: #efc84b; box-shadow: 0 7px 0 #d9ad2c; }
 .collection-tile.bg { background: #eaf7ff; border-color: #75bce8; box-shadow: 0 7px 0 #4597cb; }
-.collection-icon { font-size: 70px; line-height: 1; filter: drop-shadow(0 4px 0 rgba(90,60,20,.12)); }
+.collection-tile img.icon { width: 112px; height: 112px; filter: drop-shadow(0 4px 0 rgba(90,60,20,.12)); }
 
 .collection-page { background: #f5f0e8; }
 .collection-main { max-width: 1180px; margin: 0 auto; }
@@ -1090,7 +1090,7 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
 
 /* ---------- 管理画面 ---------- */
 .admin-list { max-width: 1000px; margin: 0 auto; }
-.import-actions { padding: 18px; }
+.import-actions { margin: 0 0 14px; padding: 18px; }
 .import-actions .row { margin: 0; align-items: center; }
 .import-actions .info-btn { flex: none; width: 34px; height: 34px; margin: 0 0 0 2px; font-size: 18px; }
 .admin-cat-tabs {
@@ -1261,8 +1261,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .game-visibility-track, .game-visibility-track::after, .admin-cat-panel { transition: none !important; animation: none !important; }
 }
 @media (max-width: 620px) {
+  .collection-tile { font-size: 18px; }
   .import-actions { padding: 14px 8px; }
-  .import-actions .btn { padding: 12px 14px; font-size: 17px; }
+  .import-actions .row { flex-wrap: nowrap; gap: 7px; }
+  .import-actions .btn { flex: 1 1 0; min-width: 0; padding: 12px 6px; font-size: 15px; white-space: nowrap; }
+  .import-actions .info-btn { margin-left: 0; }
   .admin-cat-tabs { gap: 6px; }
   .admin-cat-tabs button { flex-direction: column; gap: 2px; padding: 8px 3px; font-size: 23px; border-width: 3px; }
   .admin-cat-tabs button span { font-size: 13px; }

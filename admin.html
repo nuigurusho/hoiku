@@ -10,29 +10,28 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body>
 <header class="bar">
   <a class="back" href="index.html" id="backLink">← もどる</a>
-  <h1><img class="bar-icon" src="assets/buttons/import.svg" alt=""> 取り込み</h1>
+  <h1><img class="bar-icon" src="assets/buttons/import.png" alt=""> 取り込み</h1>
   <div class="spacer"></div>
 </header>
 
 <main class="admin-list">
+  <div class="admin-cat-tabs" id="catTabs" role="tablist" aria-label="取り込みカテゴリ">
+    <button type="button" role="tab" data-cat="src">✂️<span>元素材</span></button>
+    <button type="button" role="tab" data-cat="char" class="active">🧍<span>全身</span></button>
+    <button type="button" role="tab" data-cat="fuku">😀<span>顔</span></button>
+    <button type="button" role="tab" data-cat="bg">🏞️<span>はいけい</span></button>
+  </div>
   <div class="panel import-actions">
     <div class="row">
       <button class="btn blue" id="pickBtn">ファイルを選ぶ</button>
       <button class="btn blue" id="cameraBtn">カメラで撮る</button>
       <button class="info-btn" type="button" id="importInfo" aria-label="とりこみかたの説明">i</button>
     </div>
-  </div>
-
-  <div class="admin-cat-tabs" id="catTabs" role="tablist" aria-label="取り込みカテゴリ">
-    <button type="button" role="tab" data-cat="src">✂️<span>元素材</span></button>
-    <button type="button" role="tab" data-cat="char" class="active">🧍<span>全身</span></button>
-    <button type="button" role="tab" data-cat="fuku">😀<span>顔</span></button>
-    <button type="button" role="tab" data-cat="bg">🏞️<span>はいけい</span></button>
   </div>
   <div class="admin-cat-swipe" id="catSwipe">
     <section class="admin-cat-panel hidden" data-cat="src"><div id="listSrc"></div></section>

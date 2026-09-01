@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body class="collection-page">
 <header class="bar">
@@ -88,8 +88,8 @@ function text(el, value) { el.textContent = value || ""; }
 
 function setupCopy() {
   const isChar = kind === "char";
-  document.title = isChar ? "キャラクターずかん" : "みんなの びじゅつかん";
-  text($("pageTitle"), isChar ? "📖 キャラクターずかん" : "🖼️ みんなの びじゅつかん");
+  document.title = isChar ? "キャラしょうかい" : "びじゅつかん";
+  text($("pageTitle"), isChar ? "📖 キャラしょうかい" : "🖼️ びじゅつかん");
   text($("pageLead"), isChar ? "きになる キャラクターを えらんでね" : "みたい さくひんを えらんでね");
   $("emptyState").innerHTML = isChar
     ? "キャラクターが まだ いないよ<br><a href=\"admin.html\">とりこみ</a>で とうろくしてね"
