@@ -1381,15 +1381,20 @@ const Tiers = {
   bindRankButton(button, game, labels, opts) {
     if (!button || button.dataset.rankBound) return;
     button.dataset.rankBound = "1";
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       Sound.tap();
-      this.openRankDialog(game, labels, opts);
+      await this.openRankDialog(game, labels, opts);
     });
   },
 
-  openRankDialog(game, labels, opts) {
+  async openRankDialog(game, labels, opts) {
     opts = opts || {};
     const unit = opts.unit || "";
+    const records = await Store.all().catch(() => []);
+    const characters = new Map();
+    records.forEach((rec) => {
+      if (rec.cat === "char" && rec.name && !characters.has(rec.name)) characters.set(rec.name, rec);
+    });
     let active = 0;
     let downX = 0;
     let downY = 0;
@@ -1436,13 +1441,35 @@ const Tiers = {
     const makePlace = (place, entry) => {
       const el = document.createElement("div");
       el.className = `rank-place p${place}` + (entry ? "" : " empty");
-      const player = document.createElement("div");
+      const player = document.createElement(entry ? "button" : "div");
       player.className = "rank-player";
+      if (entry) player.type = "button";
+      const rec = entry ? characters.get(entry.name) : null;
+      const avatar = rec ? document.createElement("img") : document.createElement("span");
+      avatar.className = rec ? "rank-avatar" : "rank-avatar rank-avatar-fallback";
+      if (rec) {
+        avatar.src = rec.dataURL;
+        avatar.alt = "";
+        Ui.thumbFix(avatar, rec);
+      } else {
+        avatar.textContent = entry ? "⭐" : "？";
+      }
       const name = document.createElement("strong");
+      name.className = "rank-name";
       name.textContent = entry ? entry.name : "—";
       const score = document.createElement("span");
+      score.className = "rank-score";
       score.textContent = entry ? `${entry.score}${unit}` : "";
-      player.append(name, score);
+      player.append(name, avatar, score);
+      if (entry) {
+        player.setAttribute("aria-label", `${place}い ${entry.name} ${entry.score}${unit}。なまえをみる`);
+        player.setAttribute("aria-expanded", "false");
+        player.addEventListener("click", () => {
+          const shown = player.classList.toggle("show-name");
+          player.setAttribute("aria-expanded", shown ? "true" : "false");
+          Sound.tap();
+        });
+      }
       const step = document.createElement("div");
       step.className = "rank-step";
       step.textContent = String(place);
@@ -1458,14 +1485,11 @@ const Tiers = {
       });
       [...dots.children].forEach((dot, i) => dot.classList.toggle("active", i === active));
       body.replaceChildren();
-      const level = document.createElement("div");
-      level.className = "rank-level";
-      level.textContent = labels[active];
       const list = this.rank(game, active + 1);
       const podium = document.createElement("div");
       podium.className = "rank-podium";
       podium.append(makePlace(2, list[1]), makePlace(1, list[0]), makePlace(3, list[2]));
-      body.append(level, podium);
+      body.append(podium);
       if (list.length > 3) {
         const rest = document.createElement("div");
         rest.className = "rank-rest";

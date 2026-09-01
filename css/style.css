@@ -700,24 +700,36 @@ canvas.stage {
 .rank-tab:nth-child(2).active { background: var(--orange); }
 .rank-tab:nth-child(3).active { background: var(--purple); }
 .rank-body { min-height: 430px; padding: 8px 8px 0; touch-action: pan-y; }
-.rank-level { margin: 2px 0 8px; font-size: 22px; font-weight: 900; color: #806b51; }
 .rank-podium {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end;
-  gap: clamp(8px, 2vw, 20px); max-width: 720px; height: 285px; margin: 0 auto;
+  gap: clamp(8px, 2vw, 20px); max-width: 720px; height: 320px; margin: 0 auto;
 }
 .rank-place { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
-.rank-player { min-height: 88px; display: grid; place-content: center; gap: 4px; padding: 7px; }
-.rank-player strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(18px, 3vw, 28px); }
-.rank-player span { font-size: clamp(17px, 2.5vw, 24px); font-weight: 900; color: #7b5b17; }
+.rank-player {
+  position: relative; min-height: 156px; display: grid; place-items: center; align-content: end; gap: 3px;
+  width: 100%; padding: 4px; border: 0; background: transparent; color: var(--ink); font-family: inherit; cursor: pointer;
+}
+.rank-avatar { width: min(100%, 132px); height: 116px; object-fit: contain; filter: drop-shadow(0 5px 3px rgba(80,50,10,.18)); }
+.rank-place.p1 .rank-avatar { width: min(100%, 148px); height: 130px; }
+.rank-avatar-fallback { display: grid; place-content: center; font-size: clamp(48px, 8vw, 76px); filter: none; }
+.rank-name {
+  position: absolute; z-index: 2; top: 0; left: 50%; max-width: calc(100% - 4px); padding: 6px 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 3px solid #ead9b1; border-radius: 999px;
+  background: #fffdf6; box-shadow: 0 4px 0 rgba(128,90,25,.2); font-size: clamp(16px, 2.4vw, 23px);
+  opacity: 0; transform: translate(-50%, -5px) scale(.9); transition: opacity .16s, transform .16s; pointer-events: none;
+}
+.rank-player.show-name .rank-name { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.rank-player:focus-visible { outline: 4px solid var(--orange); outline-offset: 2px; border-radius: 18px; }
+.rank-score { font-size: clamp(17px, 2.5vw, 24px); font-weight: 900; color: #7b5b17; }
 .rank-step {
   display: grid; place-content: center; min-height: var(--height); border: 5px solid var(--edge);
   border-bottom: 0; border-radius: 22px 22px 0 0; background: var(--metal);
   box-shadow: inset 0 7px 0 rgba(255,255,255,.42); font-size: clamp(54px, 9vw, 86px); font-weight: 1000; color: #fff;
   text-shadow: 0 5px 0 rgba(80,50,10,.22);
 }
-.rank-place.p1 { --height: 176px; --metal: #ffd43b; --edge: #d69e00; grid-column: 2; grid-row: 1; }
-.rank-place.p2 { --height: 126px; --metal: #bfc8d2; --edge: #8994a0; grid-column: 1; grid-row: 1; }
-.rank-place.p3 { --height: 96px; --metal: #d7955d; --edge: #a86132; grid-column: 3; grid-row: 1; }
+.rank-place.p1 { --height: 150px; --metal: #ffd43b; --edge: #d69e00; grid-column: 2; grid-row: 1; }
+.rank-place.p2 { --height: 110px; --metal: #bfc8d2; --edge: #8994a0; grid-column: 1; grid-row: 1; }
+.rank-place.p3 { --height: 84px; --metal: #d7955d; --edge: #a86132; grid-column: 3; grid-row: 1; }
 .rank-place.empty .rank-player { opacity: .35; }
 .rank-place.empty .rank-step { filter: saturate(.35); }
 .rank-rest { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 720px; margin: 12px auto 0; }
@@ -737,9 +749,15 @@ canvas.stage {
   .rank-close { width: 44px; height: 44px; font-size: 25px; }
   .rank-tab { font-size: 16px; padding: 10px 3px; }
   .rank-body { min-height: 410px; padding-left: 0; padding-right: 0; }
-  .rank-podium { height: 275px; gap: 5px; }
-  .rank-player strong { font-size: 16px; }
-  .rank-player span { font-size: 15px; }
+  .rank-podium { height: 300px; gap: 5px; }
+  .rank-player { min-height: 142px; padding: 2px; }
+  .rank-avatar { height: 98px; }
+  .rank-place.p1 .rank-avatar { height: 110px; }
+  .rank-name { padding: 5px 8px; border-width: 2px; font-size: 15px; }
+  .rank-score { font-size: 15px; }
+  .rank-place.p1 { --height: 138px; }
+  .rank-place.p2 { --height: 102px; }
+  .rank-place.p3 { --height: 78px; }
   .rank-step { border-width: 4px; font-size: 52px; }
   .rank-rest { grid-template-columns: 1fr; gap: 6px; }
   .rank-rest-row { padding: 8px 12px; font-size: 16px; }
