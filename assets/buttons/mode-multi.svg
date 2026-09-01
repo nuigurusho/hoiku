@@ -2,9 +2,9 @@
   <circle cx="13" cy="22" r="7" fill="#9ed0ff" stroke="#5a4632" stroke-width="4"/>
   <path d="M10 29v4h6v-4" fill="#9ed0ff" stroke="#5a4632" stroke-width="4"/>
   <path d="M3 57c1-15 4-24 10-24s9 9 10 24Z" fill="#d9efff" stroke="#5a4632" stroke-width="4" stroke-linejoin="round"/>
-  <circle cx="32" cy="18" r="8" fill="#d0bfff" stroke="#5a4632" stroke-width="4"/>
-  <path d="M29 26v5h6v-5" fill="#d0bfff" stroke="#5a4632" stroke-width="4"/>
-  <path d="M21 57c1-17 5-26 11-26s10 9 11 26Z" fill="#eadfff" stroke="#5a4632" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="32" cy="18" r="8" fill="#ffd43b" stroke="#5a4632" stroke-width="4"/>
+  <path d="M29 26v5h6v-5" fill="#ffd43b" stroke="#5a4632" stroke-width="4"/>
+  <path d="M21 57c1-17 5-26 11-26s10 9 11 26Z" fill="#fff0a6" stroke="#5a4632" stroke-width="4" stroke-linejoin="round"/>
   <circle cx="51" cy="22" r="7" fill="#ffb3c9" stroke="#5a4632" stroke-width="4"/>
   <path d="M48 29v4h6v-4" fill="#ffb3c9" stroke="#5a4632" stroke-width="4"/>
   <path d="M41 57c1-15 4-24 10-24s9 9 10 24Z" fill="#ffd6e2" stroke="#5a4632" stroke-width="4" stroke-linejoin="round"/>
