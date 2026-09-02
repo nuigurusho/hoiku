@@ -447,11 +447,12 @@ canvas.stage {
   transform: rotate(-45deg);
   flex: none;
 }
+.hub-nav-icon { width: 30px; height: 30px; flex: none; object-fit: contain; }
 .hub-nav-link:active { transform: translateY(4px); box-shadow: none; }
-.hub-nav-link.current { cursor: default; color: #fff; }
-.hub-nav-link.create.current { background: var(--pink); border-color: var(--pink-d); box-shadow: 0 4px 0 var(--pink-d); }
-.hub-nav-link.see.current { background: var(--blue); border-color: var(--blue-d); box-shadow: 0 4px 0 var(--blue-d); }
-.hub-nav-link.play.current { background: var(--green); border-color: var(--green-d); box-shadow: 0 4px 0 var(--green-d); }
+.hub-nav-link.current { cursor: default; color: #fff; box-shadow: none; transform: none; pointer-events: none; }
+.hub-nav-link.create.current { background: var(--pink); border-color: var(--pink-d); }
+.hub-nav-link.see.current { background: var(--blue); border-color: var(--blue-d); }
+.hub-nav-link.play.current { background: var(--green); border-color: var(--green-d); }
 .hub-tiles { align-items: stretch; }
 .hub-tiles .tile { min-height: 174px; justify-content: center; }
 .section-links {
@@ -542,6 +543,7 @@ canvas.stage {
   .hub-logo { margin-top: -20px; }
   .hub-nav { gap: 8px; margin-bottom: 18px; }
   .hub-nav-link { min-height: 50px; padding: 8px; gap: 7px; font-size: 16px; border-radius: 15px; }
+  .hub-nav-icon { width: 25px; height: 25px; }
   .hub-nav-link::after { width: 8px; height: 8px; border-width: 0 3px 3px 0; }
   .view-tiles, .play-list-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .view-tiles .tile { font-size: 17px; }
