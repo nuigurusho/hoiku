@@ -64,6 +64,6 @@
 - [x] HTML内スクリプトと共通JSの構文確認、`git diff --check`通過、PWA公開ファイル121件を再生成
 - [x] 公開文言のブランド・プライバシーlint（Bluearrow配下。検出された「あかり」は一般語の「窓の明かり」のみで問題なし）
 - [x] 課金・価格・個人情報・Firebase／Firestore変更なし
-- [ ] `main`へpush
-- [ ] GitHub Pagesのデプロイ成功確認
-- [ ] 公開URLで `style 58 / core 44 / editors 30 / meet 21` と主要導線を確認
+- [x] `main`へpush（実装 `afab4f4`、公開チェック `a0f3494`）
+- [x] GitHub Pagesのデプロイ成功確認（Actions run `33603711128`）
+- [x] 公開URLで `style 58 / core 44 / editors 30 / meet 21`、青い取込ボタン3種、背景を除くおえかき6種を確認
