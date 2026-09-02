@@ -58,6 +58,10 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 const GROUND = 640;
 const GAME = "voice";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+/* 小さい環境音は拾わず、普通の声ではしっかり浮く感度にする。
+   上昇し始める音量は約0.058（変更前は約0.098）。 */
+const VOICE_FLOOR = 0.02;
+const VOICE_LIFT = 40000;
 const MODES = {
   /* れんしゅうは じかんむせいげん。⭐は 出るし とれるけど かぞえない */
   ren:  { label: "れんしゅう", yuru: true },
@@ -197,7 +201,7 @@ async function start(mode) {
 
     /* こえ(またはタッチ)で うきあがる */
     const vol = Math.max(volume(), pressing ? 0.25 : 0);
-    const lift = Util.clamp((vol - 0.04) * 26000, 0, 5200);
+    const lift = Util.clamp((vol - VOICE_FLOOR) * VOICE_LIFT, 0, 5200);
     g.vy += (1500 - lift) * dt;              // 重力 - うきあがる力
     g.vy = Util.clamp(g.vy, -620, 700);
     g.y = Util.clamp(g.y + g.vy * dt, 130, GROUND);
