@@ -113,26 +113,14 @@ let pressing = false;
 cv.addEventListener("pointerdown", () => { pressing = true; });
 window.addEventListener("pointerup", () => { pressing = false; });
 
-function refreshLocks() {
-  const lv = Tiers.unlock(GAME);
-  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
-    const need = MODES[b.dataset.mode].lv;
-    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
-    b.classList.toggle("locked", need > lv);
-    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
-  });
+function setupRanking() {
   Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "こ" });
 }
-refreshLocks();
+setupRanking();
 
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
   b.onclick = async () => {
     const m = MODES[b.dataset.mode];
-    if (m.lv && m.lv > Tiers.unlock(GAME)) {
-      Sound.bad();
-      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
-      return;
-    }
     Sound.tap();
     /* あそびかたを えらんだ あとに、キャラえらび せんようがめんへ */
     const rec = await Picker.one({
@@ -157,7 +145,6 @@ $("honbanBtn").onclick = () => {
   if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
-  refreshLocks();
   document.querySelector('#gachiRow [data-mode="g1"]').click();
 };
 $("againBtn").onclick = () => start(G.mode);
@@ -165,9 +152,8 @@ $("backBtn").onclick = () => {
   if (G) G.stop = true;
   $("playScreen").classList.add("hidden");
   $("selectScreen").classList.remove("hidden");
-  refreshLocks();
 };
-Nav.onLeave(() => { if (G) G.stop = true; refreshLocks(); });
+Nav.onLeave(() => { if (G) G.stop = true; });
 
 async function start(mode) {
   if (G) G.stop = true;
@@ -277,7 +263,6 @@ async function start(mode) {
     if (g.mode.goal) {
       Tiers.addRank(GAME, g.mode.lv, (selChar && selChar.name) || "?", g.score);
       if (g.cleared) {
-        Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
         Ui.confetti();
         Ui.msg("クリア！", 1600);
         Ui.result("endRow", "クリア！", `⭐ ${g.score}こ`);
