@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ゲーム別">
-  <rect x="7" y="7" width="21" height="21" rx="6" fill="#ffd43b" stroke="#5a4632" stroke-width="4"/>
-  <rect x="36" y="7" width="21" height="21" rx="6" fill="#ffb3c9" stroke="#5a4632" stroke-width="4"/>
-  <rect x="7" y="36" width="21" height="21" rx="6" fill="#9ed0ff" stroke="#5a4632" stroke-width="4"/>
-  <rect x="36" y="36" width="21" height="21" rx="6" fill="#b2f2bb" stroke="#5a4632" stroke-width="4"/>
+  <rect x="7" y="7" width="21" height="21" rx="6" fill="#ffd43b" stroke="#5a4632" stroke-width="3"/>
+  <rect x="36" y="7" width="21" height="21" rx="6" fill="#ffb3c9" stroke="#5a4632" stroke-width="3"/>
+  <rect x="7" y="36" width="21" height="21" rx="6" fill="#9ed0ff" stroke="#5a4632" stroke-width="3"/>
+  <rect x="36" y="36" width="21" height="21" rx="6" fill="#b2f2bb" stroke="#5a4632" stroke-width="3"/>
 </svg>
