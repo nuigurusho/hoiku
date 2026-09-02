@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -25,8 +25,8 @@
       <h2>あそびかたを えらんでね</h2>
 
       <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ</div>
-      <div class="row" data-tier="yuru"><button class="btn big pink" data-mode="cheer">みるだけ(オート)</button></div>
-      <div class="row"><button class="btn big yellow" data-mode="vs">2Pたいせん</button></div>
+      <div class="row" id="cheerRow" data-tier="yuru"><button class="btn big pink" data-mode="cheer">みるだけ(オート)</button></div>
+      <div class="row" id="vsRow"><button class="btn big yellow" data-mode="vs">2Pたいせん</button></div>
 
       <div class="mode-sec">🔥 ガチンコ</div>
       <div class="row" id="gachiRow">
@@ -42,12 +42,12 @@
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
-      <button class="btn gray" id="backBtn">えらびなおす</button>
+      <button class="btn yellow" id="backBtn">やりなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -58,6 +58,7 @@ Util.loadImage("../assets/backgrounds/race.jpg").then((img) => { sceneBg = img; 
 const GOAL = 2400;
 const GAME = "race";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const ENTRY_FROM = new URLSearchParams(location.search).get("from") || "";
 const MODES = {
   cheer: { label: "みるだけ", kind: "cheer" },
   vs:    { label: "2Pたいせん", kind: "vs" },
@@ -67,6 +68,8 @@ const MODES = {
 };
 
 let allChars = [], selectedIds = new Set(), G = null, lastMode = "cheer";
+
+if (ENTRY_FROM === "play-solo") $("vsRow").classList.add("hidden");
 
 async function initSelect() {
   const recs = await Store.forGame();
@@ -99,6 +102,7 @@ async function pickChars(mode) {
     note: vs ? "2にん えらんでね(ひだり=1P・みぎ=2P)" : "2〜6にん えらんでね",
     records: allChars, preselect: [...selectedIds], min: 2, max: vs ? 2 : 6,
     maxMessage: vs ? "2にん えらんでね" : "6にんまで えらべるよ",
+    selectionLabels: vs ? ["1P", "2P"] : null,
   });
   if (!recs) return false;
   selectedIds = new Set(recs.map((r) => r.id));
@@ -180,6 +184,7 @@ async function start(modeKey) {
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  Ui.clearResult("endRow");
 
   // よーい…どん!
   Ui.msg("よーい…", 1100, "#4dabf7");
@@ -306,7 +311,8 @@ function update(dt) {
         r.puppet.walking = false;
         if (g.kind === "cpu" && !g.ended) return finishCpu(g, r);
         if (r.rank === 1) {
-          Sound.fanfare(); Ui.confetti(); Ui.msg(`${r.name || "1ばん"} のかち!🏆`, 2400);
+          Sound.fanfare(); Ui.confetti(); Ui.msg("ゴール！", 1400);
+          Ui.result("endRow", `${r.name || "1ばん"}の かち！`, "1い");
           // 2体以上出るので、かった キャラの よろこびの こえ だけ 鳴らす(fail は鳴らさない)
           Sound.playVoice(r.voices, ["joy"]);
         } else Sound.good();
@@ -332,10 +338,12 @@ function finishCpu(g, r) {
     Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
     Tiers.addRank(GAME, g.mode.lv, r.name || "?", secs, { lowerIsBetter: true });
     Sound.fanfare(); Ui.confetti();
-    Ui.msg(`かち!🏆 ${secs}びょう`, 2600);
+    Ui.msg("ゴール！", 1400);
+    Ui.result("endRow", "かち！", `${secs}びょう`);
   } else {
     Sound.bad();
-    Ui.msg("CPUの かち…ざんねん!", 2400, "#9775fa");
+    Ui.msg("ゴール！", 1400, "#4dabf7");
+    Ui.result("endRow", "CPUの かち", "もういちど ちょうせん");
   }
 }
 

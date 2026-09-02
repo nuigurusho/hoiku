@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=49">
+<link rel="stylesheet" href="css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -65,7 +65,7 @@
 </div>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=38"></script>
+<script src="js/core.js?v=42"></script>
 <script src="js/rig.js?v=17"></script>
 <script src="js/editors.js?v=28"></script>
 <script>
@@ -252,7 +252,7 @@ function showImagePreview(r, src) {
   wrap.setAttribute("role", "dialog");
   wrap.setAttribute("aria-modal", "true");
   wrap.setAttribute("aria-label", `${r.name || "画像"}の拡大表示`);
-  wrap.innerHTML = `<div class="panel image-preview-panel"><h2></h2><img alt=""><div class="row"><button class="btn blue" type="button">とじる</button></div></div>`;
+  wrap.innerHTML = `<div class="panel image-preview-panel has-modal-x"><button class="modal-x" type="button" aria-label="とじる">×</button><h2></h2><img alt=""></div>`;
   wrap.querySelector("h2").textContent = r.name || "画像";
   wrap.querySelector("img").src = src;
   const close = () => wrap.remove();

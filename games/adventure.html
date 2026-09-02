@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -41,11 +41,11 @@
     <div class="hud"><span id="starHud">⭐ 0 / 10</span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="honbanRow">
-      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+      <button class="btn big green" id="honbanBtn">ほんばんへ</button>
     </div>
     <div class="row hidden" id="clearRow">
-      <button class="btn big green" id="againBtn">もういちど あそぶ</button>
-      <button class="btn gray" id="selBtn">えらびなおす</button>
+      <button class="btn big green" id="againBtn">もういちど</button>
+      <button class="btn yellow" id="selBtn">やりなおす</button>
     </div>
   </div>
 </main>
@@ -61,7 +61,7 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -169,7 +169,8 @@ $("selBtn").onclick = () => {
 function failGame(g) {
   g.cleared = true;   // タイマー停止・クリア判定も止める
   Sound.bad();
-  Ui.msg(`じかんぎれ!⭐${g.got}/10`, 2600, "#9775fa");
+  Ui.msg("じかんぎれ！", 1500, "#9775fa");
+  Ui.result("clearRow", "じかんぎれ", `⭐ ${g.got} / 10`);
   $("clearRow").classList.remove("hidden");
 }
 
@@ -207,6 +208,7 @@ async function startGame(mode) {
   $("playScreen").classList.remove("hidden");
   $("touchpad").classList.remove("hidden");   // タッチそうさボタンを だす
   $("clearRow").classList.add("hidden");
+  Ui.clearResult("clearRow");
   $("starHud").textContent = free ? "⭐ あつめて あそぼう!" : "⭐ 0 / 10";
   $("timeHud").classList.toggle("hidden", !mode.time);
   $("honbanRow").classList.toggle("hidden", !free);   // れんしゅうから ほんばんへ
@@ -282,9 +284,11 @@ async function startGame(mode) {
         const left = Math.max(0, Math.round(g.t));
         Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
         Tiers.addRank(GAME, g.mode.lv, (selChar && selChar.name) || "?", left);
-        Ui.msg(`クリア!🏆 のこり ${left}びょう`, 2500);
+        Ui.msg("クリア！", 1600);
+        Ui.result("clearRow", "クリア！", `のこり ${left}びょう`);
       } else {
-        Ui.msg("クリア!🎉", 2500);
+        Ui.msg("クリア！", 1600);
+        Ui.result("clearRow", "クリア！", "⭐ 10こ");
       }
       $("clearRow").classList.remove("hidden");
     }
@@ -293,11 +297,8 @@ async function startGame(mode) {
     const cam = free ? g.px - 500 : Util.clamp(g.px - 500, 0, WORLD - 1280);
     ctx.clearRect(0, 0, 1280, 720);
     if (bgImg) {
-      // ひだりへ どこまでも 行けるので、まえ・いま・つぎ の 3まいを ならべて すきまを つくらない
-      const off = -(cam * 0.4) % 1280;
-      ctx.drawImage(bgImg, off - 1280, 0, 1280, 720);
-      ctx.drawImage(bgImg, off, 0, 1280, 720);
-      ctx.drawImage(bgImg, off + 1280, 0, 1280, 720);
+      // 交互に左右反転してつなぎ、背景の端が違う絵でも継ぎ目を目立たせない
+      Util.drawLoopImage(ctx, bgImg, cam * 0.4, 1280, 720);
     } else {
       ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, 1280, 720);
     }

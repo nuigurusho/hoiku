@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 <style>
   .hands { display: flex; gap: 18px; justify-content: center; margin: 10px 0 4px; }
   .hbtn {
@@ -60,14 +60,15 @@
       <button class="hbtn" data-h="1">✌️</button>
       <button class="hbtn" data-h="2">✋</button>
     </div>
-    <div class="row">
+    <div class="row" id="actionRow">
       <button class="btn big pink hidden" id="ponBtn">ぽん!</button>
-      <button class="btn gray" id="backBtn">えらびなおす</button>
+      <button class="btn big green hidden" id="againBtn">もういちど</button>
+      <button class="btn yellow" id="backBtn">やりなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -145,6 +146,8 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     puppet = new Puppet(parts, { x: 300, y: 500, h: 330, facing: 1 });
     state.streak = 0; state.show = -1; state.busy = false;
     state.points = 0; state.round = 0; over = false;
+    Ui.clearResult("actionRow");
+    $("againBtn").classList.add("hidden");
     $("selectScreen").classList.add("hidden");
     $("playScreen").classList.remove("hidden");
     $("streak").textContent = "";
@@ -173,6 +176,17 @@ document.querySelectorAll(".hbtn").forEach((b) => {
   b.onclick = () => play(+b.dataset.h);
 });
 $("ponBtn").onclick = () => play(null);
+$("againBtn").onclick = () => {
+  state = { mode: "idle", show: -1, t: 0, streak: 0, busy: false, points: 0, round: 0 };
+  over = false;
+  Ui.clearResult("actionRow");
+  $("againBtn").classList.add("hidden");
+  $("handRow").classList.toggle("hidden", !!gmode.crowd);
+  $("ponBtn").classList.toggle("hidden", !gmode.crowd);
+  $("playHint").classList.remove("hidden");
+  $("streak").textContent = "";
+  updateGachiHud();
+};
 
 function play(playerHand) {
   if (state.busy || over || !puppet) return;
@@ -198,13 +212,12 @@ function play(playerHand) {
       let gain = 0;
       if (me === cp) {
         gain = TIE_POINT;
-        Ui.msg(`あいこ! +${gain}てん`, 1300, "#ff922b");
+        Ui.msg("あいこ！", 1200, "#ff922b");
         Sound.pop();
       } else if ((me === 0 && cp === 1) || (me === 1 && cp === 2) || (me === 2 && cp === 0)) {
         state.streak++;
         gain = winPoint(state.streak);
-        Ui.msg(`かち!🎉 +${gain}てん`, 1500, "#51cf66",
-          state.streak >= 2 ? `${state.streak}れんしょう ボーナス!` : "");
+        Ui.msg("かち！", 1300, "#51cf66");
         Sound.good();
         // キャラは まけたので「しっぱい」の こえ(あれば)
         Sound.playVoice(selRec && selRec.voices, ["fail"]);
@@ -213,7 +226,7 @@ function play(playerHand) {
         /* まけても てんは へらない・0に もどらない。
            「まけ = そんをする」に しないための だいじな ところ */
         state.streak = 0;
-        Ui.msg("ざんねん!", 1300, "#4dabf7", "てんすうは そのまま。つぎ いこう!");
+        Ui.msg("ざんねん！", 1300, "#4dabf7");
         Sound.tap();
         // キャラは かったので「よろこび」の こえ(あれば)
         Sound.playVoice(selRec && selRec.voices, ["joy"]);
@@ -243,17 +256,18 @@ function finishGachi(cleared) {
     Tiers.setUnlock(GAME, Math.min(3, gmode.lv + 1));
     Sound.fanfare();
     Ui.confetti();
-    Ui.msg(`クリア!🏆 ${state.points}てん!`, 2600);
+    Ui.msg("クリア！", 1600);
   } else {
     Sound.good();
     Ui.confetti(1600, 70);
-    Ui.msg(`ぜんぶで ${state.points}てん!`, 2600, "#ff922b", "よく がんばったね!");
+    Ui.msg("おしまい！", 1500, "#ff922b");
   }
-  setTimeout(() => {
-    $("playScreen").classList.add("hidden");
-    $("selectScreen").classList.remove("hidden");
-    refreshLocks();
-  }, 2600);
+  Ui.result("actionRow", cleared ? "クリア！" : "おしまい", `${state.points}てん`);
+  $("handRow").classList.add("hidden");
+  $("ponBtn").classList.add("hidden");
+  $("playHint").classList.add("hidden");
+  $("againBtn").classList.remove("hidden");
+  refreshLocks();
 }
 
 let last = performance.now();

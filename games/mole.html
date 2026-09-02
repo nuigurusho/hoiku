@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -39,16 +39,16 @@
     <div class="hud"><span id="scoreHud">タッチ: 0</span><span id="timeHud">⏰ 30</span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1000" height="700"></canvas></div>
     <div class="row hidden" id="honbanRow">
-      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+      <button class="btn big green" id="honbanBtn">ほんばんへ</button>
     </div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
-      <button class="btn gray" id="backBtn">えらびなおす</button>
+      <button class="btn yellow" id="backBtn">やりなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -129,6 +129,7 @@ async function start(mode) {
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  Ui.clearResult("endRow");
   $("honbanRow").classList.toggle("hidden", !!mode.goal);
   $("timeHud").classList.toggle("hidden", !mode.time);
   updateScoreHud();
@@ -186,13 +187,16 @@ async function start(mode) {
       if (g.cleared) {
         Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
         Ui.confetti();
-        Ui.msg(`クリア!🏆 ${g.score}かい タッチ!`, 3000);
+        Ui.msg("クリア！", 1600);
+        Ui.result("endRow", "クリア！", `${g.score}かい`);
       } else {
-        Ui.msg(`ざんねん!${g.score}/${g.mode.goal}タッチ`, 3000, "#9775fa");
+        Ui.msg("おしまい！", 1500, "#9775fa");
+        Ui.result("endRow", "おしまい", `${g.score} / ${g.mode.goal}かい`);
       }
     } else {
       if (g.score >= 10) Ui.confetti();
-      Ui.msg(`${g.score}かい タッチ!`, 3000);
+      Ui.msg("おしまい！", 1500);
+      Ui.result("endRow", "おしまい", `${g.score}かい`);
     }
     $("endRow").classList.remove("hidden");
   }

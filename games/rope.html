@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -45,16 +45,16 @@
     </div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="honbanRow">
-      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+      <button class="btn big green" id="honbanBtn">ほんばんへ</button>
     </div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="retryBtn">もういちど</button>
-      <button class="btn gray" id="backBtn">えらびなおす</button>
+      <button class="btn yellow" id="backBtn">やりなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -169,6 +169,7 @@ async function start(modeKey) {
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  Ui.clearResult("endRow");
   $("honbanRow").classList.toggle("hidden", !!mode.goal);
   $("hudC").classList.toggle("hidden", !mode.goal);
   updateHud();
@@ -263,7 +264,8 @@ function clearGame() {
   updateHud();
   Sound.fanfare();
   Ui.confetti();
-  Ui.msg("クリア!🏆", 2600);
+  Ui.msg("クリア！", 1600);
+  Ui.result("endRow", "クリア！", `${g.best}かい`);
   const lv = g.mode.lv;
   Tiers.setUnlock(GAME, Math.min(3, lv + 1));
   saveRank(lv, g.best);
@@ -274,7 +276,8 @@ function failGame() {
   g.over = true;
   updateHud();
   Sound.bad();
-  Ui.msg(`ざんねん!さいこう ${g.best}かい`, 2400, "#9775fa");
+  Ui.msg("おしまい！", 1500, "#9775fa");
+  Ui.result("endRow", "おしまい", `さいこう ${g.best}かい`);
   saveRank(g.mode.lv, g.best);
   $("endRow").classList.remove("hidden");
 }

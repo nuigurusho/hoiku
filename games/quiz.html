@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -61,7 +61,7 @@
     <div class="choices" id="choices"></div>
     <div class="answer-big hidden" id="answerBig"></div>
     <div class="row hidden" id="viewRow">
-      <button class="btn big yellow" id="revealBtn">こたえを みる</button>
+      <button class="btn big green" id="revealBtn">こたえを みる</button>
       <button class="btn big green hidden" id="nextQBtn">つぎ ▶</button>
     </div>
   </div>
@@ -76,7 +76,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/quiz-data.js?v=12"></script>
 <script>
 "use strict";
@@ -272,7 +272,7 @@ function clearGachi() {
   Tiers.addRank(GAME, mode.lv, "?", score);
   Sound.fanfare();
   Ui.confetti();
-  Ui.msg("クリア!🏆", 2200);
+  Ui.msg("クリア！", 1600);
 }
 
 /* ガチンコ:ミスしすぎ */

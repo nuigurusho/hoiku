@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>演出文字・ボタン 改善方針</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:#47392f; --muted:#76685e; --paper:#fffdf7; --line:#e8dccd;
+    --pink:#ff6b9d; --pink-d:#d6336c; --blue:#74c0fc; --blue-d:#1971c2;
+    --green:#69db7c; --green-d:#2b8a3e; --yellow:#ffe066; --yellow-d:#e0a800;
+    --gray:#e9ecef; --gray-d:#868e96; --red:#fa5252; --red-d:#c92a2a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#dff2e5; color:var(--ink); font-family:"M PLUS Rounded 1c","Yu Gothic UI",sans-serif; }
+  .board { width:1600px; min-height:2100px; margin:0 auto; padding:72px 82px 82px; background:
+    linear-gradient(180deg,rgba(255,255,255,.82),rgba(255,253,247,.97)),
+    repeating-linear-gradient(90deg,transparent 0 99px,rgba(77,171,247,.08) 100px 102px); }
+  .eyebrow { font-size:21px; font-weight:900; letter-spacing:.12em; color:var(--blue-d); }
+  h1 { margin:10px 0 14px; font-size:58px; line-height:1.15; letter-spacing:.02em; }
+  .lead { margin:0; max-width:1250px; font-size:26px; line-height:1.65; color:var(--muted); font-weight:650; }
+  .scope { display:inline-flex; margin-top:24px; padding:10px 18px; border-radius:999px; background:#e7f5ff; color:#1864ab; font-size:21px; font-weight:900; }
+  .section { margin-top:42px; padding:34px 38px; border:3px solid var(--line); border-radius:28px; background:rgba(255,255,255,.94); box-shadow:0 9px 0 rgba(117,91,61,.09); }
+  .section h2 { margin:0 0 24px; font-size:34px; }
+  .findings { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .finding { padding:22px; border-radius:20px; background:var(--paper); border:2px solid var(--line); }
+  .finding b { display:block; margin-bottom:8px; font-size:24px; color:var(--pink-d); }
+  .finding span { font-size:19px; line-height:1.55; color:var(--muted); }
+  .compare { display:grid; grid-template-columns:.82fr 1.18fr; gap:24px; }
+  .sample { min-height:350px; padding:24px; border-radius:24px; overflow:hidden; position:relative; }
+  .before { background:#dbeafe; border:4px dashed #fa5252; }
+  .after { background:linear-gradient(#dff4ff 0 68%,#b2df8a 68%); border:4px solid #74c0fc; }
+  .tag { display:inline-block; padding:7px 13px; border-radius:999px; font-size:18px; font-weight:900; background:#fff; }
+  .before .huge { position:absolute; inset:100px 0 auto; text-align:center; white-space:nowrap; font-size:91px; font-weight:900; color:#ff6b9d; -webkit-text-stroke:4px white; paint-order:stroke fill; text-shadow:0 7px rgba(0,0,0,.14); transform:scale(1.08); }
+  .before .problem { position:absolute; left:24px; right:24px; bottom:20px; padding:12px 16px; background:#fff1f3; color:#c92a2a; border-radius:14px; font-size:18px; font-weight:800; text-align:center; }
+  .after .cue { position:absolute; left:50%; top:94px; transform:translateX(-50%); color:#ff4f87; font-family:"Mochiy Pop One",sans-serif; font-size:54px; line-height:1; font-weight:400; -webkit-text-stroke:1px #fffdf7; paint-order:stroke fill; text-shadow:0 4px 0 rgba(80,54,43,.2); }
+  .after .runner { position:absolute; top:182px; font-size:58px; }
+  .after .r1 { left:18%; } .after .r2 { left:43%; } .after .r3 { left:68%; }
+  .after .metric { position:absolute; right:22px; top:22px; padding:8px 15px; border-radius:14px; background:rgba(255,255,255,.92); font-size:21px; font-weight:900; color:#495057; }
+  .motion { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px; }
+  .frame { height:150px; border:2px solid var(--line); border-radius:18px; background:#f8fbff; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:12px; }
+  .frame .word { color:#ff4f87; font-family:"Mochiy Pop One",sans-serif; font-size:34px; font-weight:400; -webkit-text-stroke:1px #fffdf7; paint-order:stroke fill; text-shadow:0 3px 0 rgba(71,57,47,.17); }
+  .f1 .word { opacity:.18; transform:scale(.88); } .f2 .word { opacity:1; transform:scale(1); }
+  .f3 .word { opacity:1; transform:scale(1); } .f4 .word { opacity:.14; transform:scale(1.05); }
+  .frame small { font-size:17px; color:var(--muted); font-weight:800; }
+  .rules { display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+  .result-card { padding:24px; border:4px solid var(--yellow); border-radius:24px; background:var(--paper); text-align:center; }
+  .result-card .title { font-size:40px; font-weight:900; color:var(--pink-d); }
+  .score-row { display:flex; justify-content:center; gap:16px; margin:18px 0; }
+  .score { min-width:190px; padding:13px 20px; border-radius:18px; background:#fff; border:3px solid var(--line); }
+  .score b { display:block; font-size:38px; } .score span { font-size:18px; font-weight:800; color:var(--muted); }
+  .note { margin:14px 0 0; font-size:19px; line-height:1.55; color:var(--muted); }
+  .touch-demo { position:relative; min-height:245px; border-radius:24px; overflow:hidden; background:linear-gradient(#8dd6ff 0 70%,#7fca65 70%); }
+  .touch-demo .old,.touch-demo .new { position:absolute; top:74px; width:50%; text-align:center; font-weight:900; }
+  .touch-demo .old { left:0; color:white; -webkit-text-stroke:6px white; paint-order:stroke fill; font-size:47px; }
+  .touch-demo .new { right:0; color:#5c3d2e; -webkit-text-stroke:2px #fffdf7; paint-order:stroke fill; font-size:38px; text-shadow:0 3px 0 rgba(255,255,255,.35); }
+  .touch-demo label { position:absolute; top:16px; width:50%; text-align:center; font-size:19px; font-weight:900; }
+  .touch-demo label:first-child { left:0; color:#c92a2a; } .touch-demo label:nth-child(2) { right:0; color:#2b8a3e; }
+  .button-grid { display:grid; grid-template-columns:190px 1fr 1fr; gap:14px 18px; align-items:center; }
+  .button-grid .head { font-size:18px; font-weight:900; color:var(--muted); }
+  .oldcopy { font-size:21px; color:#8a7a68; text-decoration:line-through; text-decoration-thickness:2px; }
+  .btn { display:inline-block; padding:13px 24px 15px; border:4px solid; border-radius:18px; font-size:25px; font-weight:900; text-align:center; box-shadow:0 5px 0 var(--shade); }
+  .green { background:#ebfbee; border-color:var(--green); color:#237032; --shade:#40c057; }
+  .yellow { background:#fff9db; border-color:var(--yellow); color:#765c00; --shade:#f5c000; }
+  .blue { background:#e7f5ff; border-color:var(--blue); color:#1864ab; --shade:#4dabf7; }
+  .gray { background:#f1f3f5; border-color:#ced4da; color:#5c636a; --shade:#adb5bd; }
+  .red { background:#fff5f5; border-color:#ff8787; color:#c92a2a; --shade:#fa5252; }
+  .palette { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:26px; }
+  .palette .item { padding:17px 12px; border-radius:16px; text-align:center; font-size:18px; line-height:1.45; font-weight:900; }
+  .exception { margin-top:18px; padding:14px 18px; border-left:7px solid var(--blue); border-radius:10px; background:#f1f8ff; font-size:18px; color:var(--muted); }
+  .inventory { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .inv { padding:18px 20px; border:2px solid var(--line); border-radius:18px; background:var(--paper); }
+  .inv b { display:block; margin-bottom:7px; font-size:21px; } .inv span { font-size:17px; line-height:1.5; color:var(--muted); }
+  .decision { margin-top:38px; padding:25px 30px; border-radius:22px; background:#47392f; color:#fffdf7; font-size:24px; line-height:1.55; font-weight:800; }
+</style>
+</head>
+<body>
+<main class="board">
+  <div class="eyebrow">みんなのゲームパック｜実装前デザイン確認</div>
+  <h1>演出文字・結果表示・ボタンの整理案</h1>
+  <p class="lead">演出は短く、結果は消えない場所へ。動きはフェードを主役にし、拡大はわずかにする。子どもが「読まされる」のではなく、画面を見れば次の行動が分かる状態を目指します。</p>
+  <div class="scope">確認範囲：個別ゲーム17本 ＋ うんどうかい ＋ 共通UI</div>
+
+  <section class="section">
+    <h2>見つかった共通問題</h2>
+    <div class="findings">
+      <div class="finding"><b>文字が大きすぎる</b><span>共通メッセージは最大110px。長文や点数を入れると横切れ・視線の占有が起きる。</span></div>
+      <div class="finding"><b>動きが強すぎる</b><span>0.3倍から跳ねて拡大。短時間の表示と重なり、読む前に注意だけを奪う。</span></div>
+      <div class="finding"><b>役割が混ざっている</b><span>「かち！」「○点」「○秒」「励まし」を1つの演出文字に詰めている。</span></div>
+      <div class="finding"><b>文言と色が不統一</b><span>同じ再挑戦でも「もういっかい」「もういちど あそぶ」などが混在し、色も画面ごとに違う。</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>1｜演出文字は「一言だけ」。フェード＋小さな拡大へ</h2>
+    <div class="compare">
+      <div class="sample before"><span class="tag">いま</span><div class="huge">かち！🏆 12てん！</div><div class="problem">大きな文字・太い白縁・点数まで一体化</div></div>
+      <div class="sample after"><span class="tag">改善案</span><div class="metric">のこり 18</div><div class="cue">どん！</div><span class="runner r1">🏃</span><span class="runner r2">🏃‍♀️</span><span class="runner r3">🏃</span></div>
+    </div>
+    <div class="motion">
+      <div class="frame f1"><div class="word">どん！</div><small>0ms｜0.88倍・透明</small></div>
+      <div class="frame f2"><div class="word">どん！</div><small>180ms｜1倍・表示</small></div>
+      <div class="frame f3"><div class="word">どん！</div><small>約1秒｜静止して読ませる</small></div>
+      <div class="frame f4"><div class="word">どん！</div><small>220ms｜1.05倍・透明</small></div>
+    </div>
+    <p class="note">最大文字サイズは64px前後。背景フレームは置かず、演出用の太い書体＋薄い影または1〜2pxの縁で読ませます。バウンド・回転・0.3倍からの急拡大は廃止します。</p>
+  </section>
+
+  <section class="section">
+    <h2>2｜点数・タイム・勝敗は、消えない結果カードへ分離</h2>
+    <div class="rules">
+      <div class="result-card">
+        <div class="title">あかチームの かち！</div>
+        <div class="score-row"><div class="score"><span>あか</span><b>12てん</b></div><div class="score"><span>あお</span><b>9てん</b></div></div>
+        <div><span class="btn green">もういちど</span>　<span class="btn yellow">やりなおす</span></div>
+      </div>
+      <div>
+        <div class="inventory">
+          <div class="inv"><b>開始・区切り</b><span>一言の演出。0.9〜1.4秒。重要情報は入れない。</span></div>
+          <div class="inv"><b>途中の反応</b><span>対象の近くに短く表示。実況は一文ではなく一動作。</span></div>
+          <div class="inv"><b>最終結果</b><span>自動で消さないカード。勝敗と数値を別の行・枠で表示。</span></div>
+        </div>
+        <p class="note">例：「クリア！ 18びょう」→ 演出は「クリア！」、結果カードに「18びょう」。<br>「かち！ +3てん」→ 演出は「かち！」、点数はスコア欄を更新。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>3｜「タッチ！」は白縁で潰さず、競技面の上で読める色へ</h2>
+    <div class="touch-demo"><label>いま：白文字＋白縁</label><label>改善案：濃色＋細い生成り縁</label><div class="old">タッチ！</div><div class="new">タッチ！</div></div>
+    <p class="note">30〜38px、濃い茶色またはチーム色、縁は2pxまで。0.9秒で少し上へ移動しながらフェード。ゴール文字も同じ仕組みに統一し、特大化はしません。</p>
+  </section>
+
+  <section class="section">
+    <h2>4｜ボタン文言を短くし、色を「操作の意味」で固定</h2>
+    <div class="button-grid">
+      <div class="head">場面</div><div class="head">現在の例</div><div class="head">統一案</div>
+      <b>選択を確定</b><div class="oldcopy">けってい！</div><div><span class="btn green">きめた！</span></div>
+      <b>同じ条件で再挑戦</b><div class="oldcopy">もういっかい はしる！／もういちど あそぶ</div><div><span class="btn green">もういちど</span></div>
+      <b>選択・組分けから戻る</b><div class="oldcopy">チームわけから やりなおす／えらびなおす</div><div><span class="btn yellow">やりなおす</span></div>
+    </div>
+    <div class="palette">
+      <div class="item green">緑<br>進む・開始・再挑戦</div><div class="item yellow">黄<br>変更・やり直し</div><div class="item blue">青<br>道具・情報・練習</div><div class="item gray">灰<br>戻る・閉じる・補助</div><div class="item red">赤<br>削除・危険だけ</div>
+    </div>
+    <div class="exception">例外：難易度の「かんたん／ふつう／むずかしい」は、現在の緑・オレンジ・紫をレベル識別色として維持します。</div>
+  </section>
+
+  <div class="decision">実装単位：共通メッセージの動きと大きさ → 全ゲームの演出文言と結果情報の分離 → ボタン文言と配色 → リレー／運動会の浮遊文字、の順で直し、iPad横・スマホ縦・タッチありで通し確認します。</div>
+</main>
+</body>
+</html>

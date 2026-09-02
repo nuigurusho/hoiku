@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -42,12 +42,12 @@
     <div class="cardgrid" id="grid"></div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
-      <button class="btn big pink hidden" id="honbanBtn">ほんばんへ</button>
+      <button class="btn big green hidden" id="honbanBtn">ほんばんへ</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -93,12 +93,7 @@ $("honbanBtn").onclick = () => {
   document.querySelector('#gachiRow [data-mode="g1"]').click();
 };
 Nav.onLeave(() => { if (G) G.stop = true; refreshLocks(); });
-$("againBtn").onclick = () => {
-  if (G) G.stop = true;
-  $("playScreen").classList.add("hidden");
-  $("startScreen").classList.remove("hidden");
-  refreshLocks();
-};
+$("againBtn").onclick = () => start(G.mode);
 
 async function start(mode) {
   Sound.tap();
@@ -129,6 +124,7 @@ async function start(mode) {
   $("startScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  Ui.clearResult("endRow");
   $("honbanBtn").classList.add("hidden");
   updateHud();
 }
@@ -178,9 +174,11 @@ function clearGame() {
   if (G.mode.lv) {
     Tiers.setUnlock(GAME, Math.min(3, G.mode.lv + 1));
     Tiers.addRank(GAME, G.mode.lv, "?", G.tries, { lowerIsBetter: true });
-    Ui.msg("クリア!🏆", 2500, null, `${G.tries}かいで クリア`);
+    Ui.msg("クリア！", 1600);
+    Ui.result("endRow", "クリア！", `${G.tries}かい`);
   } else {
-    Ui.msg("ぜんぶ みつけた!🎉", 2500);
+    Ui.msg("みつけた！", 1500);
+    Ui.result("endRow", "ぜんぶ みつけた！", `${G.tries}かい`);
   }
   $("endRow").classList.remove("hidden");
   $("honbanBtn").classList.toggle("hidden", !!G.mode.lv);   // れんしゅうから ほんばんへ

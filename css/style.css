@@ -1,6 +1,35 @@
 /* ============================================
    ほいくえん ゲームパック 共通スタイル
    ============================================ */
+@font-face {
+  font-family: "Hoiku Rounded";
+  src: url("../assets/fonts/RoundedMplus1c-Medium.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hoiku Rounded";
+  src: url("../assets/fonts/RoundedMplus1c-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hoiku Rounded";
+  src: url("../assets/fonts/RoundedMplus1c-ExtraBold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hoiku Pop";
+  src: url("../assets/fonts/MochiyPopOne-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   --pink:   #ff6b9d;
   --blue:   #4dabf7;
@@ -29,8 +58,9 @@
 html, body { margin: 0; padding: 0; }
 
 body {
-  font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "M PLUS Rounded 1c",
+  font-family: "Hoiku Rounded", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "M PLUS Rounded 1c",
                "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  font-weight: 500;
   background: linear-gradient(160deg, #fff6e5 0%, #ffe9f3 50%, #e5f4ff 100%);
   color: var(--ink);
   min-height: 100vh;
@@ -433,7 +463,7 @@ canvas.stage {
   color: var(--ink);
   box-shadow: 0 4px 0 var(--cream-d);
   font-size: 19px;
-  font-weight: bold;
+  font-weight: 700;
   text-decoration: none;
   transition: transform .08s, box-shadow .08s;
 }
@@ -861,6 +891,44 @@ canvas.stage {
   animation: pickerIn .16s ease-out;
 }
 .picker .panel { max-width: 1040px; margin: 12px auto; }
+.picker-back {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 54px;
+  padding: 0;
+  color: var(--ink);
+  background: rgba(255,255,255,.94);
+  border: 3px solid var(--cream-d);
+  border-radius: 999px;
+  box-shadow: 0 5px 0 var(--cream-d);
+  cursor: pointer;
+}
+.picker-back svg { width: 26px; height: 26px; display: block; }
+.picker-back:active { transform: translateY(5px); box-shadow: none; }
+.thumb { position: relative; }
+.pick-badge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  z-index: 2;
+  min-width: 42px;
+  padding: 4px 8px 5px;
+  color: #fff;
+  background: var(--pink-d);
+  border: 3px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 rgba(74,63,53,.2);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+.pick-badge.p2 { background: var(--blue-d); }
 @keyframes pickerIn { from { opacity: 0; transform: translateY(16px); } }
 
 /* ---------- モードのカテゴリ(🌈ゆるふわ/🔥ガチンコ) ---------- */
@@ -983,35 +1051,82 @@ canvas.stage {
   padding: 12px;
 }
 .modal .panel { margin: 0; max-height: 92vh; overflow: auto; overscroll-behavior: contain; }
+.has-modal-x { position: relative; }
+.modal-x {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 3px solid var(--cream-d);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--cream-d);
+  font: 900 28px/1 "Hoiku Rounded", sans-serif;
+  cursor: pointer;
+}
+.modal-x:active { transform: translateY(4px); box-shadow: none; }
+.has-modal-x > h2:first-of-type { padding-inline: 46px; }
 
 /* ---------- おおきなメッセージ ---------- */
 .bigmsg {
   position: fixed;
   left: 50%;
   top: 45%;
-  transform: translate(-50%, -50%) scale(.3);
-  font-size: min(13vw, 110px);
-  font-weight: bold;
+  width: max-content;
+  max-width: min(90vw, 760px);
+  transform: translate(-50%, -50%) scale(.88);
+  opacity: 0;
+  font-family: "Hoiku Pop", "Hoiku Rounded", sans-serif;
+  font-size: clamp(40px, 8vw, 64px);
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: center;
   color: var(--pink);
-  -webkit-text-stroke: 3px #fff;
+  -webkit-text-stroke: 1px rgba(255,253,245,.95);
   paint-order: stroke fill;
-  text-shadow: 0 6px 0 rgba(0,0,0,.15);
+  text-shadow: 0 4px 0 rgba(74,63,53,.18);
   z-index: 90;
   pointer-events: none;
-  animation: bigpop .45s cubic-bezier(.2,1.6,.4,1) forwards;
-  white-space: nowrap;
+  animation: bigpop .22s ease-out forwards;
+  white-space: normal;
 }
-@keyframes bigpop { to { transform: translate(-50%,-50%) scale(1); } }
+@keyframes bigpop { to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
 /* おおきい メッセージの 2行目(クリアタイムなどを さりげなく) */
 .bigmsg-sub {
-  font-size: .34em;
+  font-family: "Hoiku Rounded", sans-serif;
+  font-size: .38em;
+  font-weight: 700;
   color: #8a7a68;
   -webkit-text-stroke: 0;
   text-shadow: none;
   margin-top: .12em;
 }
-.bigmsg.out { animation: bigout .3s forwards; }
-@keyframes bigout { to { opacity: 0; transform: translate(-50%,-60%) scale(1.2); } }
+.bigmsg.out { animation: bigout .22s ease-in forwards; }
+@keyframes bigout { to { opacity: 0; transform: translate(-50%,-53%) scale(1.05); } }
+
+/* 消える演出とは分けて、結果の数値をボタンのそばへ残す。 */
+.game-result {
+  flex: 1 0 100%;
+  width: min(560px, 100%);
+  margin: 4px auto 10px;
+  padding: 13px 20px 15px;
+  color: var(--ink);
+  background: rgba(255,253,245,.94);
+  border: 3px solid var(--cream-d);
+  border-radius: 20px;
+  text-align: center;
+  line-height: 1.35;
+}
+.game-result .result-title { font-size: clamp(23px, 4vw, 32px); font-weight: 800; }
+.game-result .result-metric { margin-top: 3px; font-size: clamp(27px, 5vw, 40px); font-weight: 800; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bigmsg, .bigmsg.out { animation-duration: .01ms; }
+}
 
 /* ---------- タッチ操作ボタン(よこスクロール用) ---------- */
 .touchpad {
@@ -1513,6 +1628,15 @@ body.ingame header.bar { display: none; }
   transition: transform .12s, box-shadow .08s, background .12s;
 }
 .back-float svg { width: 26px; height: 26px; display: block; }
+.back-float.uk-exit-link {
+  width: auto;
+  min-width: 112px;
+  padding: 0 18px 0 12px;
+  gap: 5px;
+  font-size: 18px;
+  font-weight: 800;
+}
+.back-float.uk-exit-link span { white-space: nowrap; }
 /* 見た目は そのままで、さわれる はんいだけ ひろげる(iPad で おしやすく) */
 .back-float::after {
   content: "";
@@ -1625,6 +1749,10 @@ body.ingame .back-float { display: flex; }
 /* きょうぎの しょうかい・けっかは 上1/3に よせる。
    まんなかに 出すと かごと キャラの あたまに ちょうど かぶるため。 */
 .mt-over.top { justify-content: flex-start; padding-top: 4%; background: rgba(40,25,10,.18); }
+.mt-over.result-reveal {
+  background: linear-gradient(to bottom, rgba(255,253,245,.58), rgba(255,253,245,0) 43%);
+  pointer-events: none;
+}
 .mt-card {
   background: rgba(255,255,255,.95);
   border-radius: 26px;
@@ -1641,6 +1769,37 @@ body.ingame .back-float { display: flex; }
 .mt-card .ttl.blue { color: var(--blue-d); }
 .mt-card .sub { font-size: clamp(15px, 3.2vw, 22px); color: #6a5c4c; font-weight: bold; }
 .mt-card img.ico { width: clamp(70px, 16vw, 116px); height: auto; display: block; margin: 0 auto; }
+.mt-card.result-reveal {
+  width: min(96%, 980px);
+  max-width: 96%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.mt-card.result-reveal .no {
+  display: inline-block;
+  padding: 5px 18px 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 3px 0 rgba(138,122,104,.16);
+}
+.mt-card.result-reveal .ttl {
+  margin-top: 7px;
+  font-family: "Hoiku Pop", "Hoiku Rounded", sans-serif;
+  text-shadow: 0 3px 0 #fff, 0 0 12px rgba(255,255,255,.95);
+}
+.mt-card.result-reveal .sub { text-shadow: 0 2px 0 #fff, 0 0 9px #fff; }
+.mt-card.result-reveal .uk-total { margin: 9px 0 5px; }
+.mt-card.result-reveal .uk-total .side,
+.mt-card.result-reveal .uk-total .mid { text-shadow: 0 3px 0 #fff, 0 0 12px #fff; }
+.mt-card.result-reveal .uk-prog {
+  width: max-content;
+  max-width: 92vw;
+  margin: 9px auto 0;
+  padding: 7px 14px 0;
+}
 
 /* ---------- チーム発表・チームわけ ---------- */
 .mt-teams {
@@ -1703,6 +1862,76 @@ body.ingame .back-float { display: flex; }
 .mt-teamcol.red  .mt-teamname { color: var(--pink-d); border-color: #ffc2d8; }
 .mt-teamcol.blue .mt-teamname { color: var(--blue-d); border-color: #b8dcff; }
 .mt-teamname:focus { outline: 3px solid var(--yellow); border-style: solid; }
+.uk-team-choice {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 280px);
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 8px auto 10px;
+  font-size: clamp(17px, 3vw, 21px);
+  font-weight: 800;
+}
+.uk-team-choice select { width: 100%; }
+.uk-team-reveal { margin-top: 12px; }
+.uk-team-reveal .mt-teamcol { padding-top: 8px; }
+.uk-team-text { font-weight: 800; }
+.uk-team-text.red { color: var(--pink-d); }
+.uk-team-text.blue { color: var(--blue-d); }
+.uk-versus-line {
+  margin: 8px 0 2px;
+  font-size: clamp(19px, 4vw, 30px);
+  font-weight: 800;
+}
+.uk-insert-actions {
+  position: relative;
+  z-index: 60;
+  justify-content: center;
+  gap: 10px;
+  min-height: 58px;
+}
+.uk-result-heading,
+.uk-next-event {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 800;
+  text-shadow: 0 2px 0 #fff, 0 0 9px #fff;
+}
+.uk-result-heading { font-size: clamp(20px, 3.5vw, 31px); }
+.uk-result-heading img { width: clamp(32px, 5vw, 46px); height: clamp(32px, 5vw, 46px); object-fit: contain; }
+.uk-next-event {
+  margin-top: 12px;
+  font-size: clamp(16px, 2.5vw, 22px);
+}
+.uk-next-event img { width: 30px; height: 30px; object-fit: contain; }
+.uk-next-event span { color: #7c6c5b; font-size: .82em; }
+.uk-detail-modal { z-index: 150; }
+.uk-detail-modal .panel { width: min(680px, 96vw); text-align: center; }
+.uk-detail-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px auto 4px; }
+.uk-detail-team {
+  min-width: 0;
+  padding: 12px 10px 14px;
+  border: 4px solid;
+  border-radius: 20px;
+  background: #fff;
+  font-weight: 800;
+}
+.uk-detail-team.red { color: var(--pink-d); border-color: var(--pink); background: #fff0f6; }
+.uk-detail-team.blue { color: var(--blue-d); border-color: var(--blue); background: #e7f5ff; }
+.uk-detail-team .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(15px, 2.5vw, 20px); }
+.uk-detail-team .metric { margin: 3px 0; font-size: clamp(34px, 7vw, 58px); line-height: 1.05; }
+.uk-detail-team .point {
+  display: inline-block;
+  padding: 3px 12px 5px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: clamp(17px, 3vw, 23px);
+}
+.uk-detail-list { max-height: min(52vh, 440px); overflow-y: auto; }
 
 /* ---------- オン・オフの トグル(きょうぎえらび) ---------- */
 .mt-rows { max-width: 620px; margin: 10px auto; display: flex; flex-direction: column; gap: 10px; }
@@ -1792,6 +2021,7 @@ body.ingame .back-float { display: flex; }
   .mt-hud { margin-top: 50px; }
   .mt-teams { gap: 6px; }
   .mt-teamcol { padding: 8px 6px 10px; }
+  .uk-team-choice { grid-template-columns: 1fr; gap: 5px; }
 }
 
 /* ============================================================

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 <style>
   /* ===== リレー専用スタイル(1ファイル完結) ===== */
 
@@ -167,7 +167,7 @@
       <h2>はしる キャラを えらんでね<br><span style="font-size:18px;font-weight:normal;color:#8a7a68">(タッチで えらぶ / はずす)</span></h2>
       <p class="sel-count" id="selNote"></p>
       <div class="gallery" id="gallery"></div>
-      <div class="row"><button class="btn big pink" id="decideBtn">けってい!</button></div>
+      <div class="row"><button class="btn big green" id="decideBtn">きめた！</button></div>
     </div>
   </div>
 
@@ -200,8 +200,8 @@
         <h2 id="winTitle">かち!</h2>
         <div class="rl-winbtns">
           <div class="row">
-            <button class="btn big pink" id="rematchBtn">もういっかい はしる!</button>
-            <button class="btn big yellow" id="reteamBtn">チームわけから やりなおす</button>
+            <button class="btn big green" id="rematchBtn">もういちど</button>
+            <button class="btn big yellow" id="reteamBtn">やりなおす</button>
           </div>
         </div>
       </div>
@@ -209,7 +209,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -520,7 +520,7 @@ function showBanner(nodes, edgeTeam) {
 function hideBanner() { $("banner").classList.add("hidden"); }
 
 function addFloat(x, y, txt, col, big) {
-  M.floats.push({ x, y, txt, col: col || "#fff", t: 0, dur: big ? 1.3 : 0.9, big: !!big });
+  M.floats.push({ x, y, txt, col: col || "#5c3d2e", t: 0, dur: big ? 1.15 : 0.95, big: !!big });
 }
 
 /* ---- ハプニング ---- */
@@ -559,13 +559,13 @@ function startEvent(t) {
     c.puppet.hop();
     Sound.bad();
     Sound.playVoice(c.voices, ["ouch"]);
-    showBanner([txt("たいへん! "), nameSpan(c), txt(" バトンを おとした!")], t.key);
+    showBanner([nameSpan(c), txt(" バトンを おとした！")], t.key);
   } else if (type === "stumble") {
     t.ev = { type, phase: "fall", t: 0, emo: "💫" };
     Sound.beep(150, 0.2, "square", 0.14);
     Sound.beep(110, 0.25, "sawtooth", 0.10, 0.08);
     Sound.playVoice(c.voices, ["ouch"]);
-    showBanner([nameSpan(c), txt(" ころんじゃった! がんばれ!")], t.key);
+    showBanner([nameSpan(c), txt(" ころんじゃった！")], t.key);
   } else if (type === "slow") {
     t.ev = { type, t: 0, dur: Util.rand(1.3, 2.1), emo: "🐢" };
     Sound.beep(340, 0.5, "sine", 0.06, 0, -150);
@@ -695,13 +695,13 @@ function handoff(t) {
     if (t.rank === 1) {
       M.winTeam = t;
       M.winWait = 0;
-      addFloat(linePos.x, linePos.y - 130, "ゴール!!", teamColor(t.key), true);
-      showBanner([txt("🏁 "), txt(teamLabel(t.key)), txt(" ゴール!!")], t.key);
+      addFloat(linePos.x, linePos.y - 130, "ゴール！", teamColor(t.key), true);
+      showBanner([txt("🏁 "), txt(teamLabel(t.key)), txt(" ゴール！")], t.key);
       Sound.good(); Sound.pon();
       cheerTeam(t);
     } else {
-      addFloat(linePos.x, linePos.y - 110, "ゴール!", teamColor(t.key), false);
-      showBanner([txt(teamLabel(t.key)), txt(" も ゴール!")], t.key);
+      addFloat(linePos.x, linePos.y - 110, "ゴール！", teamColor(t.key), false);
+      showBanner([txt(teamLabel(t.key)), txt("も ゴール！")], t.key);
       Sound.good();
     }
     updateHud();
@@ -710,7 +710,7 @@ function handoff(t) {
 
   // バトンタッチ
   Sound.pon();
-  addFloat(linePos.x, linePos.y - 100, "タッチ!", "#fff", false);
+  addFloat(linePos.x, linePos.y - 100, "タッチ！", "#5c3d2e", false);
   c.state = "idle"; c.fall = 0; c.tx = c.spotX; c.ty = c.spotY;
   const nx = t.members[t.leg % t.members.length];
   nx.state = "run";
@@ -720,7 +720,7 @@ function handoff(t) {
   if (lastLeg) {
     showBanner([txt("さいごは アンカー "), nameSpan(nx), txt("!")], t.key);
   } else {
-    showBanner([nameSpan(c), txt(" → "), nameSpan(nx), txt(" バトンタッチ!")], t.key);
+    showBanner([nameSpan(nx), txt("へ タッチ！")], t.key);
   }
   updateHud();
 }
@@ -758,7 +758,7 @@ function leadWatch(dt) {
   M.leader = cur;
   M.pendLeader = null;
   if (!firstTime && M.raceT > 2.5) {
-    showBanner([txt("🔥 ぎゃくてん! "), txt(teamLabel(cur)), txt(" が まえに でた!")], cur);
+    showBanner([txt("🔥 "), txt(teamLabel(cur)), txt(" ぎゃくてん！")], cur);
     Sound.good();
     cheerTeam(M.T[cur]);
   }
@@ -942,9 +942,9 @@ function draw() {
     const a = 1 - f.t / f.dur;
     ctx.save();
     ctx.globalAlpha = Math.min(1, a * 2);
-    ctx.font = `bold ${f.big ? 58 : 30}px sans-serif`;
+    ctx.font = `400 ${f.big ? 48 : 30}px "Hoiku Pop", sans-serif`;
     ctx.textAlign = "center";
-    ctx.lineWidth = f.big ? 8 : 5; ctx.strokeStyle = "#fff";
+    ctx.lineWidth = f.big ? 4 : 2.5; ctx.strokeStyle = "#fffdf5";
     ctx.fillStyle = f.col;
     const y = f.y - f.t * 34;
     ctx.strokeText(f.txt, f.x, y);

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -45,12 +45,14 @@
     <div class="hud"><span id="progress"></span><span id="timeHud" class="hidden"></span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="800"></canvas></div>
     <div class="row hidden" id="endRow">
-      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+      <button class="btn big green hidden" id="againBtn">もういちど</button>
+      <button class="btn big green" id="honbanBtn">ほんばんへ</button>
+      <button class="btn yellow hidden" id="backBtn">やりなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -110,6 +112,13 @@ $("honbanBtn").onclick = () => {
   $("selectScreen").classList.remove("hidden");
   refreshLocks();
   document.querySelector('#gachiRow [data-mode="g1"]').click();
+};
+$("againBtn").onclick = () => startGame(selected, game.mode);
+$("backBtn").onclick = () => {
+  if (game) game.stop = true;
+  $("playScreen").classList.add("hidden");
+  $("selectScreen").classList.remove("hidden");
+  refreshLocks();
 };
 
 Nav.onLeave(() => { if (game) game.stop = true; refreshLocks(); });
@@ -227,6 +236,7 @@ async function startGame(rec, mode) {
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  Ui.clearResult("endRow");
   $("timeHud").classList.toggle("hidden", !mode.lv);
   render();
 
@@ -327,9 +337,18 @@ function bindPointer() {
           const secs = Math.max(1, Math.round(g.elapsed));
           Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
           Tiers.addRank(GAME, g.mode.lv, "?", secs, { lowerIsBetter: true });
-          Ui.msg("クリア!🏆", 2400, null, `${secs}びょうで クリア`);
+          Ui.msg("クリア！", 1600);
+          Ui.result("endRow", "クリア！", `${secs}びょう`);
+          $("againBtn").classList.remove("hidden");
+          $("backBtn").classList.remove("hidden");
+          $("honbanBtn").classList.add("hidden");
+          $("endRow").classList.remove("hidden");
         } else {
-          Ui.msg("かんせい!", 2200);
+          Ui.msg("かんせい！", 1500);
+          Ui.result("endRow", "かんせい！", `${g.pieces.length}ピース`);
+          $("againBtn").classList.add("hidden");
+          $("backBtn").classList.add("hidden");
+          $("honbanBtn").classList.remove("hidden");
           $("endRow").classList.remove("hidden");   // れんしゅうから ほんばんへ
         }
       }

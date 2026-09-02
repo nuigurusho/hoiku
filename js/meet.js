@@ -141,6 +141,7 @@ const Meet = (() => {
       A, all: A.red.concat(A.blue),
       t: 0, result: null, endWait: 0,
       label(key) { return MARK[key] + " " + M.names[key]; },
+      team(key) { return { name: M.names[key], team: key }; },
       say(parts, team) { M.ui.banner(toNodes(parts), team || ""); },
       hush() { M.ui.banner(null); },
       finish(res, wait) {
@@ -240,7 +241,7 @@ const Meet = (() => {
 
   /* うかんで きえる もじ */
   function addFloat(M, x, y, txt, col, big) {
-    M.E.floats.push({ x, y, txt, col: col || "#fff", t: 0, dur: big ? 1.3 : 0.9, big: !!big });
+    M.E.floats.push({ x, y, txt, col: col || "#5c3d2e", t: 0, dur: big ? 1.15 : 0.95, big: !!big });
   }
   function stepFloats(M, dt) {
     for (const f of M.E.floats) f.t += dt;
@@ -252,9 +253,9 @@ const Meet = (() => {
       const a = 1 - f.t / f.dur;
       ctx.save();
       ctx.globalAlpha = Math.min(1, a * 2);
-      ctx.font = `bold ${f.big ? 58 : 32}px sans-serif`;
+      ctx.font = `400 ${f.big ? 48 : 32}px "Hoiku Pop", sans-serif`;
       ctx.textAlign = "center";
-      ctx.lineWidth = f.big ? 8 : 5; ctx.strokeStyle = "#fff";
+      ctx.lineWidth = f.big ? 4 : 2.5; ctx.strokeStyle = "#fffdf5";
       ctx.fillStyle = f.col;
       const y = f.y - f.t * 34;
       ctx.strokeText(f.txt, f.x, y);
@@ -328,8 +329,6 @@ const Meet = (() => {
       a.puppet.facing = 1;
     }
     kkHud(M);
-    const heat = E.heats.length > 1 ? `${index + 1}くみめ! ` : "";
-    M.say([`🏁 ${heat}いちについて… よーい…`], "");
     M.ui.msg(E.heats.length > 1 ? `${index + 1}くみめ よーい…` : "よーい…", 1100, "#4dabf7");
     Sound.tick();
   }
@@ -356,7 +355,6 @@ const Meet = (() => {
           E.state = "run"; E.stateT = 0;
           M.ui.msg("どん!", 900, "#ff6b9d");
           Sound.pon();
-          M.say(["🏁 スタート! がんばれー!"], "");
         }
       } else if (E.state === "run") {
         E.lead = 0;
@@ -407,7 +405,7 @@ const Meet = (() => {
       E.pts[a.team] += pt;
       if (a.rank === 1) E.firsts[a.team]++;
       const medal = ["", "🥇", "🥈", "🥉"][a.rank] || `${a.rank}い`;
-      M.say([medal + " ", a, ` ゴール! ${pt}てん!`], a.team);
+      M.say([medal + " ", a, " ゴール！"], a.team);
       addFloat(M, 1150, KK_TOP + M.E.laneH * (M.E.lanes.indexOf(a) + 1) - 60, `+${pt}`, COLD[a.team], a.rank === 1);
       if (a.rank === 1) { Sound.fanfare(); Sound.playVoice(a.voices, ["joy"]); }
       else Sound.good();
@@ -445,8 +443,6 @@ const Meet = (() => {
     if (E.heatIndex + 1 < E.heats.length) {
       E.state = "between";
       E.stateT = 0;
-      const next = E.heatIndex + 2;
-      M.say([`🏁 ${E.heatIndex + 1}くみめ しゅうりょう! つぎは ${next}くみめ!`], "");
       Sound.good();
       return;
     }
@@ -460,7 +456,6 @@ const Meet = (() => {
       win = first ? first.team : null;
     }
     E.state = "over";
-    M.say([`🏁 かけっこ しゅうりょう! ${MARK.red}${p.red}てん - ${MARK.blue}${p.blue}てん`], win || "");
     Sound.fanfare();
     M.finish({ win, score: { red: p.red, blue: p.blue }, label: `${p.red}てん - ${p.blue}てん` }, 2.4);
   }
@@ -569,7 +564,6 @@ const Meet = (() => {
       M.E.base = Util.clamp(per * M.E.time / 26, 1.5, 10);
       for (const a of M.all) a.throwCd = Util.rand(0.4, M.E.base);
       tmHud(M);
-      M.say(["🧺 たまいれ! かごに いっぱい 入れよう!"], "");
       M.ui.msg("よーい…", 1000, "#4dabf7");
       Sound.tick();
     },
@@ -593,7 +587,6 @@ const Meet = (() => {
           E.state = "count"; E.stateT = 0;
           E.cntStep = Math.max(E.score.red, E.score.blue) > 12 ? 0.17 : 0.3;
           E.balls.length = 0;
-          M.say(["⏰ そこまで! かぞえましょう!"], "");
           M.ui.msg("そこまで!", 1100, "#e8590c");
           Sound.beep(300, 0.5, "sine", 0.12, 0, -120);
           for (const a of M.all) { a.puppet.walking = false; a.wind = 0; }
@@ -707,10 +700,8 @@ const Meet = (() => {
     const win = s.red === s.blue ? null : (s.red > s.blue ? "red" : "blue");
     E.state = "over";
     if (win) {
-      M.say([`🧺 ${MARK[win]} ${M.names[win]} ${s[win]}こ! かち!`], win);
       Sound.fanfare();
     } else {
-      M.say([`🧺 ${s.red}こ ずつで ひきわけ!`], "");
       Sound.good();
     }
     M.finish({ win, score: { red: s.red, blue: s.blue }, label: `${s.red}こ - ${s.blue}こ` }, 2.4);
@@ -861,7 +852,6 @@ const Meet = (() => {
       M.E.ballX = M.E.ballTeam === "red" ? DB_RED_X[1] : DB_BLUE_X[0];
       M.E.ballY = (DB_YMIN + DB_YMAX) / 2;
       dbHud(M);
-      M.say(["🏐 ドッヂボール しあい かいし!"], "");
       M.ui.msg("しあい かいし!", 1200, "#ff922b");
       Sound.fanfare();
     },
@@ -992,7 +982,7 @@ const Meet = (() => {
     if (E.outcome === "hit") {
       g.zone = "gone"; g.outState = "fall"; g.outT = 0; g.fall = 0;
       dbLayout(M, g.team);
-      M.say([t, " が あてた! ", g, " アウト!"], g.team);
+      M.say([g, " アウト！"], g.team);
       Sound.bad();
       Sound.playVoice(g.voices, ["fail", "ouch"]);
     } else if (E.outcome === "catch") {
@@ -1069,12 +1059,10 @@ const Meet = (() => {
     const win = r === b ? null : (r > b ? "red" : "blue");
     M.hush();
     if (win) {
-      M.say([`🏐 ${MARK[win]} ${M.names[win]} の かち! のこり ${Math.max(r, b)}にん!`], win);
       Sound.fanfare();
       const withVoice = dbInner(M, win).filter((a) => a.voices);
       if (withVoice.length) Sound.playVoice(Util.choice(withVoice).voices, ["joy"]);
     } else {
-      M.say(["🏐 ぜんいん アウト! ひきわけ!"], "");
       Sound.good();
     }
     E.phase = "over";
@@ -1205,7 +1193,6 @@ const Meet = (() => {
         rlStartLeg(M, t);
       }
       rlHud(M);
-      M.say(["🏃 リレー! いちについて…"], "");
     },
 
     update(M, dt) {
@@ -1361,13 +1348,13 @@ const Meet = (() => {
       c.puppet.hop();
       Sound.bad();
       Sound.playVoice(c.voices, ["ouch"]);
-      M.say(["たいへん! ", c, " バトンを おとした!"], t.key);
+      M.say([c, " バトンを おとした！"], t.key);
     } else if (type === "stumble") {
       t.ev = { type, phase: "fall", t: 0, emo: "💫" };
       Sound.beep(150, 0.2, "square", 0.14);
       Sound.beep(110, 0.25, "sawtooth", 0.10, 0.08);
       Sound.playVoice(c.voices, ["ouch"]);
-      M.say([c, " ころんじゃった! がんばれ!"], t.key);
+      M.say([c, " ころんじゃった！"], t.key);
     } else if (type === "slow") {
       t.ev = { type, t: 0, dur: Util.rand(1.3, 2.1), emo: "🐢" };
       Sound.beep(340, 0.5, "sine", 0.06, 0, -150);
@@ -1486,13 +1473,13 @@ const Meet = (() => {
       if (t.rank === 1) {
         E.winTeam = t;
         E.winWait = 0;
-        addFloat(M, linePos.x, linePos.y - 130, "ゴール!!", COL[t.key], true);
-        M.say([`🏁 ${MARK[t.key]} ${M.names[t.key]} ゴール!!`], t.key);
+        addFloat(M, linePos.x, linePos.y - 130, "ゴール！", COL[t.key], true);
+        M.say(["🏁 ", M.team(t.key), " ゴール！"], t.key);
         Sound.good(); Sound.pon();
         rlCheer(t);
       } else {
-        addFloat(M, linePos.x, linePos.y - 110, "ゴール!", COL[t.key], false);
-        M.say([`${MARK[t.key]} ${M.names[t.key]} も ゴール!`], t.key);
+        addFloat(M, linePos.x, linePos.y - 110, "ゴール！", COL[t.key], false);
+        M.say([M.team(t.key), "も ゴール！"], t.key);
         Sound.good();
       }
       rlHud(M);
@@ -1500,14 +1487,14 @@ const Meet = (() => {
     }
 
     Sound.pon();
-    addFloat(M, linePos.x, linePos.y - 100, "タッチ!", "#fff", false);
+    addFloat(M, linePos.x, linePos.y - 100, "タッチ！", "#5c3d2e", false);
     c.state = "idle"; c.fall = 0; c.tx = c.spotX; c.ty = c.spotY;
     const nx = t.members[t.leg % t.members.length];
     nx.state = "run";
     nx.prevX = nx.puppet.x;
     rlStartLeg(M, t);
     if (t.leg === E.LEGS - 1) M.say(["さいごは アンカー ", nx, "!"], t.key);
-    else M.say([c, " → ", nx, " バトンタッチ!"], t.key);
+    else M.say([nx, "へ タッチ！"], t.key);
     rlHud(M);
   }
 
@@ -1534,7 +1521,7 @@ const Meet = (() => {
     E.leader = cur2;
     E.pendLeader = null;
     if (!firstTime && E.raceT > 2.5) {
-      M.say([`🔥 ぎゃくてん! ${MARK[cur2]} ${M.names[cur2]} が まえに でた!`], cur2);
+      M.say(["🔥 ", M.team(cur2), " ぎゃくてん！"], cur2);
       Sound.good();
       rlCheer(E.T[cur2]);
     }
@@ -1546,7 +1533,6 @@ const Meet = (() => {
     E.phase = "over";
     M.hush();
     if (win) {
-      M.say([`🏃 ${MARK[win]} ${M.names[win]} の かち!`], win);
       Sound.fanfare();
       const withVoice = E.T[win].members.filter((a) => a.voices);
       if (withVoice.length) Sound.playVoice(Util.choice(withVoice).voices, ["joy"]);
@@ -1779,14 +1765,16 @@ const Meet = (() => {
       g.addColorStop(1, "#fffdf5");
       ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
       drawCurtain(ctx, 46);
-      // トロフィー(みんなの うしろ・ひかりごしに)
-      const glow = ctx.createRadialGradient(640, 420, 20, 640, 420, 250);
-      glow.addColorStop(0, "rgba(255,212,59,.55)");
-      glow.addColorStop(1, "rgba(255,212,59,0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(640, 420, 250, 0, 7); ctx.fill();
-      ctx.font = "130px serif"; ctx.textAlign = "center";
-      ctx.fillText("🏆", 640, 470);
+      if (opts.trophy !== false) {
+        // トロフィーは単発競技と最終優勝だけ。一競技ごとの途中結果では出さない。
+        const glow = ctx.createRadialGradient(640, 420, 20, 640, 420, 250);
+        glow.addColorStop(0, "rgba(255,212,59,.55)");
+        glow.addColorStop(1, "rgba(255,212,59,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(640, 420, 250, 0, 7); ctx.fill();
+        ctx.font = "130px serif"; ctx.textAlign = "center";
+        ctx.fillText("🏆", 640, 470);
+      }
       const order = list.slice().sort((a, b) => a.puppet.y - b.puppet.y);
       for (const a of order) {
         a.puppet.draw(ctx);

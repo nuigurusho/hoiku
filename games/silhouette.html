@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 <style>
   .shadow-box {
     width: min(420px, 80vw);
@@ -62,7 +62,7 @@
     <div class="choices" id="achoices"></div>
     <div class="answer-big hidden" id="aAnswer"></div>
     <div class="row hidden" id="aViewRow">
-      <button class="btn big yellow" id="aRevealBtn">こたえを みる</button>
+      <button class="btn big green" id="aRevealBtn">こたえを みる</button>
       <button class="btn big green hidden" id="aNextBtn">つぎ ▶</button>
     </div>
   </div>
@@ -72,7 +72,7 @@
     <div class="shadow-box" id="dbox"><canvas id="dcv" width="420" height="420"></canvas></div>
     <div class="revealName" id="dname">&nbsp;</div>
     <div class="row">
-      <button class="btn big yellow" id="revealBtn">こたえを みる</button>
+      <button class="btn big green" id="revealBtn">こたえを みる</button>
       <button class="btn big green hidden" id="nextBtn">つぎ ▶</button>
     </div>
   </div>
@@ -84,7 +84,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -267,7 +267,7 @@ function clearGachi() {
   Tiers.addRank(GAME, gmode.lv, "?", ascore);
   Sound.fanfare();
   Ui.confetti();
-  Ui.msg("クリア!🏆", 2200);
+  Ui.msg("クリア！", 1600);
 }
 function failGachi() {
   swap("endScreen");

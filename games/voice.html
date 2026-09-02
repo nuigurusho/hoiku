@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 </head>
 <body>
 <header class="bar">
@@ -40,16 +40,16 @@
     <div class="hud"><span id="scoreHud">⭐ 0</span><span id="timeHud">⏰ 45</span></div>
     <div class="stage-wrap"><canvas id="cv" class="stage" width="1280" height="720"></canvas></div>
     <div class="row hidden" id="honbanRow">
-      <button class="btn big pink" id="honbanBtn">ほんばんへ</button>
+      <button class="btn big green" id="honbanBtn">ほんばんへ</button>
     </div>
     <div class="row hidden" id="endRow">
       <button class="btn big green" id="againBtn">もういちど</button>
-      <button class="btn gray" id="backBtn">えらびなおす</button>
+      <button class="btn yellow" id="backBtn">やりなおす</button>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -66,12 +66,14 @@ const MODES = {
   g3: { label: "むずかしい", time: 45, goal: 16, lv: 3 },
 };
 
-let selChar = null, allChars = [], G = null, mic = null;
+let selChar = null, selBg = null, allChars = [], allBgs = [], G = null, mic = null;
 
 async function initSelect() {
   const recs = await Store.forGame();
   allChars = recs.filter((r) => r.cat === "char");
+  allBgs = recs.filter((r) => r.cat === "bg");
   selChar = allChars[0];
+  selBg = allBgs[0] || null;
 }
 initSelect();
 
@@ -134,6 +136,13 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     });
     if (!rec) return;
     selChar = rec;
+    if (allBgs.length) {
+      const bg = await Picker.one({
+        title: "どこで あそぶ?", records: allBgs, selectedId: selBg && selBg.id,
+      });
+      if (!bg) return;
+      selBg = bg;
+    }
     const hasMic = await setupMic();
     if (!hasMic) Ui.msg("マイクが つかえないよ", 1800, "#4dabf7");
     start(m);
@@ -159,12 +168,14 @@ Nav.onLeave(() => { if (G) G.stop = true; refreshLocks(); });
 async function start(mode) {
   if (G) G.stop = true;
   const parts = await Rig.load(selChar);
+  const bgImg = selBg ? await Util.loadImage(selBg.dataURL) : null;
   const puppet = new Puppet(parts, { x: 300, y: GROUND, h: 170, facing: 1 });
-  G = { stop: false, mode, y: GROUND, vy: 0, stars: [], score: 0, t: mode.time || 0, spawn: 0, over: false, cleared: false };
+  G = { stop: false, mode, y: GROUND, vy: 0, stars: [], score: 0, t: mode.time || 0, spawn: 0, bgX: 0, over: false, cleared: false };
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
   $("endRow").classList.add("hidden");
+  Ui.clearResult("endRow");
   $("honbanRow").classList.toggle("hidden", !!mode.goal);   // れんしゅうから ほんばんへ
   $("timeHud").classList.toggle("hidden", !mode.time);
   updateScoreHud();
@@ -223,15 +234,20 @@ async function start(mode) {
 
     /* --- 描画 --- */
     ctx.clearRect(0, 0, 1280, 720);
-    const sky = ctx.createLinearGradient(0, 0, 0, 720);
-    sky.addColorStop(0, "#74c0fc"); sky.addColorStop(1, "#e7f5ff");
-    ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
-    for (const c of clouds) {
-      c.x -= c.v * dt;
-      if (c.x < -150) c.x = 1350;
-      ctx.drawImage(cloudCv, c.x, c.y);
+    if (bgImg) {
+      g.bgX += 78 * dt;
+      Util.drawLoopImage(ctx, bgImg, g.bgX, 1280, 720);
+    } else {
+      const sky = ctx.createLinearGradient(0, 0, 0, 720);
+      sky.addColorStop(0, "#74c0fc"); sky.addColorStop(1, "#e7f5ff");
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, 1280, 720);
+      for (const c of clouds) {
+        c.x -= c.v * dt;
+        if (c.x < -150) c.x = 1350;
+        ctx.drawImage(cloudCv, c.x, c.y);
+      }
     }
-    ctx.fillStyle = "#96d06c"; ctx.fillRect(0, GROUND + 10, 1280, 720 - GROUND);
+    ctx.fillStyle = "rgba(116,184,85,.92)"; ctx.fillRect(0, GROUND + 10, 1280, 720 - GROUND);
 
     for (const s of g.stars) ctx.drawImage(starCv, s.x - 42, s.y - 42 + Math.sin(s.t * 4) * 6);
 
@@ -259,13 +275,16 @@ async function start(mode) {
       if (g.cleared) {
         Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
         Ui.confetti();
-        Ui.msg(`クリア!🏆 ⭐${g.score}こ!`, 3000);
+        Ui.msg("クリア！", 1600);
+        Ui.result("endRow", "クリア！", `⭐ ${g.score}こ`);
       } else {
-        Ui.msg(`ざんねん!⭐${g.score}/${g.mode.goal}こ`, 3000, "#9775fa");
+        Ui.msg("おしまい！", 1500, "#9775fa");
+        Ui.result("endRow", "おしまい", `⭐ ${g.score} / ${g.mode.goal}こ`);
       }
     } else {
       if (g.score >= 10) Ui.confetti();
-      Ui.msg(`⭐ ${g.score}こ あつめた!`, 3000);
+      Ui.msg("おしまい！", 1500);
+      Ui.result("endRow", "おしまい", `⭐ ${g.score}こ`);
     }
     $("endRow").classList.remove("hidden");
   }

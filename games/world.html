@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 <style>
   .stages { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
   .stages .btn { width: 78px; height: 78px; padding: 5px; opacity: .55; }
@@ -44,6 +44,8 @@
     <button class="btn blue" data-stage="water" aria-label="みずの せかい"><img src="../assets/stages/world-water.png?v=2" alt=""></button>
     <button class="btn orange" data-stage="house" aria-label="いえの なか"><img src="../assets/stages/world-house.png?v=4" alt=""></button>
     <button class="btn yellow" data-stage="flower" aria-label="ひまわり ばたけ"><img src="../assets/stages/world-flower.svg" alt=""></button>
+    <button class="btn green" data-stage="playground" aria-label="こうえん"><img src="../assets/stages/world-playground.png" alt=""></button>
+    <button class="btn purple" data-stage="forest" aria-label="もりの ひろば"><img src="../assets/stages/world-forest.png" alt=""></button>
   </div>
   <div class="stage-wrap world-view" id="worldView">
     <canvas id="cv" class="stage" width="1280" height="720"></canvas>
@@ -55,7 +57,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -73,7 +75,8 @@ function depthScale(y) {
 }
 
 let stage = "land";
-const stageBgs = { land: null, water: null, house: null };
+const LAND_STAGES = new Set(["land", "playground", "forest"]);
+const stageBgs = { land: null, water: null, house: null, playground: null, forest: null };
 let T = 0;                 // ぜんたいの じかん(なみ・あわ の アニメ用)
 let onStage = 0;           // いま 画面に いる にんずう
 const chars = [];          // {rec, parts, kind}
@@ -87,12 +90,15 @@ const bubs = [];           // さかなが はく あわ
 async function init() {
   const recs = await Store.forGame();
   const bgs = recs.filter((r) => r.cat === "bg");
-  const [land, water, house] = await Promise.all([
+  const [land, water, house, playground, forest] = await Promise.all([
     Util.loadImage("../assets/backgrounds/world-land.jpg"),
     Util.loadImage("../assets/backgrounds/world-water.jpg"),
     Util.loadImage("../assets/backgrounds/world-house.jpg?v=2"),
+    Util.loadImage("../assets/backgrounds/world-playground.png"),
+    Util.loadImage("../assets/backgrounds/world-forest.png"),
   ]);
   stageBgs.land = land; stageBgs.water = water; stageBgs.house = house;
+  stageBgs.playground = playground; stageBgs.forest = forest;
   /* とりこんだ背景があるときは、おかのせかいだけその絵を使う */
   const customBg = bgs.find((r) => r.id !== "sample-bg-crayon-hills-v1" && r.name !== "おそらとおやま");
   if (customBg) stageBgs.land = await Util.loadImage(customBg.dataURL);
@@ -1173,12 +1179,15 @@ document.getElementById("stages").querySelectorAll("button").forEach((b) => {
 
 /* ---------------- えがく ---------------- */
 function drawLandBack() {
-  if (stageBgs.land) ctx.drawImage(stageBgs.land, 0, 0, W, H);
+  const bg = stageBgs[stage] || stageBgs.land;
+  if (bg) ctx.drawImage(bg, 0, 0, W, H);
   else { ctx.fillStyle = "#d0ebff"; ctx.fillRect(0, 0, W, H); }
-  BgFx.clouds(ctx, T, W, [
-    { x: 110, y: 92, size: 105, speed: 2.4, alpha: 0.18 },
-    { x: 760, y: 155, size: 72, speed: 1.6, alpha: 0.14 },
-  ]);
+  if (stage === "land") {
+    BgFx.clouds(ctx, T, W, [
+      { x: 110, y: 92, size: 105, speed: 2.4, alpha: 0.18 },
+      { x: 760, y: 155, size: 72, speed: 1.6, alpha: 0.14 },
+    ]);
+  }
 }
 
 /* ---- ひまわり ばたけ を えがく ---- */
@@ -1443,7 +1452,7 @@ function loop(now) {
   ctx.clearRect(0, 0, W, H);
   /* 奥のキャラから描く。おかの せかい・ひまわり ばたけは たて位置(下ほど てまえ)、
      ほかは 大きさ(小さいほど おく)で じゅんばんを きめる */
-  const list = (stage === "land" || stage === "flower")
+  const list = (LAND_STAGES.has(stage) || stage === "flower")
     ? actors.slice().sort((x, y) => actorY(x) - actorY(y))
     : actors.slice().sort((x, y) => x.puppet.h - y.puppet.h);
 

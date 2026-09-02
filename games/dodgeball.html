@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=49">
+<link rel="stylesheet" href="../css/style.css?v=53">
 <style>
   /* ===== ドッヂボール専用スタイル(1ファイル完結) ===== */
 
@@ -208,7 +208,7 @@
         </div>
       </div>
 
-      <div class="row"><button class="btn big pink" id="decideBtn">けってい!</button></div>
+      <div class="row"><button class="btn big green" id="decideBtn">きめた！</button></div>
     </div>
   </div>
 
@@ -239,14 +239,14 @@
       <div class="db-winbar hidden" id="winOverlay">
         <h2 id="winTitle">かち!</h2>
         <div class="db-winbtns">
-          <div class="row"><button class="btn big pink" id="rematchBtn">もういっかい しょうぶ!</button></div>
+          <div class="row"><button class="btn big green" id="rematchBtn">もういちど</button></div>
         </div>
       </div>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=38"></script>
+<script src="../js/core.js?v=42"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -455,7 +455,7 @@ async function startMatch() {
   M.ballY = (YMIN + YMAX) / 2;
 
   updateHud();
-  Ui.msg("しあい かいし!", 1200, "#ff922b");
+  Ui.msg("スタート！", 1200, "#ff922b");
   Sound.fanfare();
 
   let last = performance.now();
@@ -566,7 +566,7 @@ function resolve() {
 
   if (oc === "hit") {
     const revived = hitOut(g, t);   // g アウト。外野の t が あてたら(復活ルール)もどる
-    const msg = [nameSpan(t), txt(" が あてた! "), nameSpan(g), txt(" アウト!")];
+    const msg = [nameSpan(g), txt(" アウト！")];
     if (revived) msg.push(txt("  "), nameSpan(t), txt(" ふっかつ!"));
     showBanner(msg, defTeam);
     Sound.bad();

@@ -8,7 +8,7 @@ const excludedFiles = new Set([
   ".gitignore", "CLAUDE.md", "README.md", "serve.bat", "serve.sh", "pwa-build.js", "sw.js",
   "assets/logo-original.png",
 ]);
-const publicExts = new Set([".html", ".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".webmanifest"]);
+const publicExts = new Set([".html", ".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".woff2", ".webmanifest"]);
 
 async function walk(dir, out = []) {
   const entries = await fs.readdir(dir, { withFileTypes: true });

@@ -41,6 +41,24 @@ const Util = {
     return c;
   },
 
+  /* 横長の背景を交互に反転して並べる。
+     左右の端どうしが同じ絵になるため、取り込んだ背景でも継ぎ目が目立たない。 */
+  drawLoopImage(ctx, img, scroll, w, h) {
+    const first = Math.floor(scroll / w) - 1;
+    for (let tile = first; tile <= first + 3; tile++) {
+      const x = tile * w - scroll;
+      ctx.save();
+      if (Math.abs(tile % 2) === 1) {
+        ctx.translate(x + w, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, 0, 0, w, h);
+      } else {
+        ctx.drawImage(img, x, 0, w, h);
+      }
+      ctx.restore();
+    }
+  },
+
   /* 絵の中心を軸に回転する。キャンバスの大きさは変えず、空いた所は白で埋める。 */
   rotateCanvas(source, degrees, fill = "#fff") {
     const out = Util.makeCanvas(source.width, source.height);
@@ -606,6 +624,14 @@ const Samples = {
     {
       id: "sample-bg-crayon-hills-v1", name: "おかの せかい", cat: "bg",
       path: "backgrounds/world-land.jpg",
+    },
+    {
+      id: "sample-bg-watercolor-playground-v1", name: "こうえん", cat: "bg",
+      path: "backgrounds/world-playground.png",
+    },
+    {
+      id: "sample-bg-watercolor-forest-v1", name: "もりの ひろば", cat: "bg",
+      path: "backgrounds/world-forest.png",
     },
     {
       id: "sample-pic-house-official-v1", name: "おうちのえ", cat: "pic",
@@ -1202,6 +1228,7 @@ const Ui = {
 
   /* sub をわたすと、2行目に さりげなく 小さめの文字を そえる */
   msg(text, ms = 1300, color, sub) {
+    document.querySelectorAll(".bigmsg").forEach((old) => old.remove());
     const d = document.createElement("div");
     d.className = "bigmsg";
     d.textContent = text;
@@ -1218,6 +1245,36 @@ const Ui = {
     return d;
   },
 
+  /* 消える演出には数値を詰めず、結果と数値を操作ボタンのそばへ残す。 */
+  result(row, title, metric) {
+    const host = typeof row === "string" ? document.getElementById(row) : row;
+    if (!host) return null;
+    let box = host.querySelector(":scope > .game-result");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "game-result";
+      host.prepend(box);
+    }
+    box.innerHTML = "";
+    const ttl = document.createElement("div");
+    ttl.className = "result-title";
+    ttl.textContent = title;
+    box.appendChild(ttl);
+    if (metric) {
+      const val = document.createElement("div");
+      val.className = "result-metric";
+      val.textContent = metric;
+      box.appendChild(val);
+    }
+    return box;
+  },
+
+  clearResult(row) {
+    const host = typeof row === "string" ? document.getElementById(row) : row;
+    const box = host && host.querySelector(":scope > .game-result");
+    if (box) box.remove();
+  },
+
   /* ---- ちいさな ダイアログ 3つ(モーダル) ---- */
   _modal(inner) {
     const wrap = document.createElement("div");
@@ -1230,7 +1287,8 @@ const Ui = {
   /* せつめいを だすだけ(html は じぶんで かいた ものだけ わたすこと) */
   info(title, html) {
     const wrap = this._modal(`<h2>${title}</h2>${html}
-      <div class="row"><button class="btn gray" type="button">とじる</button></div>`);
+      <button class="modal-x" type="button" aria-label="とじる">×</button>`);
+    wrap.querySelector(".panel").classList.add("has-modal-x");
     wrap.querySelector("button").onclick = () => { Sound.tap(); wrap.remove(); };
     return wrap;
   },
@@ -1305,7 +1363,7 @@ const Ui = {
    さきに キャラを えらばせないので、ちいさい子でも まよいにくい。
      Picker.one({title, note, records, selectedId})   … タッチした しゅんかんに けってい
      Picker.many({title, note, records, preselect, min, max, confirmLabel})
-                                                     … なんこか えらんで「けってい!」
+                                                     … なんこか えらんで「きめた！」
    えらんだ record(one) / recordの配列(many)を Promise でかえす。
    「← もどる」を おしたときは null(= あそびかた えらびに もどる)。 */
 const Picker = {
@@ -1336,18 +1394,24 @@ const Picker = {
       gal.className = "gallery";
       panel.appendChild(gal);
 
-      const row = document.createElement("div");
-      row.className = "row";
-      panel.appendChild(row);
-
       const close = (val) => { wrap.remove(); resolve(val); };
 
       const back = document.createElement("button");
-      back.className = "btn gray";
+      back.className = "picker-back";
       back.type = "button";
-      back.textContent = "← もどる";
-      back.onclick = () => { Sound.tap(); close(null); };
-      row.appendChild(back);
+      back.innerHTML = GameChrome.BACK_ICON;
+      back.title = "もどる";
+      back.setAttribute("aria-label", "もどる");
+      back.dataset.pickerBack = "1";
+      back.onclick = () => {
+        Sound.tap();
+        if (Nav.direct) {
+          const pageBack = document.querySelector("a.back-float, header.bar a.back");
+          if (pageBack && pageBack.href) { location.href = pageBack.href; return; }
+        }
+        close(null);
+      };
+      wrap.appendChild(back);
 
       if (!recs.length) {
         gal.innerHTML = '<p class="note">えが ないよ。「とりこみ」で とりこんでね</p>';
@@ -1355,10 +1419,30 @@ const Picker = {
         const max = opts.max || Infinity;
         const sel = new Set((opts.preselect || []).slice(0, max));
         const ok = document.createElement("button");
-        ok.className = "btn big pink";
+        ok.className = "btn big green";
         ok.type = "button";
-        ok.textContent = opts.confirmLabel || "けってい!";
+        ok.textContent = opts.confirmLabel || "きめた！";
+        const row = document.createElement("div");
+        row.className = "row";
+        panel.appendChild(row);
         row.appendChild(ok);
+
+        const paintSelection = () => {
+          const order = [...sel];
+          [...gal.children].forEach((el, i) => {
+            const selected = sel.has(recs[i].id);
+            el.classList.toggle("selected", selected);
+            const old = el.querySelector(".pick-badge");
+            if (old) old.remove();
+            const at = order.indexOf(recs[i].id);
+            if (selected && opts.selectionLabels && opts.selectionLabels[at]) {
+              const badge = document.createElement("span");
+              badge.className = "pick-badge p" + (at + 1);
+              badge.textContent = opts.selectionLabels[at];
+              el.appendChild(badge);
+            }
+          });
+        };
 
         /* タッチで えらぶ / はずす */
         Ui.renderGallery(gal, recs, (r, el) => {
@@ -1371,13 +1455,13 @@ const Picker = {
           } else {
             sel.add(r.id);
           }
-          el.classList.toggle("selected", sel.has(r.id));
+          paintSelection();
         });
-        [...gal.children].forEach((el, i) => el.classList.toggle("selected", sel.has(recs[i].id)));
+        paintSelection();
 
         const min = opts.min || 1;
         ok.onclick = () => {
-          const picked = recs.filter((r) => sel.has(r.id));
+          const picked = [...sel].map((id) => recs.find((r) => r.id === id)).filter(Boolean);
           if (picked.length < min) {
             Sound.bad();
             Ui.msg(`${min}つ いじょう えらんでね`, 1500, "#4dabf7");
@@ -2522,7 +2606,7 @@ const Nav = {
   _closeOverlay() {
     const ov = document.querySelector(".picker:not(.hidden), .modal:not(.hidden)");
     if (!ov) return false;
-    const cancel = ov.querySelector('[data-x="0"]') || ov.querySelector(".btn.gray");
+    const cancel = ov.querySelector('[data-picker-back], [data-x="0"], .modal-x, .rank-close') || ov.querySelector(".btn.gray");
     if (cancel) cancel.click(); else ov.remove();
     return true;
   },
