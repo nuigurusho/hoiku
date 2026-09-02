@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=62">
+<link rel="stylesheet" href="css/style.css?v=63">
 <style>
   /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -173,7 +173,7 @@
       <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
     </div>
     <label class="draw-rotate"><span>↻ かいてん</span><input id="rotateRange" type="range" min="-30" max="30" step="1" value="0"><output id="rotateOut">0°</output></label>
-    <p class="note" id="toolHint" style="margin:6px 0 0">ペンで かけます</p>
+    <p class="note hidden" id="toolHint" style="margin:6px 0 0"></p>
 
     <h3 id="catTitle">なんの え?</h3>
     <div class="cat-row" id="catRow">
@@ -189,20 +189,10 @@
       <button class="btn yellow" id="openBtn" style="flex:1">とりこんだ えを なおす</button>
     </div>
 
-    <div id="drawTips">
-      <h3>かきかたの コツ</h3>
-      <p class="note" style="line-height:1.7">
-        キャラクターは <b>こく・はっきり</b> 大きく かくと よく うごきます(白いところは すけて見えます)。<br>
-        <b>あたり</b>(うすい 点線)に そって かくと、そのままで きれいに うごきます。<br>
-        🐕どうぶつ は <b>あたまを ひだり</b>、🦋ちょうちょ は <b>はねを 1まいだけ</b> かいてね。
-        むきを まちがえたら <b>↔ 左右はんてん</b> で なおせます。<br>
-        こまかい せってい(うごき・まちがいスポット)は <a href="create.html">つくる</a> でできます。
-      </p>
-    </div>
   </div>
 </aside>
 
-<script src="js/core.js?v=48"></script>
+<script src="js/core.js?v=49"></script>
 <script src="js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -341,8 +331,8 @@ SIZES.forEach((sz) => {
 });
 
 const TOOL_HINT = {
-  pen: "ペンで かけます",
-  eraser: "けしゴム:なぞった ところが しろく なります",
+  pen: "",
+  eraser: "",
   fill: "ぬりつぶし:かこまれた ところを タッチすると いろが つきます",
 };
 function syncTools() {
@@ -355,7 +345,9 @@ function syncTools() {
   $("nowColor").style.background = isEraser() ? "#ffffff" : state.color;
   $("fillBtn").classList.toggle("green", state.tool === "fill");
   $("fillBtn").classList.toggle("purple", state.tool !== "fill");
-  $("toolHint").textContent = TOOL_HINT[state.tool];
+  const toolHint = TOOL_HINT[state.tool] || "";
+  $("toolHint").textContent = toolHint;
+  $("toolHint").classList.toggle("hidden", !toolHint);
 }
 
 /* ---------- もどす / やりなおし ----------
@@ -582,12 +574,11 @@ function isBlank() {
 }
 
 /* えらび がめんから きたとき:なにを かくかは きまっているので えらばせない */
-const CAT_NAME = { char: "キャラクターの ぜんしん", bg: "ステージ", pic: "イラスト", fuku: "キャラクターの かお" };
 const CAT_BASE = { char: "キャラ", bg: "ステージ", pic: "イラスト", fuku: "ふくわらい" };
 if (fixedCat) {
   document.querySelector(`input[name="cat"][value="${fixedCat}"]`).checked = true;
   $("catRow").classList.add("hidden");
-  $("catTitle").textContent = (kindDef ? kindDef.emoji + " " + kindDef.label : CAT_NAME[fixedCat]) + " を かこう!";
+  $("catTitle").classList.add("hidden");
 }
 
 /* ---------- とりこんだ えを なおす ---------- */
@@ -616,6 +607,7 @@ async function loadForEdit(rec) {
   const r = document.querySelector(`input[name="cat"][value="${rec.cat}"]`);
   if (r) r.checked = true;
   $("catRow").classList.add("hidden");
+  $("catTitle").classList.remove("hidden");
   $("catTitle").textContent = `「${rec.name || "なまえなし"}」を なおしています`;
   $("saveBtn").classList.add("hidden");
   $("overwriteBtn").classList.remove("hidden");
@@ -654,7 +646,6 @@ $("openBtn").onclick = async () => {
   guideShow(false);
   $("catTitle").textContent = `「${rec.name || "なまえなし"}」の さぶんを つくる`;
   $("openBtn").classList.add("hidden");
-  $("drawTips").classList.add("hidden");
   $("overwriteBtn").classList.add("hidden");
   $("saveNewRow").classList.add("hidden");
   $("saveBtn").classList.remove("hidden");

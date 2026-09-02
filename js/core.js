@@ -2286,7 +2286,7 @@ const Guide = {
   KINDS: {
     human: {
       label: "にんげん", emoji: "🧍", cat: "char", type: "biped", cv: [820, 1040],
-      hint: "あたま・からだ・あし を まっすぐ 大きく",
+      hint: "",
       draw(g) {
         g.faint(() => g.line(0.5, 0.05, 0.5, 0.97));     // まんなかの 線
         g.circle(0.5, 0.24, 0.18);                        // あたま
@@ -2362,7 +2362,6 @@ const Guide = {
         g.faint(() => g.line(0.5, 0.08, 0.5, 0.95));
         g.circle(0.5, 0.50, 0.34);                        // まるい からだ
         g.faint(() => { g.circle(0.40, 0.44, 0.035); g.circle(0.60, 0.44, 0.035); });   // め
-        g.label("まる〜く", 0.5, 0.06, { baseline: "top" });
       },
     },
 

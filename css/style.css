@@ -1359,6 +1359,8 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
 .rig-preview-wrap canvas { max-width: 100%; max-height: 100%; background: #e7f5ff; border-radius: 12px; }
 .rig-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
 .rig-side .advanced-settings { display: grid; grid-template-rows: auto minmax(0, 1fr); flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; }
+.rig-side .advanced-settings:not([open]) { display: block; flex: 0 0 auto; }
+.advanced-settings:not([open]) > .rig-advanced-scroll { display: none; }
 .rig-advanced-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .rig-actions { flex: none; justify-content: center; margin: 0; padding-top: 10px; }
 .rig-actions .btn { padding: 11px 18px; font-size: 17px; }

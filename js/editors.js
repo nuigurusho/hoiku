@@ -39,8 +39,8 @@ document.body.insertAdjacentHTML("beforeend", `
         <div class="rig-flex"><canvas id="rigCanvas" class="edit-canvas" width="380" height="480"></canvas></div>
       </section>
       <aside class="rig-side">
-        <section class="advanced-settings" id="rigAdvanced">
-          <div class="advanced-title">高度な設定</div>
+        <details class="advanced-settings" id="rigAdvanced">
+          <summary>高度な設定</summary>
           <div class="rig-advanced-scroll">
             <div class="advanced-block">
               <h3>絵のかたむき</h3>
@@ -87,7 +87,7 @@ document.body.insertAdjacentHTML("beforeend", `
               </div>
             </div>
           </div>
-        </section>
+        </details>
       </aside>
     </div>
     <div class="row rig-actions">
@@ -149,10 +149,7 @@ document.body.insertAdjacentHTML("beforeend", `
   <div class="panel editor-panel voice-panel">
     <h2>🎤 こえの とうろく</h2>
     <p class="note">
-      キャラの こえを 4しゅるい ろくおんできます(さいちょう10びょう)。
-      「みんなの せかい」で タッチしたときや、じゃんけん・レースの かちまけで つかわれます。<br>
-      マイクは <b>localhost か https</b> で ひらいたときだけ つかえます。
-      こえは この たんまつの なか(IndexedDB)にだけ ほぞんされ、公開サイトには のりません。
+      「みんなのせかい」で タッチしたときや、じゃんけん・レースの かちまけで つかわれます。
     </p>
     <div id="voiceRows"></div>
     <div class="row">
@@ -713,6 +710,7 @@ const rigEd = {
 
 async function openRig(rec, opts) {
   opts = opts || {};
+  $("rigAdvanced").open = false;
   rigEd.rec = rec;
   rigEd.afterSave = opts.afterSave || null;
   rigEd.afterCancel = opts.afterCancel || null;
