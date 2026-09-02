@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=53">
+<link rel="stylesheet" href="../css/style.css?v=54">
 </head>
 <body>
 <header class="bar">
@@ -47,7 +47,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=42"></script>
+<script src="../js/core.js?v=43"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -383,9 +383,11 @@ function draw() {
     ActorTouch.drawName(ctx, r, { y: laneY + 12, fontSize: 20 });
     // じゅんい
     if (r.rank) {
-      const medal = ["", "🥇", "🥈", "🥉"][r.rank] || `${r.rank}い`;
-      ctx.font = "44px serif";
-      ctx.fillText(medal, x - 20, laneY - r.puppet.h - 16);
+      const medal = ["", "🥇", "🥈", "🥉"][r.rank] || "";
+      if (medal) {
+        ctx.font = "44px serif";
+        ctx.fillText(medal, x - 20, laneY - r.puppet.h - 16);
+      }
     } else if (r.emo) {
       ctx.font = "40px serif";
       ctx.textAlign = "center";

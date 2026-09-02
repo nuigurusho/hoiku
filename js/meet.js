@@ -404,8 +404,8 @@ const Meet = (() => {
       const pt = E.lanes.length - a.rank + 1;
       E.pts[a.team] += pt;
       if (a.rank === 1) E.firsts[a.team]++;
-      const medal = ["", "🥇", "🥈", "🥉"][a.rank] || `${a.rank}い`;
-      M.say([medal + " ", a, " ゴール！"], a.team);
+      const medal = ["", "🥇", "🥈", "🥉"][a.rank] || "";
+      M.say([medal ? medal + " " : "", a, ` ${a.rank}い ゴール！`], a.team);
       addFloat(M, 1150, KK_TOP + M.E.laneH * (M.E.lanes.indexOf(a) + 1) - 60, `+${pt}`, COLD[a.team], a.rank === 1);
       if (a.rank === 1) { Sound.fanfare(); Sound.playVoice(a.voices, ["joy"]); }
       else Sound.good();
@@ -507,9 +507,11 @@ const Meet = (() => {
       // メダル・ハプニング
       ctx.textAlign = "center";
       if (a.rank) {
-        const medal = ["", "🥇", "🥈", "🥉"][a.rank] || `${a.rank}い`;
-        ctx.font = "40px serif";
-        ctx.fillText(medal, pu.x, laneY - pu.h - 8);
+        const medal = ["", "🥇", "🥈", "🥉"][a.rank] || "";
+        if (medal) {
+          ctx.font = "40px serif";
+          ctx.fillText(medal, pu.x, laneY - pu.h - 8);
+        }
       } else if (a.emo) {
         ctx.font = "36px serif";
         ctx.fillText(a.emo, pu.x, laneY - pu.h - 8);
@@ -556,8 +558,9 @@ const Meet = (() => {
         time: M.quick ? 24 : 32,
         score: { red: 0, blue: 0 },
         balls: [], floats: [], litter,
+        basketBalls: { red: [], blue: [] },
         wob: { red: 0, blue: 0 },                // かごの ゆれ
-        cnt: { red: 0, blue: 0 }, cntT: 0, cntStep: 0.3,
+        cnt: { red: 0, blue: 0 }, cntT: 0, cntStep: 0.38, cntNext: "red", cntFlash: null,
         base: 0,                                 // なげる かんかく(下で じかんから きめる)
       };
       // ぜんぶで 20〜25かい くらい なげる ペースに する(かぞえやすい かず に なるように)
@@ -585,7 +588,7 @@ const Meet = (() => {
         if (E.time <= 0) {
           E.time = 0;
           E.state = "count"; E.stateT = 0;
-          E.cntStep = Math.max(E.score.red, E.score.blue) > 12 ? 0.17 : 0.3;
+          E.cntStep = Math.max(E.score.red, E.score.blue) > 12 ? 0.28 : 0.38;
           E.balls.length = 0;
           M.ui.msg("そこまで!", 1100, "#e8590c");
           Sound.beep(300, 0.5, "sine", 0.12, 0, -120);
@@ -595,14 +598,17 @@ const Meet = (() => {
         }
         tmHud(M);
       } else if (E.state === "count") {
-        // 1こずつ かぞえる(ドキドキ)
+        // 赤青を交互に、必ず1個ずつ数字を出して数える。
         E.cntT += dt;
+        if (E.cntFlash) E.cntFlash.t += dt;
         while (E.cntT >= E.cntStep && (E.cnt.red < E.score.red || E.cnt.blue < E.score.blue)) {
           E.cntT -= E.cntStep;
-          let n = 0;
-          for (const key of ["red", "blue"]) {
-            if (E.cnt[key] < E.score[key]) { E.cnt[key]++; E.wob[key] = 1; n = Math.max(n, E.cnt[key]); }
-          }
+          let key = E.cntNext;
+          if (E.cnt[key] >= E.score[key]) key = OTHER[key];
+          E.cnt[key]++;
+          E.cntNext = OTHER[key];
+          E.cntFlash = { team: key, n: E.cnt[key], t: 0 };
+          const n = E.cnt[key];
           Sound.beep(520 + Math.min(n, 20) * 24, 0.09, "triangle", 0.16);
         }
         tmHud(M);
@@ -610,6 +616,7 @@ const Meet = (() => {
       }
 
       tmStepBalls(M, dt);
+      tmStepBasketBalls(M, dt);
       idleAll(M, dt);
     },
 
@@ -682,6 +689,7 @@ const Meet = (() => {
         b.done = true;
         if (b.in) {
           E.score[b.team]++;
+          E.basketBalls[b.team].push({ x: Util.rand(-32, 32), y: 5, vx: Util.rand(-26, 26), vy: Util.rand(20, 70), r: 10 });
           E.wob[b.team] = 1;
           Sound.pon();
           addFloat(M, TM_POLE[b.team] + 70, TM_BASKET_Y - 34, "+1", COLD[b.team], false);
@@ -692,6 +700,37 @@ const Meet = (() => {
       }
     }
     E.balls = E.balls.filter((b) => !b.done);
+  }
+
+  /* 籠の中では重力と玉同士の衝突で不規則に積もる。正確な個数は集計まで読ませない。 */
+  function tmStepBasketBalls(M, dt) {
+    const E = M.E;
+    if (E.state === "count" || E.state === "over") return;
+    for (const key of ["red", "blue"]) {
+      const balls = E.basketBalls[key];
+      for (const b of balls) {
+        b.vy += 720 * dt;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        const half = 60 - Util.clamp(b.y / 86, 0, 1) * 18;
+        if (b.x - b.r < -half) { b.x = -half + b.r; b.vx = Math.abs(b.vx) * 0.42; }
+        if (b.x + b.r > half) { b.x = half - b.r; b.vx = -Math.abs(b.vx) * 0.42; }
+        if (b.y + b.r > 82) { b.y = 82 - b.r; b.vy = -Math.abs(b.vy) * 0.18; b.vx *= 0.86; }
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i < balls.length; i++) for (let j = i + 1; j < balls.length; j++) {
+          const a = balls[i], b = balls[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 0.01;
+          const min = a.r + b.r;
+          if (dist >= min) continue;
+          const push = (min - dist) * 0.52, nx = dx / dist, ny = dy / dist;
+          a.x -= nx * push; a.y -= ny * push;
+          b.x += nx * push; b.y += ny * push;
+          a.vx *= 0.72; a.vy *= 0.55; b.vx *= 0.72; b.vy *= 0.55;
+        }
+      }
+    }
   }
 
   function tmEnd(M) {
@@ -739,22 +778,28 @@ const Meet = (() => {
     ctx.restore();
     drawCurtain(ctx, 46);
 
-    // じめんの 玉(かざり)
-    for (const l of E.litter) drawBall(ctx, l.x, l.y, l.r, l.key);
+    // 集計中は背景の玉を消し、数えている2列だけに視線を集める。
+    if (E.state !== "count" && E.state !== "over") {
+      for (const l of E.litter) drawBall(ctx, l.x, l.y, l.r, l.key);
+    }
 
     // かご
     for (const key of ["red", "blue"]) tmDrawBasket(M, key);
 
     // キャラ(おく=Yが小さい ものから)
-    const order = M.all.slice().sort((a, b) => a.puppet.y - b.puppet.y);
-    for (const a of order) {
-      const pu = a.puppet;
-      pu.draw(ctx);
-      ActorTouch.drawName(ctx, a, { fontSize: 19, color: COLD[a.team], edge: COL[a.team] });
+    if (E.state !== "count" && E.state !== "over") {
+      const order = M.all.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+      for (const a of order) {
+        const pu = a.puppet;
+        pu.draw(ctx);
+        ActorTouch.drawName(ctx, a, { fontSize: 19, color: COLD[a.team], edge: COL[a.team] });
+      }
     }
 
     // とんでる 玉
     for (const b of E.balls) drawBall(ctx, b.x, b.y, b.r, b.team);
+
+    if (E.state === "count" || E.state === "over") tmDrawCountRows(M);
 
     drawFloats(M);
     ctx.textAlign = "left";
@@ -796,16 +841,13 @@ const Meet = (() => {
       ctx.beginPath(); ctx.moveTo(-62, y); ctx.lineTo(62, y); ctx.stroke();
     }
     ctx.restore();
-    // 入った 玉(かぞえちゅうは かぞえた ぶんだけ)
-    const shown = E.state === "count" || E.state === "over" ? E.cnt[key] : E.score[key];
-    const n = Math.min(shown, 24);
+    // 入った玉は規則正しく並べず、重力で積もった位置へ描く。
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(-62, 0); ctx.lineTo(62, 0); ctx.lineTo(42, 86); ctx.lineTo(-42, 86); ctx.closePath();
     ctx.clip();                                   // かごから はみ出さないように
-    for (let i = 0; i < n; i++) {
-      const row = Math.floor(i / 5), col = i % 5;
-      drawBall(ctx, -36 + col * 18 + (row % 2) * 8, 34 + row * 12, 11, key);   // 口の すぐ下から つみあがる
+    if (E.state !== "count" && E.state !== "over") {
+      for (const b of E.basketBalls[key]) drawBall(ctx, b.x, b.y, b.r, key);
     }
     ctx.restore();
     // 口の ふち
@@ -816,6 +858,33 @@ const Meet = (() => {
        おなじ すうじが 上の チップにも 出ていて 2かしょに なるため。
        入った しゅんかんは「+1」の うきもじ、たまった かずは かごの 中の 玉で わかる。 */
     ctx.restore();
+    ctx.textAlign = "left";
+  }
+
+  /* 集計中だけ、籠の外へ赤・青を上下2列に並べ、増えた1個へ数字を出す。 */
+  function tmDrawCountRows(M) {
+    const ctx = M.ctx, E = M.E;
+    const max = Math.max(E.score.red, E.score.blue, 1);
+    const gap = Math.min(38, 1040 / Math.max(1, max - 1));
+    const radius = Util.clamp(gap * 0.34, 8, 13);
+    const startX = 640 - gap * (max - 1) / 2;
+    for (const [key, y] of [["red", 420], ["blue", 510]]) {
+      ctx.fillStyle = COLD[key];
+      ctx.font = '800 25px "Hoiku Rounded", sans-serif';
+      ctx.textAlign = "right";
+      ctx.fillText(M.names[key], startX - 26, y + 8);
+      for (let i = 0; i < E.cnt[key]; i++) drawBall(ctx, startX + i * gap, y, radius, key);
+    }
+    if (E.cntFlash && E.cntFlash.t < 0.75) {
+      const key = E.cntFlash.team, y = key === "red" ? 420 : 510;
+      const x = startX + (E.cntFlash.n - 1) * gap;
+      ctx.globalAlpha = Math.min(1, (0.75 - E.cntFlash.t) * 3);
+      ctx.fillStyle = COLD[key];
+      ctx.font = '400 38px "Hoiku Pop", sans-serif';
+      ctx.textAlign = "center";
+      ctx.fillText(String(E.cntFlash.n), x, y - 28);
+      ctx.globalAlpha = 1;
+    }
     ctx.textAlign = "left";
   }
 
@@ -852,8 +921,8 @@ const Meet = (() => {
       M.E.ballX = M.E.ballTeam === "red" ? DB_RED_X[1] : DB_BLUE_X[0];
       M.E.ballY = (DB_YMIN + DB_YMAX) / 2;
       dbHud(M);
-      M.ui.msg("しあい かいし!", 1200, "#ff922b");
-      Sound.fanfare();
+      M.ui.msg("よーい…", 1000, "#4dabf7");
+      Sound.tick();
     },
 
     update(M, dt) {
@@ -865,7 +934,11 @@ const Meet = (() => {
       if (E.phase !== "intro") E.matchT += dt;
 
       if (E.phase === "intro") {
-        if (E.phaseT >= DB_INTRO) dbStartThrow(M);
+        if (E.phaseT >= DB_INTRO) {
+          M.ui.msg("スタート!", 900, "#ff6b9d");
+          Sound.pon();
+          dbStartThrow(M);
+        }
       } else if (E.phase === "wind") {
         if (E.phaseT >= DB_WIND) dbLaunch(M);
       } else if (E.phase === "fly") {
@@ -1211,12 +1284,12 @@ const Meet = (() => {
       }
 
       if (E.phase === "count") {
-        const steps = [[0.1, "いちに ついて…", "#4a3f35"], [1.3, "よーい…", "#4dabf7"], [2.4, "どん!", "#ff6b9d"]];
+        const steps = [[0.1, "よーい…", "#4dabf7"], [1.4, "スタート!", "#ff6b9d"]];
         while (E.countStep < steps.length && E.stateT >= steps[E.countStep][0]) {
           const [, msg, col] = steps[E.countStep];
-          M.ui.msg(msg, E.countStep === 2 ? 900 : 1100, col);
-          if (E.countStep === 1) Sound.tick();
-          if (E.countStep === 2) { Sound.pon(); E.phase = "run"; }
+          M.ui.msg(msg, E.countStep === 1 ? 900 : 1100, col);
+          if (E.countStep === 0) Sound.tick();
+          if (E.countStep === 1) { Sound.pon(); E.phase = "run"; }
           E.countStep++;
         }
       } else if (E.phase === "run") {
@@ -1423,7 +1496,7 @@ const Meet = (() => {
         } else if (ev.phase === "pick") {
           if (ev.t >= 0.4) {
             t.baton = { state: "held" };
-            t.ev = { type: "boost", t: 0, dur: 0.9, emo: "💨" };
+            t.ev = null;
           }
         }
       }
@@ -1732,11 +1805,31 @@ const Meet = (() => {
     const cv = opts.cv;
     const ctx = cv.getContext("2d");
     const list = opts.members.slice();
-    const rows = list.length > 6 ? 2 : 1;
-    // うえには カードが かさなるので、みんなは 下のほうに 大きく ならべる
-    const h = rows > 1 ? Util.clamp(240 - list.length * 8, 96, 168)
-                       : Util.clamp(300 - list.length * 20, 140, 240);
-    placeRow(list, rows > 1 ? 360 : 520, h, Math.ceil(list.length / rows));
+    const red = list.filter((a) => a.team === "red");
+    const blue = list.filter((a) => a.team === "blue");
+    const maxTeam = Math.max(red.length, blue.length, 1);
+    const rows = maxTeam > 4 ? 2 : 1;
+    const h = rows > 1 ? Util.clamp(220 - maxTeam * 9, 88, 148)
+                       : Util.clamp(280 - maxTeam * 22, 120, 210);
+    /* チームが一目で分かるよう、赤は左半分、青は右半分へ分ける。 */
+    const placeHalf = (team, left, right) => {
+      const cols = Math.min(4, team.length);
+      team.forEach((a, i) => {
+        const row = Math.floor(i / cols);
+        const inRow = Math.min(cols, team.length - row * cols);
+        const idx = i - row * cols;
+        const gap = inRow > 1 ? Math.min(150, (right - left - 100) / (inRow - 1)) : 0;
+        a.puppet.h = h;
+        a.puppet.x = (left + right) / 2 - gap * (inRow - 1) / 2 + idx * gap;
+        a.puppet.y = (rows > 1 ? 390 : 520) + row * (h * 0.92 + 10);
+        a.puppet.facing = a.team === "red" ? 1 : -1;
+        a.puppet.jumpT = 0;
+        a.fall = 0;
+        a.hopCd = Util.rand(0, 0.5);
+      });
+    };
+    placeHalf(red, 40, 620);
+    placeHalf(blue, 660, 1240);
 
     for (const a of list) a.nameT = 0;
     const token = { cv };

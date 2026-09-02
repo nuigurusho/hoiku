@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=53">
+<link rel="stylesheet" href="css/style.css?v=54">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -63,18 +63,17 @@
       <span class="uk-step">1</span>
       <h2 style="margin-top:0">さんかする キャラを えらんでね</h2>
       <p class="sel-count" id="selNote"></p>
+      <div class="row compact"><button class="btn yellow select-all-btn" id="selectAllBtn">ぜんキャラ えらぶ</button></div>
       <div class="gallery" id="gallery"></div>
     </div>
 
     <div class="panel uk-panel">
       <span class="uk-step">2</span>
       <h2 style="margin-top:0">チームわけ</h2>
-      <label class="uk-team-choice">チームを じぶんで きめる？
-        <select id="teamMode">
-          <option value="auto">おまかせ</option>
-          <option value="manual">じぶんで きめる</option>
-        </select>
-      </label>
+      <div class="uk-team-choice">
+        <span>じぶんで チームを きめる</span>
+        <button class="mt-toggle" id="teamMode" type="button" role="switch" aria-checked="false" aria-label="じぶんで チームを きめる"><span class="knob"></span></button>
+      </div>
       <p class="note" id="autoTeamNote">はじまる まえに チームを はっぴょうします。</p>
       <div id="manualTeamUi" class="hidden">
         <p class="note">チーム名は タッチして かえられます。キャラを タッチすると もう いっぽうの チームへ うつります。</p>
@@ -121,9 +120,9 @@
   </div>
 </main>
 
-<script src="js/core.js?v=42"></script>
+<script src="js/core.js?v=43"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/meet.js?v=17"></script>
+<script src="js/meet.js?v=18"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -259,15 +258,28 @@ function renderTeams() {
 }
 
 function renderTeamMode() {
-  $("teamMode").value = teamMode;
+  const toggle = $("teamMode");
+  const manual = teamMode === "manual";
+  toggle.classList.toggle("on", manual);
+  toggle.setAttribute("aria-checked", String(manual));
   $("manualTeamUi").classList.toggle("hidden", teamMode !== "manual");
   $("autoTeamNote").classList.toggle("hidden", teamMode !== "auto");
 }
 
-$("teamMode").onchange = () => {
-  teamMode = $("teamMode").value === "manual" ? "manual" : "auto";
+$("teamMode").onclick = () => {
+  teamMode = teamMode === "manual" ? "auto" : "manual";
   if (teamMode === "auto") balance();
   Sound.tap();
+  renderAll();
+};
+
+$("selectAllBtn").onclick = () => {
+  Sound.tap();
+  for (const r of allChars) {
+    if (!sel.has(r.id)) side.set(r.id, count("red") <= count("blue") ? "red" : "blue");
+    sel.add(r.id);
+  }
+  fixTeams();
   renderAll();
 };
 
@@ -415,7 +427,6 @@ async function runProgramme() {
   const list = chosen();
   pts = { red: 0, blue: 0 };
   log = [];
-  show("playScreen");
   $("banner").classList.add("hidden");
   $("timer").classList.add("hidden");
   $("skipRow").classList.add("hidden");
@@ -430,37 +441,20 @@ async function runProgramme() {
     save();
   }
 
-  card({ no: "うんどうかい", ttl: "よういちゅう…", sub: "キャラの じゅんびを しています" });
   actors = await Meet.actors({ red: members("red"), blue: members("blue") });
   if (myRun !== runId) return;
+  show("playScreen");
 
   if (teamMode === "auto") {
     autoTeamReveal();
-    await pause(4200, "はじめる");
+    await pause(0, "はじめる");
     if (myRun !== runId) return;
   }
-
-  const intro = card({
-    no: `ぜん${list.length}きょうぎ`,
-    ttl: "うんどうかい かいし!",
-  });
-  intro.appendChild(teamVersus());
-  Ui.confetti(1800, 90);
-  Sound.fanfare();
-  await pause(2600, "はじめる");
-  if (myRun !== runId) return;
 
   for (let i = 0; i < list.length; i++) {
     const ev = list[i];
 
-    // --- きょうぎの しょうかい(この ときは カードだけ) ---
-    card({ no: `だい${i + 1}きょうぎ`, icon: ev.icon, ttl: ev.name, sub: ev.desc });
-    Meet.drumroll();
-    Sound.pon();
-    await pause(2600, "はじめる");
-    if (myRun !== runId) return;
-
-    // --- きょうぎ 本体(上の おびを 出す) ---
+    // 競技紹介カードは挟まず、ステージへ切り替えてカウントダウンから始める。
     hideCard();
     hudLast = null;
     $("skipRow").classList.remove("hidden");
@@ -495,9 +489,9 @@ async function runProgramme() {
       reveal: true,
       ttlParts: res.win ? [teamText(res.win), "の かち！"] : ["ひきわけ！"],
     });
-    addEventResultFlow(resultCard, ev, nextEvent);
+    addEventResultFlow(resultCard, ev, () => openEventDetails(entry));
     if (res.win) { Sound.good(); Ui.confetti(1400, 70); }
-    await pause(0, lastOne ? "けっかへ" : "つぎへ", [detailButton(() => openEventDetails(entry))]);
+    await pause(0, lastOne ? "けっかへ" : "つぎへ", [], nextEventLine(nextEvent));
     if (myRun !== runId) return;
   }
 
@@ -533,15 +527,15 @@ async function finale(myRun) {
     clear: true,
     reveal: true,
     no: "けっかはっぴょう",
-    ttlParts: win ? ["ゆうしょう！ ", teamText(win)] : ["どうてん！ りょうチーム ゆうしょう！"],
+    ttlParts: win ? [teamText(win), " ゆうしょう！"] : ["どうてん！ りょうチーム ゆうしょう！"],
     scoreFirst: true,
     score: pts,                       // そうごう点は ここで 1回だけ 大きく
+    detailFn: () => openFinalDetails(),
   });
 
   const row = $("finaleRow");
   row.innerHTML = "";
   row.append(
-    button("btn blue", "しょうさい", () => { Sound.tap(); openFinalDetails(); }),
     button("btn big green", "もういちど", () => { Sound.pon(); runProgramme(); }),
     button("btn big yellow", "やりなおす", () => { Sound.tap(); backToSetup(); }),
   );
@@ -649,22 +643,27 @@ function button(cls, label, fn) {
 }
 
 function detailButton(fn) {
-  return button("btn blue", "しょうさい", (e) => {
+  const b = button("info-button", "i", (e) => {
     e.stopPropagation();
     Sound.tap();
     fn();
   });
+  b.setAttribute("aria-label", "しょうさい");
+  b.title = "しょうさい";
+  return b;
 }
 
-function addEventResultFlow(host, current, next) {
+function addEventResultFlow(host, current, onDetail) {
   const heading = document.createElement("div");
   heading.className = "uk-result-heading";
   const icon = document.createElement("img");
   icon.src = current.icon;
   icon.alt = "";
-  heading.append(icon, document.createTextNode(`${current.name}の けっか`));
+  heading.append(icon, document.createTextNode(`${current.name}の けっか`), detailButton(onDetail));
   host.insertBefore(heading, host.firstChild);
+}
 
+function nextEventLine(next) {
   const nextLine = document.createElement("div");
   nextLine.className = "uk-next-event";
   const label = document.createElement("span");
@@ -678,7 +677,7 @@ function addEventResultFlow(host, current, next) {
   } else {
     nextLine.appendChild(document.createTextNode("けっかはっぴょう"));
   }
-  host.appendChild(nextLine);
+  return nextLine;
 }
 
 function openDetails(title, fill) {
@@ -725,22 +724,30 @@ function openEventDetails(entry) {
 }
 
 function openFinalDetails() {
-  openDetails("きょうぎの しょうさい", (panel) => {
+  openDetails("けっかの しょうさい", (panel) => {
     const list = document.createElement("div");
-    list.className = "mt-list uk-detail-list";
+    list.className = "uk-final-detail-list";
     for (const entry of log) {
       const li = document.createElement("div");
-      li.className = "li";
-      const ev = document.createElement("span");
-      ev.className = "ev";
-      ev.textContent = entry.ev.name;
-      const sc = document.createElement("span");
-      sc.className = "sc";
-      sc.textContent = entry.res.label;
-      const wn = document.createElement("span");
-      wn.className = "wn" + (entry.res.win ? " " + entry.res.win : "");
-      wn.textContent = entry.res.win ? names[entry.res.win] : "ひきわけ";
-      li.append(ev, sc, wn);
+      li.className = "uk-final-detail-event";
+      const head = document.createElement("div");
+      head.className = "head";
+      head.innerHTML = `<img src="${entry.ev.icon}" alt=""><b></b>`;
+      head.querySelector("b").textContent = entry.ev.name;
+      const teams = document.createElement("div");
+      teams.className = "uk-final-detail-teams";
+      for (const key of ["red", "blue"]) {
+        const value = entry.hud && entry.hud.n && entry.hud.n[key] != null
+          ? entry.hud.n[key] : ((entry.res.score && entry.res.score[key]) || 0);
+        const unit = entry.hud && entry.hud.unit ? (entry.hud.unit[key] || "") : "";
+        const added = entry.res.win ? (entry.res.win === key ? WIN_PT : 0) : DRAW_PT;
+        const team = document.createElement("div");
+        team.className = `team ${key}`;
+        team.innerHTML = `<span class="nm"></span><strong>${value}<small>${unit}</small></strong><span class="point">+${added}てん</span>`;
+        team.querySelector(".nm").textContent = names[key];
+        teams.appendChild(team);
+      }
+      li.append(head, teams);
       list.appendChild(li);
     }
     panel.appendChild(list);
@@ -787,6 +794,7 @@ function card(o) {
       + `<span class="side blue"><span class="pt">${o.score.blue}</span><span class="nm"></span></span>`;
     sc.querySelector(".red .nm").textContent = names.red;
     sc.querySelector(".blue .nm").textContent = names.blue;
+    if (o.detailFn) sc.appendChild(detailButton(o.detailFn));
     c.appendChild(sc);
   }
   if (o.scoreFirst) c.appendChild(t);
@@ -807,7 +815,7 @@ function hideCard() { $("over").className = "mt-over hidden"; $("over").innerHTM
 
 /* まつ。操作ボタンはステージの外、画面下中央へ置く。
    ms=0 は結果を読み終えてボタンを押すまで自動で進めない。 */
-function pause(ms, label, extras = []) {
+function pause(ms, label, extras = [], lead = null) {
   return new Promise((resolve) => {
     const row = $("insertActionRow");
     let done = false;
@@ -820,9 +828,16 @@ function pause(ms, label, extras = []) {
       resolve();
     };
     row.innerHTML = "";
-    for (const b of extras) row.appendChild(b);
+    const stack = document.createElement("div");
+    stack.className = "uk-action-stack";
+    if (lead) stack.appendChild(lead);
+    const buttons = document.createElement("div");
+    buttons.className = "row compact";
+    for (const b of extras) buttons.appendChild(b);
     if (label) {
-      row.appendChild(button("btn green", label, () => { Sound.tap(); go(); }));
+      buttons.appendChild(button("btn green", label, () => { Sound.tap(); go(); }));
+      stack.appendChild(buttons);
+      row.appendChild(stack);
       row.classList.remove("hidden");
     }
     const tid = ms > 0 ? setTimeout(go, ms) : 0;

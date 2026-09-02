@@ -1864,7 +1864,7 @@ body.ingame .back-float { display: flex; }
 .mt-teamname:focus { outline: 3px solid var(--yellow); border-style: solid; }
 .uk-team-choice {
   display: grid;
-  grid-template-columns: auto minmax(180px, 280px);
+  grid-template-columns: auto 68px;
   align-items: center;
   justify-content: center;
   gap: 12px;
@@ -1872,7 +1872,7 @@ body.ingame .back-float { display: flex; }
   font-size: clamp(17px, 3vw, 21px);
   font-weight: 800;
 }
-.uk-team-choice select { width: 100%; }
+.select-all-btn { font-size: clamp(15px, 2.5vw, 18px); padding: 8px 18px 10px; }
 .uk-team-reveal { margin-top: 12px; }
 .uk-team-reveal .mt-teamcol { padding-top: 8px; }
 .uk-team-text { font-weight: 800; }
@@ -1890,6 +1890,7 @@ body.ingame .back-float { display: flex; }
   gap: 10px;
   min-height: 58px;
 }
+.uk-action-stack { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
 .uk-result-heading,
 .uk-next-event {
   display: flex;
@@ -1903,7 +1904,7 @@ body.ingame .back-float { display: flex; }
 .uk-result-heading { font-size: clamp(20px, 3.5vw, 31px); }
 .uk-result-heading img { width: clamp(32px, 5vw, 46px); height: clamp(32px, 5vw, 46px); object-fit: contain; }
 .uk-next-event {
-  margin-top: 12px;
+  margin: 0 0 2px;
   font-size: clamp(16px, 2.5vw, 22px);
 }
 .uk-next-event img { width: 30px; height: 30px; object-fit: contain; }
@@ -1932,6 +1933,31 @@ body.ingame .back-float { display: flex; }
   font-size: clamp(17px, 3vw, 23px);
 }
 .uk-detail-list { max-height: min(52vh, 440px); overflow-y: auto; }
+.info-button {
+  width: 38px; height: 38px; flex: 0 0 38px;
+  display: inline-grid; place-items: center;
+  margin-left: 4px; padding: 0;
+  border: 3px solid #fff; border-radius: 999px;
+  background: var(--blue); color: #fff;
+  box-shadow: 0 3px 0 var(--blue-d);
+  font: 800 22px/1 Georgia, serif;
+  pointer-events: auto;
+}
+.info-button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--blue-d); }
+.uk-total { position: relative; }
+.uk-total > .info-button { align-self: center; margin-left: 2px; }
+.uk-final-detail-list { max-height: min(62vh, 520px); overflow-y: auto; display: grid; gap: 12px; }
+.uk-final-detail-event { padding: 10px; border-radius: 20px; background: #fffaf0; }
+.uk-final-detail-event .head { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; font-size: clamp(18px, 3vw, 23px); }
+.uk-final-detail-event .head img { width: 38px; height: 38px; object-fit: contain; }
+.uk-final-detail-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.uk-final-detail-teams .team { min-width: 0; padding: 8px 8px 10px; border-radius: 16px; border: 3px solid; font-weight: 800; }
+.uk-final-detail-teams .team.red { color: var(--pink-d); border-color: var(--pink); background: #fff0f6; }
+.uk-final-detail-teams .team.blue { color: var(--blue-d); border-color: var(--blue); background: #e7f5ff; }
+.uk-final-detail-teams .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.uk-final-detail-teams strong { display: block; font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
+.uk-final-detail-teams strong small { font-size: .48em; }
+.uk-final-detail-teams .point { display: inline-block; margin-top: 4px; padding: 2px 11px 4px; border-radius: 999px; background: #fff; color: var(--ink); font-size: clamp(16px, 2.6vw, 21px); }
 
 /* ---------- オン・オフの トグル(きょうぎえらび) ---------- */
 .mt-rows { max-width: 620px; margin: 10px auto; display: flex; flex-direction: column; gap: 10px; }
@@ -2021,7 +2047,7 @@ body.ingame .back-float { display: flex; }
   .mt-hud { margin-top: 50px; }
   .mt-teams { gap: 6px; }
   .mt-teamcol { padding: 8px 6px 10px; }
-  .uk-team-choice { grid-template-columns: 1fr; gap: 5px; }
+  .uk-team-choice { grid-template-columns: auto 68px; gap: 8px; }
 }
 
 /* ============================================================

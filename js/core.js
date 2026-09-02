@@ -1418,6 +1418,21 @@ const Picker = {
       } else if (opts.multi) {
         const max = opts.max || Infinity;
         const sel = new Set((opts.preselect || []).slice(0, max));
+        if (max >= recs.length && opts.selectAll !== false) {
+          const allRow = document.createElement("div");
+          allRow.className = "row compact";
+          const all = document.createElement("button");
+          all.className = "btn yellow select-all-btn";
+          all.type = "button";
+          all.textContent = opts.selectAllLabel || "ぜんキャラ えらぶ";
+          allRow.appendChild(all);
+          panel.insertBefore(allRow, gal);
+          all.onclick = () => {
+            Sound.tap();
+            recs.forEach((r) => sel.add(r.id));
+            paintSelection();
+          };
+        }
         const ok = document.createElement("button");
         ok.className = "btn big green";
         ok.type = "button";
