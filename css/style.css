@@ -136,6 +136,13 @@ body {
 .hub-back:active { transform: translateY(5px); box-shadow: none; }
 
 main { padding: 14px; }
+/* 左下の固定「もどる」が、長い一覧の最後のカードを覆わないための共通余白。
+   全画面ゲーム中は後段の body.fitstage main { padding:0 } を優先する。 */
+body:has(.hub-back) > main,
+body:has(header.bar .back) > main,
+body[data-back-href] > main {
+  padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px));
+}
 
 /* ---------- ボタン(立体ボタン:同系色の濃い影+太めの縁取り) ---------- */
 .btn {
@@ -581,6 +588,16 @@ canvas.stage {
   .section-link { min-width: 0; flex: 1 1 0; padding-inline: 12px; font-size: 16px; }
   .play-list-title { font-size: 22px; }
   .play-list-title img { width: 38px; height: 38px; }
+}
+@media (max-width: 520px) {
+  .play-gates { grid-template-columns: 1fr; gap: 12px; width: 100%; }
+  .play-gate {
+    width: 100%;
+    min-height: 82px;
+    padding: 12px 54px 12px 24px;
+    font-size: clamp(24px, 7vw, 30px);
+    white-space: nowrap;
+  }
 }
 .subtitle { text-align: center; margin: 0 0 20px; color: #8a7a68; font-weight: bold; }
 

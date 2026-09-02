@@ -1,5 +1,5 @@
 /* 自動生成: tools/build-pwa.mjs を実行して更新する。 */
-self.HOIKU_PWA_BUILD = "source-preview-15";
+self.HOIKU_PWA_BUILD = "source-preview-16";
 self.HOIKU_PWA_ASSETS = [
   "./",
   "./admin.html",
