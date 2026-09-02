@@ -2689,8 +2689,9 @@ const GameChrome = {
 
   init() {
     const bar = document.querySelector("header.bar");
-    if (!bar) return;
-    const back = bar.querySelector(".back");
+    const pageBackHref = document.body.dataset.backHref || "";
+    if (!bar && !pageBackHref) return;
+    const back = bar ? bar.querySelector(".back") : null;
     const from = new URLSearchParams(location.search).get("from");
     const backPages = {
       view: "view.html",
@@ -2699,7 +2700,7 @@ const GameChrome = {
       "play-multi": "play-list.html?type=multi",
       "play-games": "play-list.html?type=games",
     };
-    let backHref = (back && back.getAttribute("href")) || "../index.html";
+    let backHref = pageBackHref || (back && back.getAttribute("href")) || "../index.html";
     if (backPages[from]) {
       backHref = (location.pathname.includes("/games/") ? "../" : "") + backPages[from];
       if (back) back.href = backHref;

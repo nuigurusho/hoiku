@@ -10,9 +10,9 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=58">
+<link rel="stylesheet" href="css/style.css?v=59">
 </head>
-<body>
+<body data-back-href="play.html">
 <main class="hub-page">
   <div class="settings-bar">
     <a class="settings-fab" href="settings.html" title="せってい(おとなのひとよう)" aria-label="せってい おとなのひとよう">
@@ -21,12 +21,11 @@
   </div>
   <h1 style="margin:0"><a class="logo-home" href="index.html" aria-label="表紙へ戻る"><img class="logo hub-logo" src="assets/logo.png" width="900" height="600" alt="みんなの ゲームパック"></a></h1>
   <div class="play-list-head">
-    <a class="section-link play-list-back" href="play.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>あそぶ</a>
     <h2 class="play-list-title" id="listTitle"></h2>
   </div>
   <div class="tiles play-list-tiles" id="gameList"></div>
 </main>
-<script src="js/core.js?v=44"></script>
+<script src="js/core.js?v=45"></script>
 <script>
 "use strict";
 const TYPE = ["solo", "duo", "multi", "games"].includes(new URLSearchParams(location.search).get("type"))

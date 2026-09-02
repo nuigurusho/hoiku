@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=58">
+<link rel="stylesheet" href="../css/style.css?v=59">
 </head>
 <body>
 <header class="bar">
@@ -47,7 +47,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=44"></script>
+<script src="../js/core.js?v=45"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -340,9 +340,141 @@ function drawRaceGoals(g) {
   ctx.restore();
 }
 
+/* レース後は、ランキングと同じ金・銀・銅の表彰台で上位3人がお祝いする。
+   4位は表彰台へ乗せず、地面でみんなへ拍手する。 */
+function preparePodium(g) {
+  const ordered = g.racers.slice().sort((a, b) => {
+    if (a.rank && b.rank) return a.rank - b.rank;
+    if (a.rank) return -1;
+    if (b.rank) return 1;
+    return b.prog - a.prog;
+  });
+  ordered.forEach((r, i) => { if (!r.rank) r.rank = i + 1; });
+  g.podium = ordered.slice(0, 4);
+  g.resultT = 0;
+  g.podium.forEach((r, i) => {
+    r.celebrateCd = 0.12 + i * 0.18;
+    r.puppet.walking = false;
+    r.puppet.kick = false;
+    r.puppet.roll = 0;
+    r.puppet.jumpT = 0;
+    r.puppet.h = i === 0 ? 150 : 138;
+  });
+  g.state = "end";
+}
+
+function updatePodium(g, dt) {
+  g.resultT += dt;
+  (g.podium || []).forEach((r, i) => {
+    const pu = r.puppet;
+    if (i < 3) {
+      r.celebrateCd -= dt;
+      if (r.celebrateCd <= 0 && pu.jumpT <= 0) {
+        pu.jumpT = 0.45;
+        r.celebrateCd = 0.75 + i * 0.12;
+      }
+      pu.roll = Math.sin(g.resultT * 5 + i) * 0.025;
+    } else {
+      // 4位は足を止め、左右へ小さく揺れながら拍手する。
+      pu.roll = Math.sin(g.resultT * 8) * 0.055;
+    }
+    pu.update(dt);
+  });
+}
+
+function drawPodium(g) {
+  const bg = ctx.createLinearGradient(0, 0, 0, 720);
+  bg.addColorStop(0, "#dff4ff");
+  bg.addColorStop(0.58, "#fff8d7");
+  bg.addColorStop(1, "#f4dfaa");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1280, 720);
+
+  // 紙吹雪は画面を覆わず、表彰台の周囲だけに軽く舞わせる。
+  const colors = ["#ff6b9d", "#4dabf7", "#ffd43b", "#69db7c", "#b197fc", "#ffa94d"];
+  for (let i = 0; i < 34; i++) {
+    const x = (i * 173 + g.resultT * (18 + i % 4) * 9) % 1360 - 40;
+    const y = 70 + (i * 83) % 360 + Math.sin(g.resultT * 1.8 + i) * 12;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(g.resultT * (0.8 + i % 3) + i);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fillRect(-5, -10, 10, 20);
+    ctx.restore();
+  }
+
+  ctx.textAlign = "center";
+  ctx.font = '400 48px "Hoiku Pop", sans-serif';
+  ctx.fillStyle = "#765400";
+  ctx.fillText("けっか はっぴょう", 640, 82);
+  if (g.resultTitle) {
+    ctx.font = '800 31px "Hoiku Rounded", sans-serif';
+    ctx.fillStyle = "#4a3f35";
+    ctx.fillText(g.resultTitle, 640, 124);
+  }
+  if (g.resultMetric) {
+    ctx.font = '800 25px "Hoiku Rounded", sans-serif';
+    ctx.fillStyle = "#8a6a36";
+    ctx.fillText(g.resultMetric, 640, 157);
+  }
+
+  const baseY = 654;
+  ctx.fillStyle = "#c8df8d";
+  ctx.fillRect(0, baseY, 1280, 66);
+  const places = [
+    { rank: 2, x: 390, w: 210, h: 150, metal: "#bfc8d2", edge: "#8994a0" },
+    { rank: 1, x: 620, w: 220, h: 220, metal: "#ffd43b", edge: "#d69e00" },
+    { rank: 3, x: 850, w: 210, h: 110, metal: "#d7955d", edge: "#a86132" },
+  ];
+  for (const p of places) {
+    ctx.fillStyle = p.edge;
+    ctx.beginPath(); ctx.roundRect(p.x - p.w / 2 - 5, baseY - p.h - 5, p.w + 10, p.h + 12, 24); ctx.fill();
+    ctx.fillStyle = p.metal;
+    ctx.beginPath(); ctx.roundRect(p.x - p.w / 2, baseY - p.h, p.w, p.h + 10, 20); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.42)";
+    ctx.fillRect(p.x - p.w / 2 + 12, baseY - p.h + 10, p.w - 24, 8);
+    ctx.font = '1000 82px "Hoiku Rounded", sans-serif';
+    ctx.fillStyle = "#fff";
+    ctx.strokeStyle = "rgba(80,50,10,.2)";
+    ctx.lineWidth = 8;
+    ctx.strokeText(String(p.rank), p.x, baseY - p.h / 2 + 29);
+    ctx.fillText(String(p.rank), p.x, baseY - p.h / 2 + 29);
+  }
+
+  const byRank = new Map((g.podium || []).map((r) => [r.rank, r]));
+  for (const p of places) {
+    const r = byRank.get(p.rank);
+    if (!r) continue;
+    r.puppet.x = p.x;
+    r.puppet.y = baseY - p.h;
+    r.puppet.facing = p.rank === 2 ? 1 : p.rank === 3 ? -1 : 1;
+    r.puppet.draw(ctx);
+  }
+
+  const fourth = byRank.get(4);
+  if (fourth) {
+    fourth.puppet.x = 1110;
+    fourth.puppet.y = baseY;
+    fourth.puppet.facing = -1;
+    fourth.puppet.draw(ctx);
+    const pulse = 1 + Math.sin(g.resultT * 8) * 0.12;
+    ctx.save();
+    ctx.translate(1110, baseY - fourth.puppet.h - 34);
+    ctx.scale(pulse, pulse);
+    ctx.font = "42px serif";
+    ctx.fillText("👏", 0, 0);
+    ctx.restore();
+    ctx.font = '800 25px "Hoiku Rounded", sans-serif';
+    ctx.fillStyle = "#6f5b42";
+    ctx.fillText("4い", 1110, baseY + 38);
+  }
+  ctx.textAlign = "left";
+}
+
 function update(dt) {
   const g = G;
   stepRaceGoals(g, dt);
+  if (g.state === "end") { updatePodium(g, dt); return; }
   if (g.state === "run") g.t += dt;
   g.leadProg = 0;
   for (const r of g.racers) if (r.prog > g.leadProg) g.leadProg = r.prog;
@@ -365,12 +497,13 @@ function update(dt) {
         if (g.kind === "cpu" && !g.ended) return finishCpu(g, r);
         if (r.rank === 1) {
           Sound.fanfare(); Ui.confetti();
-          Ui.result("endRow", `${r.name || "1ばん"}の かち！`, "1い");
+          g.resultTitle = `${r.name || "1ばん"}の かち！`;
+          g.resultMetric = "1い";
           // 2体以上出るので、かった キャラの よろこびの こえ だけ 鳴らす(fail は鳴らさない)
           Sound.playVoice(r.voices, ["joy"]);
         } else Sound.good();
         if (g.finished === g.racers.length) {
-          g.state = "end";
+          preparePodium(g);
           $("endRow").classList.remove("hidden");
         }
       }
@@ -382,7 +515,7 @@ function update(dt) {
 /* CPUたいせん:さきに ゴールした ほうで しょうはい */
 function finishCpu(g, r) {
   g.ended = true;
-  g.state = "end";
+  preparePodium(g);
   $("endRow").classList.remove("hidden");
   // さきに ゴールした(=かった)キャラの よろこびの こえ だけ 鳴らす
   Sound.playVoice(r.voices, ["joy"]);
@@ -391,16 +524,19 @@ function finishCpu(g, r) {
     Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
     Tiers.addRank(GAME, g.mode.lv, r.name || "?", secs, { lowerIsBetter: true });
     Sound.fanfare(); Ui.confetti();
-    Ui.result("endRow", "かち！", `${secs}びょう`);
+    g.resultTitle = "かち！";
+    g.resultMetric = `${secs}びょう`;
   } else {
     Sound.bad();
-    Ui.result("endRow", "CPUの かち", "もういちど ちょうせん");
+    g.resultTitle = "CPUの かち";
+    g.resultMetric = "もういちど ちょうせん";
   }
 }
 
 function draw() {
   const g = G;
   ctx.clearRect(0, 0, 1280, 720);
+  if (g.state === "end") { drawPodium(g); return; }
   if (sceneBg) ctx.drawImage(sceneBg, 0, 0, 1280, 720);
   else {
     const sky = ctx.createLinearGradient(0, 0, 0, 720);
