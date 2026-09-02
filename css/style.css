@@ -85,6 +85,26 @@ body {
 .bar .back svg { width: 26px; height: 26px; display: block; }
 .bar .spacer { display: none; }
 
+.hub-back {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 54px;
+  color: var(--ink);
+  background: rgba(255,255,255,.9);
+  border: 3px solid var(--cream-d);
+  border-radius: 999px;
+  box-shadow: 0 5px 0 var(--cream-d);
+  transition: transform .08s, box-shadow .08s;
+}
+.hub-back svg { width: 26px; height: 26px; display: block; }
+.hub-back:active { transform: translateY(5px); box-shadow: none; }
+
 main { padding: 14px; }
 
 /* ---------- ボタン(立体ボタン:同系色の濃い影+太めの縁取り) ---------- */
