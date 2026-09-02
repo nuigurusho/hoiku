@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=54">
+<link rel="stylesheet" href="../css/style.css?v=55">
 <style>
   /* ===== リレー専用スタイル(1ファイル完結) ===== */
 
@@ -428,7 +428,7 @@ async function startRace() {
     phase: "count", t: 0, raceT: 0, countStep: 0,
     evCd: 0, finished: 0, winTeam: null, winWait: 0, annT: 0,
     leader: null, pendLeader: null, pendT: 0, lastLeadHtml: "",
-    floats: [], crowd: [], stop: false,
+    floats: [], goalNotes: [], crowd: [], stop: false,
     celebrants: [], winners: [],
   };
 
@@ -527,6 +527,40 @@ function hideBanner() { $("banner").classList.add("hidden"); }
 
 function addFloat(x, y, txt, col, big) {
   M.floats.push({ x, y, txt, col: col || "#5c3d2e", t: 0, dur: big ? 1.15 : 0.95, big: !!big });
+}
+
+function addGoalNote(t) {
+  const team = t.key === "red" ? "あかチーム" : "あおチーム";
+  M.goalNotes.push({ text: `${team} ゴール！`, team: t.key, t: 0, y: 650 });
+}
+
+function stepGoalNotes(dt) {
+  for (const note of M.goalNotes) note.t += dt;
+  M.goalNotes = M.goalNotes.filter((note) => note.t < 3.4);
+  M.goalNotes.forEach((note, i) => {
+    const target = 650 - (M.goalNotes.length - 1 - i) * 54;
+    note.y += (target - note.y) * Math.min(1, dt * 11);
+  });
+}
+
+function drawGoalNotes() {
+  ctx.save();
+  ctx.font = '800 27px "Hoiku Rounded", sans-serif';
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (const note of M.goalNotes) {
+    const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
+    const w = Math.min(430, ctx.measureText(note.text).width + 42);
+    const x = CW - 24;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(255,253,245,.94)";
+    ctx.strokeStyle = teamColor(note.team);
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(x - w, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = note.team === "red" ? "#d6336c" : "#1c7ed6";
+    ctx.fillText(note.text, x - 18, note.y + 1);
+  }
+  ctx.restore();
 }
 
 /* ---- ハプニング ---- */
@@ -701,13 +735,11 @@ function handoff(t) {
     if (t.rank === 1) {
       M.winTeam = t;
       M.winWait = 0;
-      addFloat(linePos.x, linePos.y - 130, "ゴール！", teamColor(t.key), true);
-      showBanner([txt("🏁 "), txt(teamLabel(t.key)), txt(" ゴール！")], t.key);
+      addGoalNote(t);
       Sound.good(); Sound.pon();
       cheerTeam(t);
     } else {
-      addFloat(linePos.x, linePos.y - 110, "ゴール！", teamColor(t.key), false);
-      showBanner([txt(teamLabel(t.key)), txt("も ゴール！")], t.key);
+      addGoalNote(t);
       Sound.good();
     }
     updateHud();
@@ -764,7 +796,7 @@ function leadWatch(dt) {
   M.leader = cur;
   M.pendLeader = null;
   if (!firstTime && M.raceT > 2.5) {
-    showBanner([txt("🔥 "), txt(teamLabel(cur)), txt(" ぎゃくてん！")], cur);
+    showBanner([txt(teamLabel(cur)), txt(" ぎゃくてん🔥")], cur);
     Sound.good();
     cheerTeam(M.T[cur]);
   }
@@ -776,6 +808,7 @@ function update(dt) {
   for (const c of M.chars) ActorTouch.tick(c, dt);
   for (const f of M.floats) f.t += dt;
   M.floats = M.floats.filter((f) => f.t < f.dur);
+  stepGoalNotes(dt);
 
   // 結果発表(勝ちチームが よろこぶ)
   if (M.phase === "over") {
@@ -957,6 +990,7 @@ function draw() {
     ctx.fillText(f.txt, f.x, y);
     ctx.restore();
   }
+  drawGoalNotes();
 
   // 結果発表まえの ドキドキ暗てん
   if (M.phase === "announce") {

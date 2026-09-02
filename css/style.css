@@ -1628,15 +1628,6 @@ body.ingame header.bar { display: none; }
   transition: transform .12s, box-shadow .08s, background .12s;
 }
 .back-float svg { width: 26px; height: 26px; display: block; }
-.back-float.uk-exit-link {
-  width: auto;
-  min-width: 112px;
-  padding: 0 18px 0 12px;
-  gap: 5px;
-  font-size: 18px;
-  font-weight: 800;
-}
-.back-float.uk-exit-link span { white-space: nowrap; }
 /* 見た目は そのままで、さわれる はんいだけ ひろげる(iPad で おしやすく) */
 .back-float::after {
   content: "";
@@ -1779,11 +1770,14 @@ body.ingame .back-float { display: flex; }
   box-shadow: none;
 }
 .mt-card.result-reveal .no {
-  display: inline-block;
-  padding: 5px 18px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 18px 8px;
   border-radius: 999px;
-  background: rgba(255,255,255,.9);
+  background: #fff;
   box-shadow: 0 3px 0 rgba(138,122,104,.16);
+  font-size: clamp(20px, 3.5vw, 31px);
 }
 .mt-card.result-reveal .ttl {
   margin-top: 7px;
@@ -1901,7 +1895,16 @@ body.ingame .back-float { display: flex; }
   font-weight: 800;
   text-shadow: 0 2px 0 #fff, 0 0 9px #fff;
 }
-.uk-result-heading { font-size: clamp(20px, 3.5vw, 31px); }
+.uk-result-heading {
+  width: max-content;
+  max-width: 92vw;
+  margin: 0 auto;
+  padding: 6px 18px 8px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 0 rgba(138,122,104,.16);
+  font-size: clamp(20px, 3.5vw, 31px);
+}
 .uk-result-heading img { width: clamp(32px, 5vw, 46px); height: clamp(32px, 5vw, 46px); object-fit: contain; }
 .uk-next-event {
   margin: 0 0 2px;

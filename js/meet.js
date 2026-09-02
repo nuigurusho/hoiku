@@ -339,7 +339,7 @@ const Meet = (() => {
       M.E = {
         heats, heatIndex: 0, lanes: [], laneH: 0,
         state: "ready", stateT: 0, finished: 0, lead: 0, sinceFirst: 0,
-        pts: { red: 0, blue: 0 }, firsts: { red: 0, blue: 0 }, floats: [],
+        pts: { red: 0, blue: 0 }, firsts: { red: 0, blue: 0 }, floats: [], goalNotes: [],
       };
       kkStartHeat(M, 0);
     },
@@ -347,6 +347,7 @@ const Meet = (() => {
     update(M, dt) {
       const E = M.E;
       stepFloats(M, dt);
+      stepGoalNotes(M, dt);
       if (M.result) { idleAll(M, dt); return; }
       E.stateT += dt;
 
@@ -404,8 +405,7 @@ const Meet = (() => {
       const pt = E.lanes.length - a.rank + 1;
       E.pts[a.team] += pt;
       if (a.rank === 1) E.firsts[a.team]++;
-      const medal = ["", "🥇", "🥈", "🥉"][a.rank] || "";
-      M.say([medal ? medal + " " : "", a, ` ${a.rank}い ゴール！`], a.team);
+      addGoalNote(M, `${a.name || "キャラ"} ゴール！`, a.team);
       addFloat(M, 1150, KK_TOP + M.E.laneH * (M.E.lanes.indexOf(a) + 1) - 60, `+${pt}`, COLD[a.team], a.rank === 1);
       if (a.rank === 1) { Sound.fanfare(); Sound.playVoice(a.voices, ["joy"]); }
       else Sound.good();
@@ -499,11 +499,6 @@ const Meet = (() => {
       pu.y = laneY;
       pu.facing = 1;
       pu.draw(ctx);
-      ActorTouch.drawName(ctx, a, {
-        y: laneY + 12,
-        fontSize: Util.clamp(laneH * 0.30, 13, 21),
-        color: COLD[a.team], edge: COL[a.team],
-      });
       // メダル・ハプニング
       ctx.textAlign = "center";
       if (a.rank) {
@@ -517,7 +512,16 @@ const Meet = (() => {
         ctx.fillText(a.emo, pu.x, laneY - pu.h - 8);
       }
     });
+    // 名前は全レーンを描いたあとに重ね、手前のレーンで隠れないようにする。
+    E.lanes.forEach((a) => {
+      ActorTouch.drawName(ctx, a, {
+        y: a.puppet.y + 12,
+        fontSize: Util.clamp(laneH * 0.30, 13, 21),
+        color: COLD[a.team], edge: COL[a.team],
+      });
+    });
     drawFloats(M);
+    drawGoalNotes(M, "left");
     ctx.textAlign = "left";
   }
 
@@ -859,6 +863,43 @@ const Meet = (() => {
        入った しゅんかんは「+1」の うきもじ、たまった かずは かごの 中の 玉で わかる。 */
     ctx.restore();
     ctx.textAlign = "left";
+  }
+
+  /* ゴールが続いたときだけ履歴を残す。新しい行は下、古い行は上へ流して消す。 */
+  function addGoalNote(M, text, team) {
+    const notes = M.E.goalNotes || (M.E.goalNotes = []);
+    notes.push({ text, team, t: 0, y: 650 });
+  }
+  function stepGoalNotes(M, dt) {
+    const notes = M.E.goalNotes || [];
+    for (const note of notes) note.t += dt;
+    M.E.goalNotes = notes.filter((note) => note.t < 3.4);
+    const live = M.E.goalNotes;
+    live.forEach((note, i) => {
+      const target = 650 - (live.length - 1 - i) * 54;
+      note.y += (target - note.y) * Math.min(1, dt * 11);
+    });
+  }
+  function drawGoalNotes(M, side) {
+    const ctx = M.ctx, notes = M.E.goalNotes || [];
+    ctx.save();
+    ctx.font = '800 27px "Hoiku Rounded", sans-serif';
+    ctx.textBaseline = "middle";
+    ctx.textAlign = side === "right" ? "right" : "left";
+    for (const note of notes) {
+      const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
+      const w = Math.min(430, ctx.measureText(note.text).width + 42);
+      const x = side === "right" ? CW - 24 : 24;
+      const left = side === "right" ? x - w : x;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "rgba(255,253,245,.94)";
+      ctx.strokeStyle = COL[note.team] || "#d8c8aa";
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.roundRect(left, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = COLD[note.team] || "#4a3f35";
+      ctx.fillText(note.text, side === "right" ? x - 18 : x + 18, note.y + 1);
+    }
+    ctx.restore();
   }
 
   /* 集計中だけ、籠の外へ赤・青を上下2列に並べ、増えた1個へ数字を出す。 */
@@ -1249,7 +1290,7 @@ const Meet = (() => {
                      col: Util.choice(["#ff8fab", "#74c0fc", "#8ce99a", "#ffd43b", "#b197fc", "#ffa94d"]) });
       }
       M.E = {
-        T, LEGS: per, hBase, crowd, floats: [],
+        T, LEGS: per, hBase, crowd, floats: [], goalNotes: [],
         phase: "count", stateT: 0, raceT: 0, countStep: 0,
         evCd: 0, finished: 0, winTeam: null, winWait: 0,
         leader: null, pendLeader: null, pendT: 0,
@@ -1271,6 +1312,7 @@ const Meet = (() => {
     update(M, dt) {
       const E = M.E;
       stepFloats(M, dt);
+      stepGoalNotes(M, dt);
       E.stateT += dt;
 
       if (M.result) {
@@ -1546,13 +1588,11 @@ const Meet = (() => {
       if (t.rank === 1) {
         E.winTeam = t;
         E.winWait = 0;
-        addFloat(M, linePos.x, linePos.y - 130, "ゴール！", COL[t.key], true);
-        M.say(["🏁 ", M.team(t.key), " ゴール！"], t.key);
+        addGoalNote(M, `${M.names[t.key]} ゴール！`, t.key);
         Sound.good(); Sound.pon();
         rlCheer(t);
       } else {
-        addFloat(M, linePos.x, linePos.y - 110, "ゴール！", COL[t.key], false);
-        M.say([M.team(t.key), "も ゴール！"], t.key);
+        addGoalNote(M, `${M.names[t.key]} ゴール！`, t.key);
         Sound.good();
       }
       rlHud(M);
@@ -1594,7 +1634,7 @@ const Meet = (() => {
     E.leader = cur2;
     E.pendLeader = null;
     if (!firstTime && E.raceT > 2.5) {
-      M.say(["🔥 ", M.team(cur2), " ぎゃくてん！"], cur2);
+      M.say([M.team(cur2), " ぎゃくてん🔥"], cur2);
       Sound.good();
       rlCheer(E.T[cur2]);
     }
@@ -1724,6 +1764,7 @@ const Meet = (() => {
     }
 
     drawFloats(M);
+    drawGoalNotes(M, "right");
     ctx.textAlign = "left";
   }
 

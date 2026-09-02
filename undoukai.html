@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=54">
+<link rel="stylesheet" href="css/style.css?v=55">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -122,7 +122,7 @@
 
 <script src="js/core.js?v=43"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/meet.js?v=18"></script>
+<script src="js/meet.js?v=19"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -388,7 +388,7 @@ function teamVersus() {
 }
 
 function autoTeamReveal() {
-  const c = card({ no: "チームわけ", ttl: "チームが きまったよ" });
+  const c = card({ clear: true, no: "チームわけ", ttl: "チームが きまったよ" });
   const teams = document.createElement("div");
   teams.className = "mt-teams uk-team-reveal";
   for (const key of ["red", "blue"]) {
@@ -848,12 +848,8 @@ function pause(ms, label, extras = [], lead = null) {
 addEventListener("DOMContentLoaded", () => {
   const back = document.querySelector(".back-float");
   if (!back) return;
-  back.classList.add("uk-exit-link");
-  const label = document.createElement("span");
-  label.textContent = "みるへ";
-  back.appendChild(label);
-  back.title = "みるへ";
-  back.setAttribute("aria-label", "みるへ");
+  back.title = "もどる";
+  back.setAttribute("aria-label", "もどる");
 });
 show("setupScreen");
 initSetup();

@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=54">
+<link rel="stylesheet" href="../css/style.css?v=55">
 </head>
 <body>
 <header class="bar">
@@ -179,7 +179,7 @@ async function start(modeKey) {
       });
     }
   }
-  G = { mode, kind, cpuSpeed: mode.speed || 0, racers, stop: false, state: "ready", t: 0, finished: 0, ended: false };
+  G = { mode, kind, cpuSpeed: mode.speed || 0, racers, stop: false, state: "ready", t: 0, finished: 0, ended: false, goalNotes: [] };
 
   $("selectScreen").classList.add("hidden");
   $("playScreen").classList.remove("hidden");
@@ -289,8 +289,46 @@ function startRaceEvent(r, gap) {
   if (ev === "stumble") { r.eventT = Util.rand(RACE_EV.stumble[0], RACE_EV.stumble[1]); r.emo = "💫"; }
 }
 
+function addRaceGoal(g, r) {
+  g.goalNotes.push({
+    text: `${r.name || "キャラ"} ゴール！`,
+    color: r.player ? "#d6336c" : (r.rank % 2 ? "#d6336c" : "#1c7ed6"),
+    t: 0,
+    y: 650,
+  });
+}
+
+function stepRaceGoals(g, dt) {
+  for (const note of g.goalNotes) note.t += dt;
+  g.goalNotes = g.goalNotes.filter((note) => note.t < 3.4);
+  g.goalNotes.forEach((note, i) => {
+    const target = 650 - (g.goalNotes.length - 1 - i) * 54;
+    note.y += (target - note.y) * Math.min(1, dt * 11);
+  });
+}
+
+function drawRaceGoals(g) {
+  ctx.save();
+  ctx.font = '800 27px "Hoiku Rounded", sans-serif';
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  for (const note of g.goalNotes) {
+    const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
+    const w = Math.min(430, ctx.measureText(note.text).width + 42);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(255,253,245,.94)";
+    ctx.strokeStyle = note.color;
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(24, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#4a3f35";
+    ctx.fillText(note.text, 42, note.y + 1);
+  }
+  ctx.restore();
+}
+
 function update(dt) {
   const g = G;
+  stepRaceGoals(g, dt);
   if (g.state === "run") g.t += dt;
   g.leadProg = 0;
   for (const r of g.racers) if (r.prog > g.leadProg) g.leadProg = r.prog;
@@ -309,9 +347,10 @@ function update(dt) {
       if (r.prog >= GOAL) {
         r.rank = ++g.finished;
         r.puppet.walking = false;
+        addRaceGoal(g, r);
         if (g.kind === "cpu" && !g.ended) return finishCpu(g, r);
         if (r.rank === 1) {
-          Sound.fanfare(); Ui.confetti(); Ui.msg("ゴール！", 1400);
+          Sound.fanfare(); Ui.confetti();
           Ui.result("endRow", `${r.name || "1ばん"}の かち！`, "1い");
           // 2体以上出るので、かった キャラの よろこびの こえ だけ 鳴らす(fail は鳴らさない)
           Sound.playVoice(r.voices, ["joy"]);
@@ -338,11 +377,9 @@ function finishCpu(g, r) {
     Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
     Tiers.addRank(GAME, g.mode.lv, r.name || "?", secs, { lowerIsBetter: true });
     Sound.fanfare(); Ui.confetti();
-    Ui.msg("ゴール！", 1400);
     Ui.result("endRow", "かち！", `${secs}びょう`);
   } else {
     Sound.bad();
-    Ui.msg("ゴール！", 1400, "#4dabf7");
     Ui.result("endRow", "CPUの かち", "もういちど ちょうせん");
   }
 }
@@ -380,7 +417,6 @@ function draw() {
     r.puppet.y = laneY;
     r.puppet.facing = 1;
     r.puppet.draw(ctx);
-    ActorTouch.drawName(ctx, r, { y: laneY + 12, fontSize: 20 });
     // じゅんい
     if (r.rank) {
       const medal = ["", "🥇", "🥈", "🥉"][r.rank] || "";
@@ -395,6 +431,12 @@ function draw() {
       ctx.textAlign = "left";
     }
   });
+
+  // タッチで出す名前はレーンよりあとに描き、下のレーンで隠れないようにする。
+  g.racers.forEach((r) => {
+    ActorTouch.drawName(ctx, r, { y: r.puppet.y + 12, fontSize: 20 });
+  });
+  drawRaceGoals(g);
 
   if (g.kind === "vs" && g.state === "run") {
     ctx.font = "bold 30px sans-serif";
