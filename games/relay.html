@@ -428,7 +428,7 @@ async function startRace() {
     phase: "count", t: 0, raceT: 0, countStep: 0,
     evCd: 0, finished: 0, winTeam: null, winWait: 0, annT: 0,
     leader: null, pendLeader: null, pendT: 0, lastLeadHtml: "",
-    floats: [], goalNotes: [], crowd: [], stop: false,
+    floats: [], narrations: [], crowd: [], stop: false,
     celebrants: [], winners: [],
   };
 
@@ -516,12 +516,10 @@ function nameSpan(c) {
 }
 function txt(t) { return document.createTextNode(t); }
 function showBanner(nodes, edgeTeam) {
-  const b = $("banner");
-  b.className = "rl-banner" + (edgeTeam ? " " + edgeTeam : "");
-  b.textContent = "";
-  for (const n of nodes) b.appendChild(n);
-  b.classList.remove("hidden");
-  b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
+  if (!M) return;
+  const text = nodes.map((node) => node.textContent || "").join("");
+  M.narrations.push({ text, team: edgeTeam || "", t: 0, y: 650 });
+  if (M.narrations.length > 5) M.narrations.shift();
 }
 function hideBanner() { $("banner").classList.add("hidden"); }
 
@@ -529,35 +527,35 @@ function addFloat(x, y, txt, col, big) {
   M.floats.push({ x, y, txt, col: col || "#5c3d2e", t: 0, dur: big ? 1.15 : 0.95, big: !!big });
 }
 
-function addGoalNote(t) {
+function addNarration(t) {
   const team = t.key === "red" ? "あかチーム" : "あおチーム";
-  M.goalNotes.push({ text: `${team} ゴール！`, team: t.key, t: 0, y: 650 });
+  showBanner([txt(`${team} ゴール！`)], t.key);
 }
 
-function stepGoalNotes(dt) {
-  for (const note of M.goalNotes) note.t += dt;
-  M.goalNotes = M.goalNotes.filter((note) => note.t < 3.4);
-  M.goalNotes.forEach((note, i) => {
-    const target = 650 - (M.goalNotes.length - 1 - i) * 54;
+function stepNarrations(dt) {
+  for (const note of M.narrations) note.t += dt;
+  M.narrations = M.narrations.filter((note) => note.t < 3.4);
+  M.narrations.forEach((note, i) => {
+    const target = 650 - (M.narrations.length - 1 - i) * 54;
     note.y += (target - note.y) * Math.min(1, dt * 11);
   });
 }
 
-function drawGoalNotes() {
+function drawNarrations() {
   ctx.save();
   ctx.font = '800 27px "Hoiku Rounded", sans-serif';
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  for (const note of M.goalNotes) {
+  for (const note of M.narrations) {
     const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
     const w = Math.min(430, ctx.measureText(note.text).width + 42);
     const x = CW - 24;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(255,253,245,.94)";
-    ctx.strokeStyle = teamColor(note.team);
+    ctx.strokeStyle = note.team ? teamColor(note.team) : "#d8c8aa";
     ctx.lineWidth = 4;
     ctx.beginPath(); ctx.roundRect(x - w, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = note.team === "red" ? "#d6336c" : "#1c7ed6";
+    ctx.fillStyle = note.team === "red" ? "#d6336c" : note.team === "blue" ? "#1c7ed6" : "#4a3f35";
     ctx.fillText(note.text, x - 18, note.y + 1);
   }
   ctx.restore();
@@ -735,11 +733,11 @@ function handoff(t) {
     if (t.rank === 1) {
       M.winTeam = t;
       M.winWait = 0;
-      addGoalNote(t);
+      addNarration(t);
       Sound.good(); Sound.pon();
       cheerTeam(t);
     } else {
-      addGoalNote(t);
+      addNarration(t);
       Sound.good();
     }
     updateHud();
@@ -808,7 +806,7 @@ function update(dt) {
   for (const c of M.chars) ActorTouch.tick(c, dt);
   for (const f of M.floats) f.t += dt;
   M.floats = M.floats.filter((f) => f.t < f.dur);
-  stepGoalNotes(dt);
+  stepNarrations(dt);
 
   // 結果発表(勝ちチームが よろこぶ)
   if (M.phase === "over") {
@@ -990,7 +988,7 @@ function draw() {
     ctx.fillText(f.txt, f.x, y);
     ctx.restore();
   }
-  drawGoalNotes();
+  drawNarrations();
 
   // 結果発表まえの ドキドキ暗てん
   if (M.phase === "announce") {

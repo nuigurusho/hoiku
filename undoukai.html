@@ -122,7 +122,7 @@
 
 <script src="js/core.js?v=43"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/meet.js?v=19"></script>
+<script src="js/meet.js?v=20"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -387,10 +387,11 @@ function teamVersus() {
   return line;
 }
 
-function autoTeamReveal() {
+async function autoTeamReveal(myRun) {
   const c = card({ clear: true, no: "チームわけ", ttl: "チームが きまったよ" });
   const teams = document.createElement("div");
   teams.className = "mt-teams uk-team-reveal";
+  const lists = {};
   for (const key of ["red", "blue"]) {
     if (key === "blue") {
       const vs = document.createElement("div");
@@ -404,21 +405,34 @@ function autoTeamReveal() {
     title.textContent = names[key];
     const list = document.createElement("div");
     list.className = "mt-members";
-    members(key).forEach((m, i) => {
-      const d = document.createElement("div");
-      d.className = "mt-mem";
-      d.style.animationDelay = `${i * 90}ms`;
-      d.innerHTML = `<img src="${m.rec.dataURL}" alt=""><div class="nm"></div>`;
-      d.querySelector(".nm").textContent = m.name;
-      Ui.thumbFix(d.querySelector("img"), m.rec);
-      list.appendChild(d);
-    });
+    lists[key] = list;
     col.append(title, list);
     teams.appendChild(col);
   }
   c.appendChild(teams);
-  Meet.drumroll();
-  Sound.pon();
+
+  const red = members("red"), blue = members("blue");
+  const order = [];
+  for (let i = 0; i < Math.max(red.length, blue.length); i++) {
+    if (red[i]) order.push(["red", red[i]]);
+    if (blue[i]) order.push(["blue", blue[i]]);
+  }
+  await sleep(350);
+  for (const [key, m] of order) {
+    if (myRun !== runId) return false;
+    Meet.drumroll();
+    await sleep(300);
+    if (myRun !== runId) return false;
+    const d = document.createElement("div");
+    d.className = "mt-mem";
+    d.innerHTML = `<img src="${m.rec.dataURL}" alt=""><div class="nm"></div>`;
+    d.querySelector(".nm").textContent = m.name;
+    Ui.thumbFix(d.querySelector("img"), m.rec);
+    lists[key].appendChild(d);
+    Sound.pon();
+    await sleep(170);
+  }
+  return myRun === runId;
 }
 
 async function runProgramme() {
@@ -446,7 +460,7 @@ async function runProgramme() {
   show("playScreen");
 
   if (teamMode === "auto") {
-    autoTeamReveal();
+    if (!(await autoTeamReveal(myRun))) return;
     await pause(0, "はじめる");
     if (myRun !== runId) return;
   }
