@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>うんどうかい・競技間トランジション提案</title>
+<style>
+@font-face{font-family:Rounded;src:url(../assets/fonts/RoundedMplus1c-ExtraBold.woff2)}
+@font-face{font-family:Pop;src:url(../assets/fonts/MochiyPopOne-Regular.woff2)}
+:root{--ink:#4a3f35;--cream:#fff9ed;--line:#ead7b8;--red:#ff6b9d;--redD:#d6336c;--blue:#4dabf7;--blueD:#1c7ed6;--yellow:#ffd43b;--green:#8fd36d}
+*{box-sizing:border-box}body{margin:0;background:#f4ead9;color:var(--ink);font-family:Rounded,"M PLUS Rounded 1c",sans-serif}
+main{width:min(1180px,96vw);margin:28px auto 60px}.head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:18px}
+h1{margin:0;font:400 clamp(28px,4vw,48px)/1.25 Pop,sans-serif}.tag{padding:7px 16px 9px;border-radius:999px;background:var(--yellow);box-shadow:0 4px 0 #d9a900;font-weight:800}
+.lead{margin:8px 0 0;color:#756554;font-size:18px}.board{padding:18px;background:#fff;border:4px solid var(--line);border-radius:28px;box-shadow:0 8px 0 var(--line)}
+.demo{position:relative;overflow:hidden;aspect-ratio:16/9;border-radius:22px;background:linear-gradient(#bde7ff 0 37%,#91d673 37%);isolation:isolate}
+.cloud{position:absolute;width:150px;height:46px;border-radius:999px;background:rgba(255,255,255,.65);top:70px;left:80px;box-shadow:100px 38px 0 -8px rgba(255,255,255,.45),760px 10px 0 5px rgba(255,255,255,.5)}
+.track{position:absolute;left:12%;right:12%;bottom:8%;height:47%;border:48px solid #e6a067;border-radius:999px;background:#8bd06c;box-shadow:inset 0 0 0 4px rgba(255,255,255,.7),0 0 0 4px rgba(255,255,255,.72)}
+.old{position:absolute;z-index:2;top:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:7px 18px 9px;border-radius:999px;background:white;box-shadow:0 4px 0 rgba(110,80,40,.16);font-size:24px;font-weight:800}.old img{width:42px;height:42px;object-fit:contain}
+.ribbon{position:absolute;z-index:5;left:-10%;width:120%;height:74px;border:7px solid white;box-shadow:0 7px 0 rgba(90,60,30,.16);opacity:0}
+.ribbon.red{top:42%;background:var(--red);transform:translateX(-110%) rotate(5deg);animation:redRun 5.2s ease-in-out infinite}
+.ribbon.blue{top:55%;background:var(--blue);transform:translateX(110%) rotate(-5deg);animation:blueRun 5.2s ease-in-out infinite}
+.baton{position:absolute;z-index:7;left:50%;top:50%;width:260px;transform:translate(-50%,-50%) scale(.7);opacity:0;text-align:center;animation:baton 5.2s cubic-bezier(.2,.9,.3,1) infinite}
+.baton .disc{display:grid;place-items:center;width:126px;height:126px;margin:auto;border-radius:50%;background:white;border:7px solid var(--yellow);box-shadow:0 8px 0 #d9a900}.baton img{width:88px;height:88px;object-fit:contain}.baton b{display:inline-block;margin-top:10px;padding:7px 22px 10px;border-radius:999px;background:white;box-shadow:0 4px 0 rgba(90,60,30,.16);font:400 27px Pop,sans-serif;white-space:nowrap}
+.pennants{position:absolute;z-index:6;left:0;right:0;top:31%;height:22px;background:repeating-linear-gradient(115deg,transparent 0 33px,var(--yellow) 34px 50px,transparent 51px 70px);opacity:0;animation:pennants 5.2s ease infinite}
+@keyframes redRun{0%,15%{opacity:0;transform:translateX(-110%) rotate(5deg)}25%,53%{opacity:1;transform:translateX(0) rotate(5deg)}67%,100%{opacity:0;transform:translateX(110%) rotate(5deg)}}
+@keyframes blueRun{0%,15%{opacity:0;transform:translateX(110%) rotate(-5deg)}25%,53%{opacity:1;transform:translateX(0) rotate(-5deg)}67%,100%{opacity:0;transform:translateX(-110%) rotate(-5deg)}}
+@keyframes baton{0%,24%{opacity:0;transform:translate(-50%,-50%) scale(.65)}31%,53%{opacity:1;transform:translate(-50%,-50%) scale(1)}63%,100%{opacity:0;transform:translate(-50%,-65%) scale(1.08)}}
+@keyframes pennants{0%,22%,65%,100%{opacity:0}31%,54%{opacity:.9}}
+.caption{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:16px 4px 0}.caption strong{font-size:22px;color:var(--redD)}.caption p{margin:3px 0;color:#746452}.replay{border:0;border-radius:999px;background:#2ecc71;color:white;padding:12px 22px 14px;font:800 18px Rounded;box-shadow:0 5px 0 #159447;cursor:pointer}
+.frames{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}.frame{position:relative;overflow:hidden;aspect-ratio:16/10;border:3px solid var(--line);border-radius:18px;background:linear-gradient(#d5efff 0 42%,#a6dc80 42%)}.frame .num{position:absolute;z-index:4;top:8px;left:10px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--ink);color:white;font-weight:800}.frame .lane{position:absolute;left:-8%;right:-8%;height:44px;border:4px solid white}.frame .lane.r{top:40%;background:var(--red);transform:rotate(5deg)}.frame .lane.b{top:57%;background:var(--blue);transform:rotate(-5deg)}.frame .mini{position:absolute;inset:0;display:grid;place-items:center;text-align:center}.frame .mini img{width:64px;height:64px;object-fit:contain;background:white;border:5px solid var(--yellow);border-radius:50%;padding:7px}.frame .mini b{display:block;background:white;border-radius:999px;padding:4px 13px 6px;margin-top:5px}.frame.one .lane{transform:translateX(-64%) rotate(5deg)}.frame.one .lane.b{transform:translateX(64%) rotate(-5deg)}.frame.one .mini{opacity:0}.frame.three .lane.r{transform:translateX(65%) rotate(5deg);opacity:.55}.frame.three .lane.b{transform:translateX(-65%) rotate(-5deg);opacity:.55}
+.frame-label{margin:7px 2px 0;font-size:15px;color:#746452}.specs{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-top:22px}.card{padding:18px 20px;background:#fff;border:3px solid var(--line);border-radius:20px}.card h2{margin:0 0 9px;font-size:23px}.card ul{margin:0;padding-left:1.3em;line-height:1.8}.alts{display:grid;gap:9px}.alt{padding:10px 12px;border-radius:14px;background:var(--cream);border:2px solid var(--line)}.alt b{color:var(--blueD)}
+@media(max-width:760px){.head{display:block}.tag{display:inline-block;margin-top:10px}.frames,.specs{grid-template-columns:1fr}.old{font-size:16px}.baton{width:210px}.baton .disc{width:96px;height:96px}.baton img{width:66px;height:66px}.baton b{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.ribbon,.baton,.pennants{animation-play-state:paused;animation-delay:-1.7s}}
+</style>
+</head>
+<body>
+<main>
+  <div class="head"><div><h1>競技間トランジション提案</h1><p class="lead">園の運動会らしい「紅白テープ」を、次の競技へ渡すバトンとして使います。</p></div><span class="tag">推奨 A案</span></div>
+  <section class="board">
+    <div class="demo" id="demo">
+      <div class="cloud"></div><div class="track"></div>
+      <div class="old"><img src="../assets/buttons/race.png" alt="">かけっこ おしまい</div>
+      <div class="pennants"></div><div class="ribbon red"></div><div class="ribbon blue"></div>
+      <div class="baton"><div class="disc"><img src="../assets/buttons/tamaire.png" alt=""></div><b>つぎは たまいれ</b></div>
+    </div>
+    <div class="caption"><div><strong>「紅白バトンライン」</strong><p>画面全体を隠さず、赤青の2本だけが交差。中央で次の競技アイコンを受け渡します。</p></div><button class="replay" id="replay">もういちど みる</button></div>
+  </section>
+
+  <div class="frames">
+    <div><div class="frame one"><span class="num">1</span><div class="lane r"></div><div class="lane b"></div><div class="mini"><div><img src="../assets/buttons/tamaire.png" alt=""><b>つぎは たまいれ</b></div></div></div><p class="frame-label">0.00–0.18秒：結果画面の上へ、紅白テープが左右から入る</p></div>
+    <div><div class="frame two"><span class="num">2</span><div class="lane r"></div><div class="lane b"></div><div class="mini"><div><img src="../assets/buttons/tamaire.png" alt=""><b>つぎは たまいれ</b></div></div></div><p class="frame-label">0.18–0.68秒：交点で次のアイコンと競技名を一度だけ見せる</p></div>
+    <div><div class="frame three"><span class="num">3</span><div class="lane r"></div><div class="lane b"></div><div class="mini"><div><img src="../assets/buttons/tamaire.png" alt=""><b>つぎは たまいれ</b></div></div></div><p class="frame-label">0.68–0.95秒：テープが抜ける裏で、次の競技画面へ切り替える</p></div>
+  </div>
+
+  <div class="specs">
+    <section class="card"><h2>推奨する理由</h2><ul><li>白フラッシュを使わず、切替タイミングをテープが隠してくれる</li><li>全画面カードではなく2本の帯だけなので、キャラクターを覆う時間が短い</li><li>赤青チーム・リレー・運動会の飾り付けを一つの動きにまとめられる</li><li>約0.95秒。文字は「つぎは ○○」だけで、読み終わるまで止めない</li></ul></section>
+    <section class="card"><h2>比較候補</h2><div class="alts"><div class="alt"><b>B：スタートライン・ワイプ</b><br>チェッカー線が横切る。短いが、レース以外では少し意味が弱い。</div><div class="alt"><b>C：応援旗ゲート</b><br>紅白の旗が中央で開閉。華やかだが、画面を覆う面積が大きい。</div></div></section>
+  </div>
+</main>
+<script>
+document.getElementById("replay").onclick=()=>{const d=document.getElementById("demo");const clone=d.cloneNode(true);d.replaceWith(clone)};
+</script>
+</body>
+</html>

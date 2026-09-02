@@ -1907,7 +1907,13 @@ body.ingame .back-float { display: flex; }
 }
 .uk-result-heading img { width: clamp(32px, 5vw, 46px); height: clamp(32px, 5vw, 46px); object-fit: contain; }
 .uk-next-event {
-  margin: 0 0 2px;
+  width: max-content;
+  max-width: 92vw;
+  margin: 0 auto 6px;
+  padding: 5px 16px 7px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 0 rgba(138,122,104,.16);
   font-size: clamp(16px, 2.5vw, 22px);
 }
 .uk-next-event img { width: 30px; height: 30px; object-fit: contain; }
@@ -2399,17 +2405,6 @@ body.fitstage header.bar { display: none; }
 @media (hover: hover) {
   .uk-skip button:hover { opacity: 1; }
 }
-
-/* ---------- 白いフラッシュ(きまった しゅんかん) ---------- */
-.uk-flash {
-  position: absolute;
-  inset: 0;
-  z-index: 52;
-  background: #fff;
-  pointer-events: none;
-  animation: uk-flash .38s ease-out forwards;
-}
-@keyframes uk-flash { 0% { opacity: 0; } 18% { opacity: .92; } 100% { opacity: 0; } }
 
    カード・きょうぎの けっか一覧・ボタンが かさならないように ちぢめる */
 @media (max-width: 760px) {

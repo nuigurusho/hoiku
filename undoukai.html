@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -25,8 +25,24 @@
     box-shadow: 0 3px 0 var(--yellow-d);
   }
   .uk-panel { max-width: 900px; }
-  .uk-mem { cursor: pointer; }
+  .uk-mem { cursor: grab; touch-action: none; }
   .uk-mem:active { transform: scale(.94); }
+  .uk-mem.dragging { opacity: .28; cursor: grabbing; }
+  .mt-teamcol.drag-over {
+    outline: 6px solid var(--yellow);
+    outline-offset: 4px;
+    transform: translateY(-3px);
+  }
+  .uk-drag-ghost {
+    position: fixed;
+    z-index: 300;
+    width: 92px;
+    margin: 0;
+    pointer-events: none;
+    transform: translate(-50%, -62%) rotate(-4deg) scale(1.06);
+    filter: drop-shadow(0 10px 8px rgba(80,50,20,.24));
+    opacity: .96;
+  }
   .uk-skip { text-align: center; margin: 6px 0 0; }
   .uk-skip button { font-size: 14px; padding: 8px 16px; }
   .uk-timer {
@@ -76,7 +92,7 @@
       </div>
       <p class="note" id="autoTeamNote">はじまる まえに チームを はっぴょうします。</p>
       <div id="manualTeamUi" class="hidden">
-        <p class="note">チーム名は タッチして かえられます。キャラを タッチすると もう いっぽうの チームへ うつります。</p>
+        <p class="note">チーム名は タッチして かえられます。キャラは タッチ、または もう いっぽうへ ドラッグで うつせます。</p>
         <div class="mt-teams">
           <div class="mt-teamcol red">
             <input class="mt-teamname" id="nameRed" type="text" maxlength="12" value="あかチーム" aria-label="あかチームの なまえ">
@@ -236,22 +252,83 @@ function balance() {
   ids.forEach((id, i) => side.set(id, i % 2 === 0 ? "red" : "blue"));
 }
 
+let activeTeamDrag = null;
+function clearTeamDropCues() {
+  document.querySelectorAll(".mt-teamcol.drag-over").forEach((el) => el.classList.remove("drag-over"));
+}
+function teamDropTarget(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el && el.closest ? el.closest(".mt-teamcol[data-team]") : null;
+}
+function moveTeamMember(id, from, to) {
+  if (!to || to === from) return false;
+  side.set(id, to);
+  Sound.pon();
+  renderAll();
+  return true;
+}
+
 function renderTeams() {
   for (const key of ["red", "blue"]) {
     const box = $(key === "red" ? "redMembers" : "blueMembers");
+    const col = box.closest(".mt-teamcol");
+    col.dataset.team = key;
     box.innerHTML = "";
     for (const m of members(key)) {
       const d = document.createElement("div");
       d.className = "mt-mem uk-mem";
-      d.title = "タッチで もう いっぽうの チームへ";
+      d.title = "タッチ、または もう いっぽうへ ドラッグ";
       d.innerHTML = `<img src="${m.rec.dataURL}" alt=""><div class="nm"></div>`;
       d.querySelector(".nm").textContent = m.name;
       Ui.thumbFix(d.querySelector("img"), m.rec);
       d.onclick = () => {
+        if (d._skipTeamClick) return;
         Sound.tap();
         side.set(m.rec.id, key === "red" ? "blue" : "red");
         renderAll();          // 0にんに なるのは わざと えらんだ ときだけ(けっていで しらせる)
       };
+      d.onpointerdown = (e) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        activeTeamDrag = {
+          id: m.rec.id, from: key, el: d, pointerId: e.pointerId,
+          sx: e.clientX, sy: e.clientY, dragging: false, ghost: null,
+        };
+        if (d.setPointerCapture) d.setPointerCapture(e.pointerId);
+      };
+      d.onpointermove = (e) => {
+        const drag = activeTeamDrag;
+        if (!drag || drag.el !== d || drag.pointerId !== e.pointerId) return;
+        if (!drag.dragging && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 10) {
+          drag.dragging = true;
+          d.classList.add("dragging");
+          drag.ghost = d.cloneNode(true);
+          drag.ghost.className = "mt-mem uk-drag-ghost";
+          document.body.appendChild(drag.ghost);
+        }
+        if (!drag.dragging) return;
+        e.preventDefault();
+        drag.ghost.style.left = `${e.clientX}px`;
+        drag.ghost.style.top = `${e.clientY}px`;
+        clearTeamDropCues();
+        const target = teamDropTarget(e.clientX, e.clientY);
+        if (target && target.dataset.team !== key) target.classList.add("drag-over");
+      };
+      const endDrag = (e, cancelled) => {
+        const drag = activeTeamDrag;
+        if (!drag || drag.el !== d || drag.pointerId !== e.pointerId) return;
+        activeTeamDrag = null;
+        clearTeamDropCues();
+        d.classList.remove("dragging");
+        if (drag.ghost) drag.ghost.remove();
+        if (d.releasePointerCapture && d.hasPointerCapture && d.hasPointerCapture(e.pointerId)) d.releasePointerCapture(e.pointerId);
+        if (!drag.dragging) return;
+        d._skipTeamClick = true;
+        if (cancelled) return;
+        const target = teamDropTarget(e.clientX, e.clientY);
+        moveTeamMember(drag.id, drag.from, target && target.dataset.team);
+      };
+      d.onpointerup = (e) => endDrag(e, false);
+      d.onpointercancel = (e) => endDrag(e, true);
       box.appendChild(d);
     }
   }
@@ -541,7 +618,7 @@ async function finale(myRun) {
     clear: true,
     reveal: true,
     no: "けっかはっぴょう",
-    ttlParts: win ? [teamText(win), " ゆうしょう！"] : ["どうてん！ りょうチーム ゆうしょう！"],
+    ttlParts: win ? [teamText(win), " ゆうしょう！"] : ["みんな ゆうしょう！"],
     scoreFirst: true,
     score: pts,                       // そうごう点は ここで 1回だけ 大きく
     detailFn: () => openFinalDetails(),
@@ -631,16 +708,9 @@ function chipRow(s) {
 /* きまった しゅんかん:白く 光らせて、すこし 「ま」を つくる。
    ここが きょうぎの きれめだと からだで わかるようにする。 */
 async function breakBeat() {
-  const st = document.querySelector(".mt-stage");
-  if (st) {
-    const f = document.createElement("div");
-    f.className = "uk-flash";
-    st.appendChild(f);
-    setTimeout(() => f.remove(), 420);
-  }
   Sound.tick();
   ui.banner(null);
-  await sleep(420);
+  await sleep(180);
 }
 
 
