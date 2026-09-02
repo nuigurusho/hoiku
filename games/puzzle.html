@@ -68,7 +68,7 @@ let selected = null, allPics = [];
 let game = null;
 
 async function initSelect() {
-  allPics = await Store.forGame();
+  allPics = (await Store.forGame()).filter((r) => r.cat === "bg" || r.cat === "pic");
   selected = allPics[0] || null;
   refreshLocks();
 }

@@ -72,13 +72,20 @@ if (window.pdfjsLib) {
 }
 const $ = (id) => document.getElementById(id);
 
+const QUERY = new URLSearchParams(location.search);
+
 /* 「つくる」から来たときは「つくる」へ戻る(トップの歯車から来たときはトップへ) */
-if (new URLSearchParams(location.search).get("from") === "create") {
+if (QUERY.get("from") === "create") {
   $("backLink").setAttribute("href", "create.html");
 }
 
-const FROM_CREATE = new URLSearchParams(location.search).get("from") === "create";
-const IMPORT_SELF = FROM_CREATE ? "admin.html?from=create" : "admin.html";
+const FROM_CREATE = QUERY.get("from") === "create";
+const START_CAT = QUERY.get("cat");
+const SELF_QUERY = new URLSearchParams();
+if (FROM_CREATE) SELF_QUERY.set("from", "create");
+if (START_CAT) SELF_QUERY.set("cat", START_CAT);
+const SELF_QUERY_STRING = SELF_QUERY.toString();
+const IMPORT_SELF = `admin.html${SELF_QUERY_STRING ? `?${SELF_QUERY_STRING}` : ""}`;
 
 /* 一覧の並び順:元素材 → キャラ全身 → キャラ顔 → はいけい。
    旧「写真・絵」も同じ一覧に残し、既存データを壊さない。 */
@@ -226,7 +233,7 @@ function showImagePreview(r, src) {
 }
 
 const CAT_KEYS = ["src", "char", "fuku", "bg"];
-let activeCat = "char";
+let activeCat = CAT_KEYS.includes(START_CAT) ? START_CAT : "char";
 let swipeStart = null;
 
 function setActiveCat(cat) {
