@@ -13,6 +13,14 @@
 <link rel="stylesheet" href="../css/style.css?v=64">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
+  .qimage {
+    display: block;
+    width: min(300px, 62vw);
+    height: min(300px, 36vh);
+    object-fit: contain;
+    margin: 6px auto;
+    filter: drop-shadow(0 7px 5px rgba(91, 74, 54, .18));
+  }
   .qtext {
     text-align: center;
     font-size: clamp(22px, 4.5vw, 36px);
@@ -39,16 +47,16 @@
     <h2>クイズたいかい!</h2>
     <p style="font-size:22px">4つのなかから こたえを えらぼう!</p>
 
-    <div class="mode-sec" data-tier="yuru">🌈 ゆるふわ</div>
+    <div class="mode-sec" data-tier="yuru">🌈 みんなで</div>
     <div class="row" data-tier="yuru">
-      <button class="btn big yellow" data-mode="miru">みんなで</button>
+      <button class="btn big yellow" data-mode="miru" data-quiz-kind="standard">4たくクイズ</button>
+      <button class="btn big yellow" data-mode="miru" data-quiz-kind="character">キャラクタークイズ</button>
     </div>
 
     <div class="mode-sec">🔥 ガチンコ</div>
     <div class="row" id="gachiRow">
-      <button class="btn big green"  data-mode="g1">かんたん<br><span style="font-size:14px">5もん れんぞく</span></button>
-      <button class="btn big orange" data-mode="g2">ふつう<br><span style="font-size:14px">8もん れんぞく</span></button>
-      <button class="btn big purple" data-mode="g3">むずかしい<br><span style="font-size:14px">10もん れんぞく</span></button>
+      <button class="btn big green" data-mode="gachi" data-quiz-kind="standard">4たくクイズ<br><span style="font-size:14px">5もん れんぞく</span></button>
+      <button class="btn big green" data-mode="gachi" data-quiz-kind="character">キャラクタークイズ<br><span style="font-size:14px">5もん れんぞく</span></button>
     </div>
     <button class="btn rank-open" id="rankBtn" type="button">🏆 ランキング</button>
   </div>
@@ -57,6 +65,7 @@
     <div class="qnum" id="qnum"></div>
     <div class="hud hidden" id="gachiHud"><span id="streakHud"></span><span id="heartHud"></span></div>
     <div class="qemoji" id="qemoji"></div>
+    <img class="qimage hidden" id="qimage" alt="">
     <div class="qtext" id="qtext"></div>
     <div class="choices" id="choices"></div>
     <div class="answer-big hidden" id="answerBig"></div>
@@ -82,15 +91,14 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const GAME = "quiz";
-const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
+const RANK_LABELS = ["クイズ"];
 const MODES = {
   miru:   { label: "みんなで", n: 0, view: true },
-  g1: { label: "かんたん",   goal: 5,  missLimit: 3, lv: 1 },
-  g2: { label: "ふつう",     goal: 8,  missLimit: 3, lv: 2 },
-  g3: { label: "むずかしい", goal: 10, missLimit: 3, lv: 3 },
+  gachi: { label: "ガチンコ", goal: 5, missLimit: 3, lv: 1 },
 };
 let queue = [], idx = 0, score = 0, busy = false;
 let mode = null, streak = 0, miss = 0;
+let quizKind = "standard";
 let left = false;   // 「もどる」で ぬけたか(あとから 出る タイマーを とめる)
 
 function refreshLocks() {
@@ -99,10 +107,11 @@ function refreshLocks() {
 refreshLocks();
 
 document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
-  b.onclick = () => {
+  b.onclick = async () => {
     mode = MODES[b.dataset.mode];
+    quizKind = b.dataset.quizKind || "standard";
     Sound.tap();
-    startRun();
+    await startRun();
   };
 });
 Nav.onLeave(() => { left = true; busy = true; document.body.classList.remove("view-mode"); refreshLocks(); });
@@ -113,11 +122,15 @@ $("retryBtn").onclick = () => {
   refreshLocks();
 };
 
-function startRun() {
-  // 内蔵の問題 + この端末で作ったオリジナル問題
-  queue = Util.shuffle(CustomQuiz.defaultVisible(window.QUIZ).concat(CustomQuiz.enabled()));
+async function startRun() {
+  queue = quizKind === "character"
+    ? await makeCharacterQuestions()
+    : Util.shuffle(CustomQuiz.defaultVisible(window.QUIZ).concat(CustomQuiz.enabled()));
   if (!queue.length) {
-    Ui.msg("使う問題を1つ以上オンにしてください", 1800, "#4dabf7");
+    const message = quizKind === "character"
+      ? "なまえか さくしゃを つけた キャラクターを 4にん いじょう とうろくしてね"
+      : "使う問題を1つ以上オンにしてください";
+    Ui.msg(message, 2200, "#4dabf7");
     return;
   }
   if (mode.n > 0) queue = queue.slice(0, mode.n);
@@ -132,6 +145,28 @@ function startRun() {
   show();
 }
 
+/* 登録済みキャラクターから、名前・作者名を当てる4択問題を作る。 */
+async function makeCharacterQuestions() {
+  const characters = (await Store.forGame("char")).filter((rec) => rec && rec.dataURL);
+  const questions = [];
+  const fields = [
+    { key: "name", q: "この キャラクターの なまえは?" },
+    { key: "author", q: "この キャラクターを かいたのは だれ?" },
+  ];
+  fields.forEach((field) => {
+    const values = [...new Set(characters.map((rec) => (rec[field.key] || "").trim()).filter(Boolean))];
+    if (values.length < 4) return;
+    characters.forEach((rec) => {
+      const answer = (rec[field.key] || "").trim();
+      if (!answer) return;
+      const others = Util.shuffle(values.filter((value) => value !== answer)).slice(0, 3);
+      if (others.length < 3) return;
+      questions.push({ q: field.q, image: rec.dataURL, imageRec: rec, choices: [answer, ...others], answer: 0 });
+    });
+  });
+  return Util.shuffle(questions);
+}
+
 function updateGachiHud() {
   if (!mode.goal) return;
   $("streakHud").textContent = `れんぞく: ${streak} / ${mode.goal}`;
@@ -144,7 +179,15 @@ function show() {
   $("qnum").textContent = mode.goal
     ? `だい ${idx + 1} もん`
     : `だい ${idx + 1} もん / ${queue.length} もん`;
-  $("qemoji").textContent = q.emoji || "❓";
+  $("qemoji").textContent = q.image ? "" : (q.emoji || "❓");
+  $("qemoji").classList.toggle("hidden", !!q.image);
+  $("qimage").classList.toggle("hidden", !q.image);
+  $("qimage").src = q.image || "";
+  if (q.image && q.imageRec && q.imageRec.rig && q.imageRec.rig.type === "butterfly") {
+    Util.symCanvas(q.imageRec).then((canvas) => {
+      if (queue[idx] === q) $("qimage").src = canvas.toDataURL("image/png");
+    }).catch(() => {});
+  }
   $("qtext").textContent = q.q;
   const box = $("choices");
   box.innerHTML = "";
