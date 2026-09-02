@@ -114,8 +114,23 @@ let raf = 0;
 let last = performance.now();
 let motion = { type: "idle", until: 0, started: 0 };
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const galleryFirstOrder = [
+  "sample-bg-crayon-hills-v1",
+  "sample-bg-watercolor-playground-v1",
+  "sample-bg-watercolor-forest-v1",
+  "sample-pic-crayon-picnic-v1",
+  "sample-pic-crayon-playroom-v1",
+];
 
 function text(el, value) { el.textContent = value || ""; }
+
+function orderGalleryWorks(list) {
+  return list.map((work, index) => {
+    const key = work.sampleKey || work.id || "";
+    const rank = galleryFirstOrder.indexOf(key);
+    return { work, index, rank: rank < 0 ? galleryFirstOrder.length : rank };
+  }).sort((a, b) => a.rank - b.rank || a.index - b.index).map((item) => item.work);
+}
 
 /* 長い作品名だけ、最後まで読める速さで左へ流す。端で1秒、先頭へ戻って4秒休む。 */
 function setMarquee(el, value) {
@@ -322,7 +337,7 @@ addEventListener("resize", () => {
   const all = await Store.forGame();
   works = kind === "char"
     ? all.filter((r) => r.cat === "char")
-    : all.filter((r) => r.cat === "bg" || r.cat === "pic");
+    : orderGalleryWorks(all.filter((r) => r.cat === "bg" || r.cat === "pic"));
   renderShelf();
   if (kind === "char") raf = requestAnimationFrame(draw);
 })();
