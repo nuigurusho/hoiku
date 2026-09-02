@@ -1846,6 +1846,12 @@ const Tiers = {
 const CustomQuiz = {
   KEY: "customQuiz",
   HIDDEN_DEFAULTS_KEY: "quizHiddenDefaults",
+  /* 入力待ちの仮文言が残った問題は、内蔵・端末内を問わず出題しない。 */
+  hasPlaceholder(q) {
+    if (!q) return true;
+    const text = [q.q, ...(Array.isArray(q.choices) ? q.choices : [])].join("\n");
+    return /[（(](?:この|ここに)[^）)]*(?:なまえ|名前|入力|記入|かきかえ)[）)]|○○|\{\{[^}]+\}\}/.test(text);
+  },
   all() {
     try {
       const a = JSON.parse(localStorage.getItem(this.KEY) || "[]");
@@ -1862,7 +1868,7 @@ const CustomQuiz = {
     this.save(l);
     return l;
   },
-  enabled() { return this.all().filter((q) => q.enabled !== false); },
+  enabled() { return this.all().filter((q) => q.enabled !== false && !this.hasPlaceholder(q)); },
   defaultKey(q) { return JSON.stringify([q.q, q.emoji || "", q.choices, q.answer]); },
   hiddenDefaults() {
     try {
@@ -1887,7 +1893,8 @@ const CustomQuiz = {
   },
   defaultVisible(list) {
     const hidden = new Set(this.hiddenDefaults());
-    return (Array.isArray(list) ? list : []).filter((q) => !hidden.has(this.defaultKey(q)));
+    return (Array.isArray(list) ? list : []).filter((q) =>
+      !hidden.has(this.defaultKey(q)) && !this.hasPlaceholder(q));
   },
   exportData() {
     return {
