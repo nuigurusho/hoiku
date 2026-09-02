@@ -25,7 +25,7 @@
   </div>
   <div class="tiles play-list-tiles" id="gameList"></div>
 </main>
-<script src="js/core.js?v=46"></script>
+<script src="js/core.js?v=47"></script>
 <script>
 "use strict";
 const TYPE = ["solo", "duo", "multi", "games"].includes(new URLSearchParams(location.search).get("type"))
@@ -39,7 +39,7 @@ const MODE_ICONS = {
 };
 const GAMES = {
   solo: [
-    ["race", "かけっこ", "tier=gachi"], ["janken", "じゃんけん", "tier=gachi"],
+    ["fukuwarai", "ふくわらい", ""], ["race", "かけっこ", "tier=gachi"], ["janken", "じゃんけん", "tier=gachi"],
     ["quiz", "４たくクイズ", "tier=gachi"], ["silhouette", "かげえクイズ", "tier=gachi"],
     ["diff", "まちがいさがし", "tier=gachi"], ["memory", "カードあわせ", "tier=gachi"],
     ["puzzle", "おえかきパズル", "tier=gachi"], ["adventure", "おえかきのたび", "tier=gachi"],
