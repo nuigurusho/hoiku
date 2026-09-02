@@ -41,7 +41,7 @@
       <button class="btn blue" id="importBtn">zipからインポート</button>
       <input type="file" id="importInput" accept=".zip,application/zip" hidden>
     </div>
-    <p class="note">インポートすると、現在の絵・設定は <b>すべて置き換えられます</b>(実行前に確認します)。</p>
+    <p class="note">内蔵サンプルはそのまま残し、それ以外を<b>置き換える</b>か、現在のデータへ<b>追加する</b>か選べます。</p>
   </div>
 
   <div class="panel" style="text-align:left">
@@ -54,7 +54,7 @@
   </div>
 </main>
 
-<script src="js/core.js?v=50"></script>
+<script src="js/core.js?v=51"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -82,18 +82,29 @@ $("importInput").onchange = async (e) => {
   const file = e.target.files[0];
   e.target.value = "";
   if (!file) return;
-  const ok = confirm(
-    `「${file.name}」から設定を読み込みます。\n\n` +
-    `現在の絵・写真・動き設定・クイズ・ランキングは\n` +
-    `すべて置き換えられます(この端末だけ)。\n\n` +
-    `よろしいですか?`
-  );
-  if (!ok) return;
+  const action = await Ui.menu({
+    title: "インポート方法",
+    note: "内蔵サンプルはどちらを選んでも変わりません。",
+    items: [
+      { label: "追加する", value: "add", color: "blue" },
+      { label: "置き換える", value: "replace", color: "orange" },
+    ],
+  });
+  if (!action) return;
+  if (action === "replace") {
+    const ok = confirm(
+      `「${file.name}」から設定を読み込みます。\n\n` +
+      `内蔵サンプル以外の絵・写真・設定・クイズ・ランキングを\n` +
+      `すべて置き換えます(この端末だけ)。\n\n` +
+      `よろしいですか?`
+    );
+    if (!ok) return;
+  }
   try {
     Ui.msg("読み込んでいます…", 1200, "#4dabf7");
-    const res = await Backup.importZip(file, { replace: true });
+    const res = await Backup.importZip(file, { replace: action === "replace" });
     Sound.good();
-    Ui.msg(`インポートしました(絵 ${res.images}枚)`, 1800, "#51cf66");
+    Ui.msg(`${action === "replace" ? "置き換えました" : "追加しました"}(絵 ${res.images}枚)`, 1800, "#51cf66");
   } catch (err) {
     alert("インポートに失敗しました:\n" + ((err && err.message) || err));
   }

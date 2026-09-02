@@ -829,7 +829,8 @@ const Samples = {
     this._line(ctx, 240, 372, 260, 500);                  // 右あし
     this._line(ctx, 160, 500, 130, 505);                  // くつ
     this._line(ctx, 260, 500, 290, 505);
-    return { name: "にこちゃん", cat: "char", dataURL: c.toDataURL("image/png"),
+    return { id: "sample-char-smile-v1", sampleKey: "sample-char-smile-v1",
+             name: "にこちゃん", cat: "char", dataURL: c.toDataURL("image/png"),
              rig: { neckY: 0.42, hipY: 0.68, centerX: 0.5 } };
   },
 
@@ -853,7 +854,8 @@ const Samples = {
     this._line(ctx, 280, 280, 350, 350);
     this._line(ctx, 180, 392, 170, 510);                  // あし
     this._line(ctx, 240, 392, 250, 510);
-    return { name: "くまごろう", cat: "char", dataURL: c.toDataURL("image/png"),
+    return { id: "sample-char-bear-v1", sampleKey: "sample-char-bear-v1",
+             name: "くまごろう", cat: "char", dataURL: c.toDataURL("image/png"),
              rig: { neckY: 0.43, hipY: 0.7, centerX: 0.5 } };
   },
 
@@ -875,7 +877,8 @@ const Samples = {
     ctx.strokeStyle = "#d6336c";
     this._line(ctx, 185, 415, 175, 530);
     this._line(ctx, 235, 415, 245, 530);
-    return { name: "ぴょんこ", cat: "char", dataURL: c.toDataURL("image/png"),
+    return { id: "sample-char-rabbit-v1", sampleKey: "sample-char-rabbit-v1",
+             name: "ぴょんこ", cat: "char", dataURL: c.toDataURL("image/png"),
              rig: { neckY: 0.48, hipY: 0.72, centerX: 0.5 } };
   },
 
@@ -904,7 +907,8 @@ const Samples = {
     ctx.strokeStyle = "#495057";                          // くつ
     this._line(ctx, 180, 534, 158, 540);
     this._line(ctx, 240, 534, 262, 540);
-    return { name: "スカートのこ", cat: "char", dataURL: c.toDataURL("image/png"),
+    return { id: "sample-char-skirt-v1", sampleKey: "sample-char-skirt-v1",
+             name: "スカートのこ", cat: "char", dataURL: c.toDataURL("image/png"),
              rig: { type: "skirt", neckY: 0.37, hipY: 0.55, centerX: 0.5 } };
   },
 
@@ -934,7 +938,8 @@ const Samples = {
     ctx.beginPath(); ctx.arc(268, 210, 14, 0, 7); ctx.fill();
     ctx.fillStyle = "#868e96";                            // くち
     ctx.beginPath(); ctx.arc(200, 220, 24, 0.1 * Math.PI, 0.9 * Math.PI); ctx.fill();
-    return { name: "おばけちゃん", cat: "char", dataURL: c.toDataURL("image/png"),
+    return { id: "sample-char-ghost-v1", sampleKey: "sample-char-ghost-v1",
+             name: "おばけちゃん", cat: "char", dataURL: c.toDataURL("image/png"),
              rig: { type: "float" } };
   },
 
@@ -982,7 +987,8 @@ const Samples = {
     ctx.fillStyle = "#343a40";
     ctx.beginPath(); ctx.arc(23, 100, 7, 0, 7); ctx.fill();
 
-    return { name: "ちょうちょ", cat: "char", dataURL: c.toDataURL("image/png"),
+    return { id: "sample-char-butterfly-v1", sampleKey: "sample-char-butterfly-v1",
+             name: "ちょうちょ", cat: "char", dataURL: c.toDataURL("image/png"),
              rig: { type: "butterfly", hingeX: 0 } };
   },
 
@@ -1157,6 +1163,20 @@ const Samples = {
     const assets = await Promise.all(this.ASSET_SAMPLES.map((def) => this.assetRecord(def)));
     return [this.charA(), this.charB(), this.charC(), this.charSkirt(), this.charFloat(),
             this.charButterfly(), this.fukuFace(), ...assets];
+  },
+
+  /* バックアップでは内蔵サンプルを移行対象から外す。
+     初期版の自動生成サンプルにはsampleKeyがなかったため、名前とカテゴリでも判定する。 */
+  isBuiltIn(rec) {
+    if (!rec) return false;
+    if (rec.sampleKey || String(rec.id || "").startsWith("sample-")) return true;
+    if (rec.author || rec.cutout) return false;
+    const legacy = new Set([
+      "char\nにこちゃん", "char\nくまごろう", "char\nぴょんこ",
+      "char\nスカートのこ", "char\nおばけちゃん", "char\nちょうちょ",
+      "bg\nおそらとおやま", "fuku\nサンプルの おかお",
+    ]);
+    return legacy.has(`${rec.cat || ""}\n${rec.name || ""}`);
   },
 };
 
@@ -2067,9 +2087,9 @@ const Backup = {
     return "data:" + (mime || "image/jpeg") + ";base64," + btoa(bin);
   },
 
-  /* すべての設定を集めて Blob(zip) を返す */
+  /* 内蔵サンプル以外の画像と設定を集めて Blob(zip) を返す */
   async exportZip() {
-    const images = await Store.all();
+    const images = (await Store.all()).filter((rec) => !Samples.isBuiltIn(rec));
     const files = [];
     const manifestImages = [];
     images.forEach((r, i) => {
@@ -2131,7 +2151,41 @@ const Backup = {
     return this._makeZip(files);
   },
 
-  /* zip を読み込んで復元。opts.replace=true で現状を消してから入れる(既定=置きかえ) */
+  /* 追加時は配列形式の端末内データを重複なく合流し、それ以外は現在値を優先する。 */
+  _mergeLocalStorage(incoming) {
+    const arrayKeys = new Set([CustomQuiz.KEY, CustomQuiz.HIDDEN_DEFAULTS_KEY]);
+    const lowerIsBetter = new Set(["diff", "puzzle", "memory", "race"]);
+    for (const key of Object.keys(incoming || {})) {
+      const current = localStorage.getItem(key);
+      if (current == null) {
+        localStorage.setItem(key, incoming[key]);
+        continue;
+      }
+      if (!arrayKeys.has(key) && !key.startsWith("tier_rank_")) continue;
+      try {
+        const a = JSON.parse(current);
+        const b = JSON.parse(incoming[key]);
+        if (!Array.isArray(a) || !Array.isArray(b)) continue;
+        const seen = new Set();
+        const merged = a.concat(b).filter((item) => {
+          const id = JSON.stringify(item);
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        if (key.startsWith("tier_rank_")) {
+          const game = key.slice("tier_rank_".length).replace(/_\d+$/, "");
+          merged.sort((x, y) => lowerIsBetter.has(game)
+            ? Number(x.score) - Number(y.score)
+            : Number(y.score) - Number(x.score));
+          merged.splice(5);
+        }
+        localStorage.setItem(key, JSON.stringify(merged));
+      } catch (e) { /* 壊れた値は現在のデータを残す */ }
+    }
+  },
+
+  /* zip を読み込んで復元。内蔵サンプルは現在の端末のものを維持し、移行しない。 */
   async importZip(fileOrBuf, opts) {
     opts = opts || {};
     const replace = opts.replace !== false;
@@ -2146,15 +2200,25 @@ const Backup = {
     catch (e) { throw new Error("設定データが壊れています"); }
     if (manifest.app !== this.MAGIC) throw new Error("このアプリの設定 zip ではありません");
 
+    const currentImages = await Store.all();
+    const samples = currentImages.filter((rec) => Samples.isBuiltIn(rec));
+    const currentIds = new Set(currentImages.map((rec) => rec.id));
     if (replace) {
       await Store.clear();
+      for (const rec of samples) await Store.put(rec);
       localStorage.clear();
     }
     const ls = manifest.localStorage || {};
-    for (const k of Object.keys(ls)) localStorage.setItem(k, ls[k]);
+    if (replace) {
+      for (const k of Object.keys(ls)) localStorage.setItem(k, ls[k]);
+    } else {
+      this._mergeLocalStorage(ls);
+    }
 
     let n = 0;
     for (const m of (manifest.images || [])) {
+      if (Samples.isBuiltIn(m)) continue;
+      if (!replace && currentIds.has(m.id)) continue;
       const bytes = map[m.file];
       if (!bytes) continue;
       const rec = {
