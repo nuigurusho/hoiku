@@ -1099,6 +1099,7 @@ canvas.stage {
   animation: bigpop .22s ease-out forwards;
   white-space: normal;
 }
+.bigmsg.impact { font-size: clamp(60px, 12vw, 96px); }
 @keyframes bigpop { to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
 /* おおきい メッセージの 2行目(クリアタイムなどを さりげなく) */
 .bigmsg-sub {
@@ -1704,6 +1705,24 @@ body[data-back-href] .back-float { display: flex; }
 
 /* ---------- ステージ(canvas + うえに かさねる もの) ---------- */
 .mt-stage { position: relative; max-width: 1000px; margin: 0 auto; }
+.uk-timer {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  min-width: 104px;
+  padding: 9px 18px 11px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: #6b5d4d;
+  box-shadow: 0 3px 0 rgba(107,93,77,.18);
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
 
 /* ---------- じっきょうテロップ(下から でる ふきだし) ----------
    まえは 黒い おびが 画面の下に 出っぱなしだった。おびは はばいっぱいで
@@ -1720,20 +1739,19 @@ body[data-back-href] .back-float { display: flex; }
   max-width: 86%;
   z-index: 40;
   text-align: center;
-  font-weight: bold;
+  font-weight: 500;
   font-size: clamp(15px, 2.4vw, 27px);
   line-height: 1.25;
   color: var(--ink);
   background: rgba(255,253,245,.94);
   padding: 7px 26px 9px;
-  border: 4px solid var(--cream-d);
   border-radius: 999px;
-  box-shadow: 0 6px 0 rgba(150,110,70,.22);
+  box-shadow: 0 4px 12px rgba(100,70,40,.18);
   pointer-events: none;
   animation: mt-banner-in .22s cubic-bezier(.2,1.3,.5,1) both;
 }
-.mt-banner.red  { border-color: var(--pink); box-shadow: 0 6px 0 rgba(214,51,108,.3); }
-.mt-banner.blue { border-color: var(--blue); box-shadow: 0 6px 0 rgba(28,126,214,.3); }
+.mt-banner.red,
+.mt-banner.blue { box-shadow: 0 4px 12px rgba(100,70,40,.18); }
 .mt-banner.out  { animation: mt-banner-out .2s ease-in both; }
 .mt-banner .mt-nm { font-weight: 800; }
 .mt-banner .mt-nm.red  { color: var(--pink-d); }
@@ -1839,6 +1857,42 @@ body[data-back-href] .back-float { display: flex; }
 .mt-teamcol.red  { border-color: var(--pink); box-shadow: 0 6px 0 var(--pink-d); background: #fff0f6; }
 .mt-teamcol.blue { border-color: var(--blue); box-shadow: 0 6px 0 var(--blue-d); background: #e7f5ff; }
 .mt-teamcol h3 { margin: 4px 0 8px; font-size: clamp(20px, 4.5vw, 30px); }
+.team-reveal-title {
+  margin: 10px 0 4px;
+  text-align: center;
+  font: 400 clamp(28px, 5.5vw, 40px)/1.25 "Hoiku Pop", "Hoiku Rounded", sans-serif;
+}
+.team-reveal-card .ttl {
+  font-size: clamp(28px, 5.5vw, 40px);
+  font-weight: 400;
+}
+
+/* うんどうかいの最終決定は、スクロール中だけ画面下へ固定する。
+   最下部では通常の配置へ戻り、ほかの内容を覆わない。 */
+.uk-go-slot { min-height: 82px; }
+.uk-go-sentinel { height: 1px; }
+.uk-go-actions {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  width: min(520px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,253,245,.94);
+  box-shadow: 0 5px 16px rgba(90,60,30,.18);
+}
+.uk-go-actions.docked {
+  position: static;
+  width: auto;
+  transform: none;
+  margin: 10px 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
 .mt-teamcol.red  h3 { color: var(--pink-d); }
 .mt-teamcol.blue h3 { color: var(--blue-d); }
 .mt-members {

@@ -1231,6 +1231,7 @@ const Ui = {
     document.querySelectorAll(".bigmsg").forEach((old) => old.remove());
     const d = document.createElement("div");
     d.className = "bigmsg";
+    if (/^どん[!！]$/.test(String(text).trim())) d.classList.add("impact");
     d.textContent = text;
     if (color) d.style.color = color;
     if (sub) {

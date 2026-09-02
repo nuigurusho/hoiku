@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=59">
+<link rel="stylesheet" href="../css/style.css?v=60">
 </head>
 <body>
 <header class="bar">
@@ -47,7 +47,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=45"></script>
+<script src="../js/core.js?v=46"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -318,22 +318,27 @@ function drawRaceGoals(g) {
   for (const note of g.goalNotes) {
     const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
     ctx.font = '800 27px "Hoiku Rounded", sans-serif';
-    const natural = ctx.measureText(note.text).width;
+    const nameNatural = ctx.measureText(note.name).width;
+    ctx.font = '500 27px "Hoiku Rounded", sans-serif';
+    const suffixNatural = ctx.measureText(note.suffix).width;
+    const natural = nameNatural + suffixNatural;
     const size = Math.max(16, 27 * Math.min(1, 520 / Math.max(1, natural)));
     ctx.font = `800 ${size}px "Hoiku Rounded", sans-serif`;
     const nameW = ctx.measureText(note.name).width;
-    const textW = ctx.measureText(note.text).width;
+    ctx.font = `500 ${size}px "Hoiku Rounded", sans-serif`;
+    const suffixW = ctx.measureText(note.suffix).width;
+    const textW = nameW + suffixW;
     const w = Math.min(562, textW + 42);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(255,253,245,.94)";
-    ctx.strokeStyle = note.color;
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.roundRect(24, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(24, note.y - 21, w, 42, 21); ctx.fill();
     ctx.save();
     ctx.beginPath(); ctx.rect(36, note.y - 19, w - 24, 38); ctx.clip();
     ctx.fillStyle = note.color;
+    ctx.font = `800 ${size}px "Hoiku Rounded", sans-serif`;
     ctx.fillText(note.name, 42, note.y + 1);
     ctx.fillStyle = "#4a3f35";
+    ctx.font = `500 ${size}px "Hoiku Rounded", sans-serif`;
     ctx.fillText(note.suffix, 42 + nameW, note.y + 1);
     ctx.restore();
   }

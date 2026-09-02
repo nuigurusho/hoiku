@@ -786,7 +786,7 @@ const Meet = (() => {
     ctx.restore();
     drawCurtain(ctx, 46);
 
-    // 集計中は背景の玉を消し、数えている2列だけに視線を集める。
+    // 集計中は散らばった玉だけを消す。キャラはその場に残して応援を続ける。
     if (E.state !== "count" && E.state !== "over") {
       for (const l of E.litter) drawBall(ctx, l.x, l.y, l.r, l.key);
     }
@@ -794,14 +794,12 @@ const Meet = (() => {
     // かご
     for (const key of ["red", "blue"]) tmDrawBasket(M, key);
 
-    // キャラ(おく=Yが小さい ものから)
-    if (E.state !== "count" && E.state !== "over") {
-      const order = M.all.slice().sort((a, b) => a.puppet.y - b.puppet.y);
-      for (const a of order) {
-        const pu = a.puppet;
-        pu.draw(ctx);
-        ActorTouch.drawName(ctx, a, { fontSize: 19, color: COLD[a.team], edge: COL[a.team] });
-      }
+    // キャラ(おく=Yが小さい ものから)。集計中も消さない。
+    const order = M.all.slice().sort((a, b) => a.puppet.y - b.puppet.y);
+    for (const a of order) {
+      const pu = a.puppet;
+      pu.draw(ctx);
+      ActorTouch.drawName(ctx, a, { fontSize: 19, color: COLD[a.team], edge: COL[a.team] });
     }
 
     // とんでる 玉
@@ -905,23 +903,29 @@ const Meet = (() => {
     ctx.textAlign = "left";
     for (const note of notes) {
       const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
-      ctx.font = '800 27px "Hoiku Rounded", sans-serif';
-      const natural = ctx.measureText(note.text).width;
+      const parts = note.parts || [{ text: note.text, team: "" }];
+      let natural = 0;
+      for (const part of parts) {
+        ctx.font = `${part.team ? 800 : 500} 27px "Hoiku Rounded", sans-serif`;
+        natural += ctx.measureText(part.text).width;
+      }
       const size = Math.max(16, 27 * Math.min(1, 520 / Math.max(1, natural)));
-      ctx.font = `800 ${size}px "Hoiku Rounded", sans-serif`;
-      const textW = ctx.measureText(note.text).width;
+      let textW = 0;
+      for (const part of parts) {
+        ctx.font = `${part.team ? 800 : 500} ${size}px "Hoiku Rounded", sans-serif`;
+        textW += ctx.measureText(part.text).width;
+      }
       const w = Math.min(562, textW + 42);
       const x = side === "right" ? CW - 24 : 24;
       const left = side === "right" ? x - w : x;
       ctx.globalAlpha = alpha;
       ctx.fillStyle = "rgba(255,253,245,.94)";
-      ctx.strokeStyle = COL[note.team] || "#d8c8aa";
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.roundRect(left, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(left, note.y - 21, w, 42, 21); ctx.fill();
       ctx.save();
       ctx.beginPath(); ctx.rect(left + 12, note.y - 19, w - 24, 38); ctx.clip();
       let px = side === "right" ? x - 18 - textW : x + 18;
-      for (const part of note.parts || [{ text: note.text, team: "" }]) {
+      for (const part of parts) {
+        ctx.font = `${part.team ? 800 : 500} ${size}px "Hoiku Rounded", sans-serif`;
         ctx.fillStyle = COLD[part.team] || "#4a3f35";
         ctx.fillText(part.text, px, note.y + 1);
         px += ctx.measureText(part.text).width;
@@ -931,29 +935,29 @@ const Meet = (() => {
     ctx.restore();
   }
 
-  /* 集計中だけ、籠の外へ赤・青を上下2列に並べ、増えた1個へ数字を出す。 */
+  /* 集計中だけ、画面下へ赤・青を上下2列に並べる。
+     同時に同じ数を数えるため、数字は共通の1個だけを基本色で出す。 */
   function tmDrawCountRows(M) {
     const ctx = M.ctx, E = M.E;
     const max = Math.max(E.score.red, E.score.blue, 1);
     const gap = Math.min(38, 1040 / Math.max(1, max - 1));
     const radius = Util.clamp(gap * 0.34, 8, 13);
     const startX = 640 - gap * (max - 1) / 2;
-    for (const [key, y] of [["red", 420], ["blue", 510]]) {
+    for (const [key, y] of [["red", 610], ["blue", 674]]) {
       ctx.fillStyle = COLD[key];
       ctx.font = '800 25px "Hoiku Rounded", sans-serif';
       ctx.textAlign = "right";
       ctx.fillText(M.names[key], startX - 26, y + 8);
       for (let i = 0; i < E.cnt[key]; i++) drawBall(ctx, startX + i * gap, y, radius, key);
     }
-    for (const flash of E.cntFlashes) {
-      if (flash.t >= 0.75) continue;
-      const key = flash.team, y = key === "red" ? 420 : 510;
+    const flash = E.cntFlashes.find((f) => f.t < 0.75);
+    if (flash) {
       const x = startX + (flash.n - 1) * gap;
       ctx.globalAlpha = Math.min(1, (0.75 - flash.t) * 3);
-      ctx.fillStyle = COLD[key];
-      ctx.font = '400 38px "Hoiku Pop", sans-serif';
+      ctx.fillStyle = "#4a3f35";
+      ctx.font = '400 42px "Hoiku Pop", sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText(String(flash.n), x, y - 28);
+      ctx.fillText(String(flash.n), x, 562);
       ctx.globalAlpha = 1;
     }
     ctx.textAlign = "left";

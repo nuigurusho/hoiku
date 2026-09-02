@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=59">
+<link rel="stylesheet" href="../css/style.css?v=60">
 <style>
   /* ===== ドッヂボール専用スタイル(1ファイル完結) ===== */
 
@@ -58,45 +58,29 @@
   .db-vs { align-self: center; font-size: clamp(24px, 6vw, 46px); font-weight: bold; color: #a99; flex: 0 0 auto; }
   @keyframes db-pop { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
 
-  /* --- 試合HUD(残り人数) --- */
-  .db-hud {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    font-weight: bold;
-    font-size: clamp(20px, 5vw, 34px);
-    margin: 6px 0 8px;
-    flex-wrap: wrap;
-  }
-  .db-hud span { background: #fff; border-radius: 999px; padding: 4px 18px; box-shadow: 0 3px 0 rgba(150,110,70,.16); white-space: nowrap; }
-  .db-hud .db-red  { color: var(--pink-d); }
-  .db-hud .db-blue { color: var(--blue-d); }
-  .db-hud .db-num { font-size: 1.5em; font-weight: 800; margin: 0 1px; }
-  .db-hud .db-lbl { font-size: .6em; font-weight: bold; }
-  .db-hud .db-vslabel { background: none; box-shadow: none; color: #8a7a68; padding: 0 2px; }
-
   /* --- ステージ(コートの canvas + オーバーレイ) --- */
   .db-stage { position: relative; max-width: 1000px; margin: 0 auto; }
 
   /* --- じっきょうテロップ(下部の黒おび・プレイを じゃましない) --- */
   .db-banner {
     position: absolute;
-    left: 0; right: 0; bottom: 0;
+    left: 0; right: 0; bottom: 2.5%;
+    width: fit-content;
+    max-width: 86%;
+    margin: 0 auto;
     z-index: 40;
     text-align: center;
-    font-weight: bold;
+    font-weight: 500;
     font-size: clamp(15px, 3.2vw, 28px);
     line-height: 1.2;
     color: var(--ink);
     background: rgba(255,253,245,.96);
-    padding: 9px 16px 11px;
-    border-top: 5px solid var(--yellow);
+    padding: 7px 26px 9px;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(100,70,40,.18);
     pointer-events: none;
     animation: db-banner-in .22s ease-out both;
   }
-  .db-banner.red  { border-top-color: var(--pink); }
-  .db-banner.blue { border-top-color: var(--blue); }
   .db-banner .db-nm { font-weight: 800; }
   .db-banner .db-nm.red  { color: var(--pink-d); }
   .db-banner .db-nm.blue { color: var(--blue-d); }
@@ -118,14 +102,15 @@
     margin: 0;
     font-size: clamp(26px, 6.5vw, 52px);
     text-align: center;
-    background: rgba(255,255,255,.9);
-    border-radius: 999px;
     padding: 6px 26px;
-    box-shadow: 0 5px 0 rgba(150,110,70,.18);
+    color: var(--ink);
+    font-family: "Hoiku Pop", "Hoiku Rounded", sans-serif;
+    font-weight: 400;
+    text-shadow: 0 3px 0 #fff, 0 0 12px #fff;
     pointer-events: auto;
   }
-  .db-winbar h2.red  { color: var(--pink-d); }
-  .db-winbar h2.blue { color: var(--blue-d); }
+  .db-winbar h2 .team-name.red  { color: var(--pink-d); }
+  .db-winbar h2 .team-name.blue { color: var(--blue-d); }
   .db-winbar .db-winbtns { pointer-events: auto; width: 100%; }
   .db-winbar .row { margin: 6px 0; }
 
@@ -175,9 +160,6 @@
   .db-rule.disabled .db-toggle { cursor: default; }
 
   @media (max-width: 560px) {
-    /* スマホ縦:ゲーム中は ヘッダーが「← もどる」フローティングになるので
-       人数HUDが かぶらないよう 上に すきまを あける */
-    .db-hud { margin-top: 50px; font-size: clamp(18px, 4.6vw, 26px); }
     .db-winbar .btn.big { font-size: 20px; padding: 14px 20px; }
   }
 </style>
@@ -215,25 +197,20 @@
 
   <!-- 2. チーム発表 -->
   <div id="teamScreen" class="hidden">
-    <h2 style="text-align:center;margin:10px 0 4px;font-size:clamp(22px,5vw,32px)">🎪 チームわけ!</h2>
+    <h2 class="team-reveal-title">🎪 チームわけ!</h2>
     <div class="db-teams">
       <div class="db-teamcol red"><h3>🔴 あかチーム</h3><div class="db-members" id="redMembers"></div></div>
       <div class="db-vs">VS</div>
       <div class="db-teamcol blue"><h3>🔵 あおチーム</h3><div class="db-members" id="blueMembers"></div></div>
     </div>
     <div class="row" id="teamBtns">
-      <button class="btn big yellow" id="redoBtn">やりなおす</button>
+      <button class="btn big yellow" id="redoBtn">チームがえ</button>
       <button class="btn big green"  id="startBtn">スタート!</button>
     </div>
   </div>
 
   <!-- 3. 試合(全自動)+ 4. 勝利演出 -->
   <div id="playScreen" class="hidden">
-    <div class="db-hud">
-      <span class="db-red"  id="hudRed">🔴あか 0にん</span>
-      <span class="db-vslabel">vs</span>
-      <span class="db-blue" id="hudBlue">🔵あお 0にん</span>
-    </div>
     <div class="db-stage">
       <canvas id="cv" class="stage" width="1280" height="720"></canvas>
       <div class="db-banner hidden" id="banner"></div>
@@ -247,7 +224,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=45"></script>
+<script src="../js/core.js?v=46"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -408,7 +385,6 @@ async function revealTeams() {
   if (gen !== teamGen) return;
   $("startBtn").disabled = false;
   $("redoBtn").disabled = false;
-  Ui.msg("よういは いい?", 1200, "#2f9e44");
 }
 function drumroll() {
   for (let i = 0; i < 5; i++) Sound.beep(180 + i * 6, 0.04, "square", 0.06, i * 0.05);
@@ -466,7 +442,7 @@ async function startMatch() {
   M.ballY = (YMIN + YMAX) / 2;
 
   updateHud();
-  Ui.msg("スタート！", 1200, "#ff922b");
+  Ui.msg("よーい…", 1000, "#4dabf7");
   Sound.fanfare();
 
   let last = performance.now();
@@ -538,8 +514,9 @@ function updateHud() {
     if (rules.outfield) s += ` <span class="db-lbl">がいや${outP(team).length}</span>`;
     return s;
   };
-  $("hudRed").innerHTML  = html("🔴", "red");
-  $("hudBlue").innerHTML = html("🔵", "blue");
+  const red = $("hudRed"), blue = $("hudBlue");
+  if (red) red.innerHTML = html("🔴", "red");
+  if (blue) blue.innerHTML = html("🔵", "blue");
 }
 
 function startThrow() {
@@ -651,7 +628,11 @@ function updateMatch(dt) {
 
   if (!M.over) {
     if (M.phase === "intro") {
-      if (M.phaseT >= INTRO) startThrow();
+      if (M.phaseT >= INTRO) {
+        Ui.msg("スタート!", 900, "#ff6b9d");
+        Sound.pon();
+        startThrow();
+      }
     } else if (M.phase === "wind") {
       if (M.phaseT >= WIND) launchBall();
     } else if (M.phase === "fly") {
@@ -898,8 +879,12 @@ function endMatch() {
   placeRow(rest.slice(half),    600, oH, 9);      // 下のだん(手前)
 
   const title = $("winTitle");
-  title.textContent = `${label}の かち!`;
-  title.className = winTeam;
+  title.className = "";
+  title.textContent = "";
+  const teamName = document.createElement("span");
+  teamName.className = `team-name ${winTeam}`;
+  teamName.textContent = label;
+  title.append(teamName, document.createTextNode("の かち!"));
   $("winOverlay").classList.remove("hidden");
 
   Sound.fanfare();

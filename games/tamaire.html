@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=59">
+<link rel="stylesheet" href="../css/style.css?v=60">
 </head>
 <body>
 <header class="bar">
@@ -33,28 +33,23 @@
 
   <!-- 2. チーム発表 -->
   <div id="teamScreen" class="hidden">
-    <h2 style="text-align:center;margin:10px 0 4px;font-size:clamp(22px,5vw,32px)">🎪 チームわけ!</h2>
+    <h2 class="team-reveal-title">🎪 チームわけ!</h2>
     <div class="mt-teams">
       <div class="mt-teamcol red"><h3>🔴 あかチーム</h3><div class="mt-members" id="redMembers"></div></div>
       <div class="mt-vs">VS</div>
       <div class="mt-teamcol blue"><h3>🔵 あおチーム</h3><div class="mt-members" id="blueMembers"></div></div>
     </div>
     <div class="row">
-      <button class="btn big yellow" id="redoBtn">やりなおす</button>
+      <button class="btn big yellow" id="redoBtn">チームがえ</button>
       <button class="btn big green"  id="startBtn">スタート!</button>
     </div>
-    <p class="note" style="text-align:center">ひだり=あかチーム、みぎ=あおチームの かごに 入れるよ</p>
   </div>
 
   <!-- 3. しあい(ぜんじどう)+ 4. けっか -->
   <div id="playScreen" class="hidden">
-    <div class="mt-hud">
-      <span class="mt-red"  id="hudRed">🔴 あかチーム 0こ</span>
-      <span class="mt-mid"  id="hudMid">たまいれ</span>
-      <span class="mt-blue" id="hudBlue">🔵 あおチーム 0こ</span>
-    </div>
     <div class="mt-stage">
       <canvas id="cv" class="stage" width="1280" height="720"></canvas>
+      <div class="uk-timer hidden" id="timer" aria-label="のこりじかん"></div>
       <div class="mt-banner hidden" id="banner"></div>
       <div class="mt-over clear hidden" id="winOver">
         <div class="mt-card" id="winCard">
@@ -63,16 +58,16 @@
         </div>
         <div class="row">
           <button class="btn big green"  id="rematchBtn">もういちど</button>
-          <button class="btn big yellow" id="reteamBtn">やりなおす</button>
+          <button class="btn big yellow" id="reteamBtn">チームがえ</button>
         </div>
       </div>
     </div>
   </div>
 </main>
 
-<script src="../js/core.js?v=45"></script>
+<script src="../js/core.js?v=46"></script>
 <script src="../js/rig.js?v=17"></script>
-<script src="../js/meet.js?v=21"></script>
+<script src="../js/meet.js?v=22"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -82,7 +77,13 @@ const NAMES = { red: "あかチーム", blue: "あおチーム" };
 const SCREENS = ["selectScreen", "teamScreen", "playScreen"];
 function show(id) { for (const s of SCREENS) $(s).classList.toggle("hidden", s !== id); }
 
-const ui = Meet.ui({ banner: $("banner"), hudRed: $("hudRed"), hudBlue: $("hudBlue"), hudMid: $("hudMid") });
+const ui = Meet.ui({ banner: $("banner") });
+/* 単発でも運動会と同じく、競技中は得点を隠して残り時間だけを上部へ出す。 */
+ui.hud = (s) => {
+  const sec = Number.isFinite(s.sec) ? s.sec : null;
+  $("timer").textContent = sec == null ? "" : `⏱ ${sec}`;
+  $("timer").classList.toggle("hidden", sec == null);
+};
 
 let allChars = [];
 const selectedIds = new Set();
@@ -194,7 +195,6 @@ async function revealTeams() {
   if (gen !== teamGen) return;
   $("startBtn").disabled = false;
   $("redoBtn").disabled = false;
-  Ui.msg("よういは いい?", 1200, "#2f9e44");
 }
 
 $("redoBtn").onclick = () => { Sound.tap(); splitTeams(); revealTeams(); };
@@ -212,6 +212,7 @@ async function startMatch() {
   Meet.stop();
   show("playScreen");
   $("banner").classList.add("hidden");
+  $("timer").classList.add("hidden");
   $("winOver").classList.add("hidden");
   if (!actors) actors = await Meet.actors(teams);
 
@@ -225,15 +226,22 @@ async function startMatch() {
    ============================================================ */
 function showResult(res) {
   $("banner").classList.add("hidden");
+  $("timer").classList.add("hidden");
   const win = res.win;
   /* まけた チームも のこす(くらくせず、はくしゅで ちがいを 出す) */
   Meet.celebrate({ cv, members: actors.red.concat(actors.blue), teamKey: win });
 
   const card = $("winCard"), title = $("winTitle");
-  card.className = "mt-card" + (win ? " " + win : "");
-  title.className = "ttl" + (win ? " " + win : "");
-  title.textContent = win ? `${Meet.MARK[win]} ${NAMES[win]}の かち!` : "ひきわけ!";
-  $("winSub").textContent = `${Meet.MARK.red} ${res.score.red}こ  -  ${Meet.MARK.blue} ${res.score.blue}こ`;
+  card.className = "mt-card result-reveal";
+  title.className = "ttl";
+  title.textContent = "";
+  if (win) {
+    const team = document.createElement("span");
+    team.className = `uk-team-text ${win}`;
+    team.textContent = NAMES[win];
+    title.append(team, document.createTextNode("の かち!"));
+  } else title.textContent = "ひきわけ!";
+  $("winSub").textContent = `${res.score.red}こ  -  ${res.score.blue}こ`;
   $("winOver").classList.remove("hidden");
   Ui.confetti();
 }

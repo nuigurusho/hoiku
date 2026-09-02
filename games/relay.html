@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=59">
+<link rel="stylesheet" href="../css/style.css?v=60">
 <style>
   /* ===== リレー専用スタイル(1ファイル完結) ===== */
 
@@ -134,14 +134,15 @@
     margin: 0;
     font-size: clamp(26px, 6.5vw, 52px);
     text-align: center;
-    background: rgba(255,255,255,.9);
-    border-radius: 999px;
     padding: 6px 26px;
-    box-shadow: 0 5px 0 rgba(150,110,70,.18);
+    color: var(--ink);
+    font-family: "Hoiku Pop", "Hoiku Rounded", sans-serif;
+    font-weight: 400;
+    text-shadow: 0 3px 0 #fff, 0 0 12px #fff;
     pointer-events: auto;
   }
-  .rl-winbar h2.red  { color: var(--pink-d); }
-  .rl-winbar h2.blue { color: var(--blue-d); }
+  .rl-winbar h2 .team-name.red  { color: var(--pink-d); }
+  .rl-winbar h2 .team-name.blue { color: var(--blue-d); }
   .rl-winbar .rl-winbtns { pointer-events: auto; width: 100%; }
   .rl-winbar .row { margin: 6px 0; }
 
@@ -174,7 +175,7 @@
 
   <!-- 2. チーム発表 -->
   <div id="teamScreen" class="hidden">
-    <h2 style="text-align:center;margin:10px 0 4px;font-size:clamp(22px,5vw,32px)">🎪 チームわけ!</h2>
+    <h2 class="team-reveal-title">🎪 チームわけ!</h2>
     <div class="rl-teams">
       <div class="rl-teamcol red"><h3>🔴 あかチーム</h3><div class="rl-members" id="redMembers"></div></div>
       <div class="rl-vs">VS</div>
@@ -182,7 +183,7 @@
     </div>
     <p class="note" style="text-align:center;font-size:15px;margin:4px 0">バッジの すうじが はしる じゅんばん。⭐は さいごに はしる アンカーだよ!</p>
     <div class="row" id="teamBtns">
-      <button class="btn big yellow" id="redoBtn">やりなおす</button>
+      <button class="btn big yellow" id="redoBtn">チームがえ</button>
       <button class="btn big green"  id="startBtn">スタート!</button>
     </div>
   </div>
@@ -202,7 +203,7 @@
         <div class="rl-winbtns">
           <div class="row">
             <button class="btn big green" id="rematchBtn">もういちど</button>
-            <button class="btn big yellow" id="reteamBtn">やりなおす</button>
+            <button class="btn big yellow" id="reteamBtn">チームがえ</button>
           </div>
         </div>
       </div>
@@ -210,7 +211,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=45"></script>
+<script src="../js/core.js?v=46"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -375,7 +376,6 @@ async function revealTeams() {
   if (gen !== teamGen) return;
   $("startBtn").disabled = false;
   $("redoBtn").disabled = false;
-  Ui.msg("よういは いい?", 1200, "#2f9e44");
 }
 function drumroll() {
   for (let i = 0; i < 5; i++) Sound.beep(180 + i * 6, 0.04, "square", 0.06, i * 0.05);
@@ -556,22 +556,28 @@ function drawNarrations() {
   ctx.textBaseline = "middle";
   for (const note of M.narrations) {
     const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
-    ctx.font = '800 27px "Hoiku Rounded", sans-serif';
-    const natural = ctx.measureText(note.text).width;
+    const parts = note.parts || [{ text: note.text, team: "" }];
+    let natural = 0;
+    for (const part of parts) {
+      ctx.font = `${part.team ? 800 : 500} 27px "Hoiku Rounded", sans-serif`;
+      natural += ctx.measureText(part.text).width;
+    }
     const size = Math.max(16, 27 * Math.min(1, 520 / Math.max(1, natural)));
-    ctx.font = `800 ${size}px "Hoiku Rounded", sans-serif`;
-    const textW = ctx.measureText(note.text).width;
+    let textW = 0;
+    for (const part of parts) {
+      ctx.font = `${part.team ? 800 : 500} ${size}px "Hoiku Rounded", sans-serif`;
+      textW += ctx.measureText(part.text).width;
+    }
     const w = Math.min(562, textW + 42);
     const x = CW - 24;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(255,253,245,.94)";
-    ctx.strokeStyle = note.team ? teamColor(note.team) : "#d8c8aa";
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.roundRect(x - w, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(x - w, note.y - 21, w, 42, 21); ctx.fill();
     ctx.save();
     ctx.beginPath(); ctx.rect(x - w + 12, note.y - 19, w - 24, 38); ctx.clip();
     let px = x - 18 - textW;
-    for (const part of note.parts || [{ text: note.text, team: "" }]) {
+    for (const part of parts) {
+      ctx.font = `${part.team ? 800 : 500} ${size}px "Hoiku Rounded", sans-serif`;
       ctx.fillStyle = part.team === "red" ? "#d6336c" : part.team === "blue" ? "#1c7ed6" : "#4a3f35";
       ctx.fillText(part.text, px, note.y + 1);
       px += ctx.measureText(part.text).width;
@@ -1119,8 +1125,12 @@ function showResult() {
   placeRow(t.members, 430, Util.clamp(200 - t.members.length * 12, 108, 180), 6);
 
   const title = $("winTitle");
-  title.textContent = `${teamLabel(key)}の かち!`;
-  title.className = key;
+  title.className = "";
+  title.textContent = "";
+  const teamName = document.createElement("span");
+  teamName.className = `team-name ${key}`;
+  teamName.textContent = teamLabel(key);
+  title.append(teamName, document.createTextNode("の かち!"));
   $("winOverlay").classList.remove("hidden");
 
   Sound.fanfare();
