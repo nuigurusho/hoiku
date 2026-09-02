@@ -14,15 +14,19 @@
 <style>
   .hands { display: flex; gap: 18px; justify-content: center; margin: 10px 0 4px; }
   .hbtn {
-    font-size: 64px;
     width: 110px; height: 110px;
+    padding: 0;
     border-radius: 26px;
     border: 3px solid var(--cream-d);
     background: #fff;
     box-shadow: 0 6px 0 var(--cream-d);
     cursor: pointer;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
     transition: transform .08s, box-shadow .08s;
   }
+  .hicon { display: block; width: 82px; height: 82px; }
   .hbtn:active { transform: translateY(6px); box-shadow: none; }
   .streak { text-align: center; font-size: 24px; font-weight: bold; min-height: 32px; }
 </style>
@@ -56,9 +60,9 @@
     <div class="streak" id="streak"></div>
     <p style="text-align:center;font-weight:bold;margin:4px" id="playHint">だすのを えらんでね!</p>
     <div class="hands" id="handRow">
-      <button class="hbtn" data-h="0">✊</button>
-      <button class="hbtn" data-h="1">✌️</button>
-      <button class="hbtn" data-h="2">✋</button>
+      <button class="hbtn" data-h="0" aria-label="グー"></button>
+      <button class="hbtn" data-h="1" aria-label="チョキ"></button>
+      <button class="hbtn" data-h="2" aria-label="パー"></button>
     </div>
     <div class="row" id="actionRow">
       <button class="btn big pink hidden" id="ponBtn">ぽん!</button>
@@ -77,10 +81,50 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 let sceneBg = null;
 Util.loadImage("../assets/backgrounds/janken.jpg").then((img) => { sceneBg = img; });
 const HANDS = ["✊", "✌️", "✋"];
-const HAND_CV = HANDS.map((h) => Util.emojiCanvas(h, 300));
+
+/* OSごとに違う絵文字の余白を実際の描画範囲から取り除き、
+   チョキを含む3種を同じ中心・大きさにそろえる。 */
+function makeHandCanvas(emoji, size = 300) {
+  const source = Util.makeCanvas(size * 2, size * 2);
+  const sctx = source.getContext("2d", { willReadFrequently: true });
+  sctx.font = `${Math.floor(size * 1.35)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+  sctx.textAlign = "center";
+  sctx.textBaseline = "middle";
+  sctx.fillText(emoji, size, size);
+
+  const pixels = sctx.getImageData(0, 0, source.width, source.height).data;
+  let left = source.width, top = source.height, right = -1, bottom = -1;
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      if (pixels[(y * source.width + x) * 4 + 3] < 8) continue;
+      left = Math.min(left, x); top = Math.min(top, y);
+      right = Math.max(right, x); bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < left || bottom < top) return Util.emojiCanvas(emoji, size);
+
+  const out = Util.makeCanvas(size, size);
+  const width = right - left + 1, height = bottom - top + 1;
+  const scale = Math.min(size * 0.82 / width, size * 0.82 / height);
+  const drawW = width * scale, drawH = height * scale;
+  out.getContext("2d").drawImage(
+    source, left, top, width, height,
+    (size - drawW) / 2, (size - drawH) / 2, drawW, drawH
+  );
+  return out;
+}
+
+const HAND_CV = HANDS.map((h) => makeHandCanvas(h, 300));
+
+document.querySelectorAll(".hbtn").forEach((b) => {
+  const icon = Util.makeCanvas(300, 300);
+  icon.className = "hicon";
+  icon.getContext("2d").drawImage(HAND_CV[+b.dataset.h], 0, 0);
+  b.appendChild(icon);
+});
 
 let puppet = null, charName = "", selRec = null;
-let state = { mode: "idle", show: -1, t: 0, streak: 0, busy: false, points: 0, round: 0 };
+let state = { mode: "idle", show: -1, playerShow: -1, t: 0, streak: 0, busy: false, points: 0, round: 0 };
 let gmode = null, over = false;
 
 const GAME = "janken";
@@ -144,7 +188,7 @@ document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
     const parts = await Rig.load(selRec);
     charName = selRec.name || "";
     puppet = new Puppet(parts, { x: 300, y: 500, h: 330, facing: 1 });
-    state.streak = 0; state.show = -1; state.busy = false;
+    state.streak = 0; state.show = -1; state.playerShow = -1; state.busy = false;
     state.points = 0; state.round = 0; over = false;
     Ui.clearResult("actionRow");
     $("againBtn").classList.add("hidden");
@@ -177,7 +221,7 @@ document.querySelectorAll(".hbtn").forEach((b) => {
 });
 $("ponBtn").onclick = () => play(null);
 $("againBtn").onclick = () => {
-  state = { mode: "idle", show: -1, t: 0, streak: 0, busy: false, points: 0, round: 0 };
+  state = { mode: "idle", show: -1, playerShow: -1, t: 0, streak: 0, busy: false, points: 0, round: 0 };
   over = false;
   Ui.clearResult("actionRow");
   $("againBtn").classList.add("hidden");
@@ -192,6 +236,7 @@ function play(playerHand) {
   if (state.busy || over || !puppet) return;
   state.busy = true;
   state.show = -1;
+  state.playerShow = -1;
   Ui.msg("じゃんけん…", 1200, "#9775fa");
   Sound.tick();
   setTimeout(() => Sound.tick(), 400);
@@ -200,6 +245,7 @@ function play(playerHand) {
   setTimeout(() => {
     state.mode = "idle";
     state.show = Util.randInt(0, 2);
+    state.playerShow = playerHand === null ? -1 : playerHand;
     Sound.pon();
     Ui.msg("ぽん!", 900, "#ff6b9d");
     if (playerHand === null) {
@@ -296,7 +342,19 @@ let last = performance.now();
     }
   }
 
-  // キャラの出した手
+  // 自分が選んだ手。相手の手と同じ「ぽん！」の瞬間にキャラの横へ出す
+  if (state.playerShow >= 0) {
+    const s = 1 + Math.sin(now / 180) * 0.04;
+    ctx.save();
+    ctx.translate(125, 300);
+    ctx.scale(s, s);
+    ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.beginPath(); ctx.arc(0, 0, 112, 0, 7); ctx.fill();
+    ctx.drawImage(HAND_CV[state.playerShow], -100, -100, 200, 200);
+    ctx.restore();
+  }
+
+  // 相手の出した手
   if (state.show >= 0) {
     const s = 1 + Math.sin(now / 180) * 0.04;
     ctx.save();
