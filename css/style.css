@@ -383,6 +383,45 @@ canvas.stage {
 .hub-page { max-width: 1100px; margin: 0 auto; }
 .hub-page .settings-bar { max-width: 980px; }
 .hub-logo { width: min(300px, 58vw); margin: -24px auto 12px; }
+.hub-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: min(760px, 100%);
+  margin: 0 auto 24px;
+}
+.hub-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 18px;
+  border: 3px solid var(--cream-d);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--cream-d);
+  font-size: 19px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: transform .08s, box-shadow .08s;
+}
+.hub-nav-link::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
+  border-radius: 1px;
+  transform: rotate(-45deg);
+  flex: none;
+}
+.hub-nav-link:active { transform: translateY(4px); box-shadow: none; }
+.hub-nav-link.current { cursor: default; color: #fff; }
+.hub-nav-link.create.current { background: var(--pink); border-color: var(--pink-d); box-shadow: 0 4px 0 var(--pink-d); }
+.hub-nav-link.see.current { background: var(--blue); border-color: var(--blue-d); box-shadow: 0 4px 0 var(--blue-d); }
+.hub-nav-link.play.current { background: var(--green); border-color: var(--green-d); box-shadow: 0 4px 0 var(--green-d); }
 .hub-tiles { align-items: stretch; }
 .hub-tiles .tile { min-height: 174px; justify-content: center; }
 .section-links {
@@ -440,6 +479,7 @@ canvas.stage {
 
 @media (hover: hover) {
   .home-gate:hover:not(:active), .play-gate:hover:not(:active) { transform: translateY(2px); box-shadow: 0 6px 0 var(--gate-d); }
+  .hub-nav-link:not(.current):hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
   .section-link:hover:not(:active) { transform: translateY(2px); box-shadow: 0 2px 0 var(--cream-d); }
 }
 @media (max-width: 860px) {
@@ -451,6 +491,9 @@ canvas.stage {
   .home-gate { min-height: 78px; }
   .gate-icon { width: 44px; height: 44px; }
   .hub-logo { margin-top: -20px; }
+  .hub-nav { gap: 8px; margin-bottom: 18px; }
+  .hub-nav-link { min-height: 50px; padding: 8px; gap: 7px; font-size: 16px; border-radius: 15px; }
+  .hub-nav-link::after { width: 8px; height: 8px; border-width: 0 3px 3px 0; }
   .view-tiles, .play-list-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .view-tiles .tile { font-size: 17px; }
   .play-gates { gap: 13px; }
