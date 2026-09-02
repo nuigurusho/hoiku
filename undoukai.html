@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=56">
+<link rel="stylesheet" href="css/style.css?v=57">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -63,6 +63,49 @@
     text-align: center;
     pointer-events: none;
   }
+  /* 競技間だけを覆う虹色の幕。結果や説明は載せず、次のステージへ
+     切り替わる瞬間だけを隠す。速度は RAINBOW_WIPE_MS で一括調整する。 */
+  .uk-rainbow-transition {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .uk-rainbow-transition.running { visibility: visible; pointer-events: auto; }
+  .uk-rainbow-sheet {
+    position: absolute;
+    left: -160vw;
+    top: -100vh;
+    width: 420vw;
+    height: 300vh;
+    display: flex;
+    flex-direction: column;
+    transform: translate(-30%, -100%) rotate(-28deg);
+    will-change: transform;
+  }
+  .uk-rainbow-transition.running .uk-rainbow-sheet {
+    animation: ukRainbowWipe var(--uk-rainbow-ms) linear both;
+  }
+  .uk-rainbow-sheet span { flex: 1 1 0; min-height: 0; }
+  .uk-rainbow-sheet span:nth-child(1) { background: #ff70a6; }
+  .uk-rainbow-sheet span:nth-child(2) { background: #ff9f43; }
+  .uk-rainbow-sheet span:nth-child(3) { background: #ffe45e; }
+  .uk-rainbow-sheet span:nth-child(4) { background: #78d96b; }
+  .uk-rainbow-sheet span:nth-child(5) { background: #56d6d2; }
+  .uk-rainbow-sheet span:nth-child(6) { background: #62a8f6; }
+  .uk-rainbow-sheet span:nth-child(7) { background: #aa7be8; }
+  @keyframes ukRainbowWipe {
+    0%, 10% { transform: translate(-30%, -100%) rotate(-28deg); }
+    24% { transform: translate(-10%, -15%) rotate(-28deg); }
+    50% { transform: translate(0, 0) rotate(-28deg); }
+    76% { transform: translate(10%, 15%) rotate(-28deg); }
+    90%, 100% { transform: translate(30%, 100%) rotate(-28deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .uk-rainbow-transition { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -79,7 +122,7 @@
       <span class="uk-step">1</span>
       <h2 style="margin-top:0">さんかする キャラを えらんでね</h2>
       <p class="sel-count" id="selNote"></p>
-      <div class="row compact"><button class="btn yellow select-all-btn" id="selectAllBtn">ぜんキャラ えらぶ</button></div>
+      <div class="row compact select-all-actions"><button class="btn yellow select-all-btn" id="selectAllBtn">ぜんキャラ えらぶ</button><button class="btn gray select-all-btn" id="clearAllBtn">ぜんキャラ はずす</button></div>
       <div class="gallery" id="gallery"></div>
     </div>
 
@@ -136,7 +179,13 @@
   </div>
 </main>
 
-<script src="js/core.js?v=43"></script>
+<div class="uk-rainbow-transition" id="rainbowTransition" aria-hidden="true">
+  <div class="uk-rainbow-sheet">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+</div>
+
+<script src="js/core.js?v=44"></script>
 <script src="js/rig.js?v=17"></script>
 <script src="js/meet.js?v=20"></script>
 <script>
@@ -182,6 +231,25 @@ let skipReq = false;
 const SCREENS = ["setupScreen", "playScreen"];
 function show(id) { for (const s of SCREENS) $(s).classList.toggle("hidden", s !== id); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const RAINBOW_WIPE_MS = 1050;
+
+/* 虹が画面を覆う中央で、次の競技を裏側から開始する。低速区間でも止めず、
+   最後の加速前にも速度0のイージングを入れない。 */
+async function rainbowTransition(swap) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    swap();
+    return;
+  }
+  const layer = $("rainbowTransition");
+  layer.style.setProperty("--uk-rainbow-ms", `${RAINBOW_WIPE_MS}ms`);
+  layer.classList.remove("running");
+  void layer.offsetWidth;
+  layer.classList.add("running");
+  await sleep(RAINBOW_WIPE_MS * .5);
+  swap();
+  await sleep(RAINBOW_WIPE_MS * .5 + 40);
+  layer.classList.remove("running");
+}
 
 /* ============================================================
    したく:1. さんかする キャラ
@@ -357,6 +425,12 @@ $("selectAllBtn").onclick = () => {
     sel.add(r.id);
   }
   fixTeams();
+  renderAll();
+};
+$("clearAllBtn").onclick = () => {
+  Sound.tap();
+  sel.clear();
+  side.clear();
   renderAll();
 };
 
@@ -545,12 +619,19 @@ async function runProgramme() {
   for (let i = 0; i < list.length; i++) {
     const ev = list[i];
 
-    // 競技紹介カードは挟まず、ステージへ切り替えてカウントダウンから始める。
-    hideCard();
-    hudLast = null;
-    $("skipRow").classList.remove("hidden");
-    skipReq = false;
-    let res = await Meet.run({ key: ev.key, cv, actors, names, ui, quick: true });
+    // 競技紹介カードは挟まず、虹が覆った中央で次のステージへ切り替える。
+    let eventRun = null;
+    const startEvent = () => {
+      hideCard();
+      hudLast = null;
+      $("skipRow").classList.remove("hidden");
+      skipReq = false;
+      eventRun = Meet.run({ key: ev.key, cv, actors, names, ui, quick: true });
+    };
+    if (i === 0) startEvent();
+    else await rainbowTransition(startEvent);
+    if (myRun !== runId) return;
+    let res = await eventRun;
     if (myRun !== runId) return;
     $("timer").classList.add("hidden");
     $("skipRow").classList.add("hidden");

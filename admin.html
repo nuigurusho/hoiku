@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=56">
+<link rel="stylesheet" href="css/style.css?v=57">
 </head>
 <body>
 <header class="bar">
@@ -21,16 +21,18 @@
 
 <main class="admin-list">
   <div class="admin-cat-tabs" id="catTabs" role="tablist" aria-label="取り込みカテゴリ">
-    <button type="button" role="tab" data-cat="src">✂️<span>元素材</span></button>
+    <button type="button" role="tab" data-cat="src">✂️<span>もとそざい</span></button>
     <button type="button" role="tab" data-cat="char" class="active">🧍<span>全身</span></button>
     <button type="button" role="tab" data-cat="fuku">😀<span>顔</span></button>
-    <button type="button" role="tab" data-cat="bg">🏞️<span class="tab-copy"><b>ステージ</b><small>みんなのせかいで、キャラが歩く舞台</small></span></button>
-    <button type="button" role="tab" data-cat="pic">🖼️<span class="tab-copy"><b>イラスト</b><small>パズル／まちがいさがし用のイラスト</small></span></button>
+    <button type="button" role="tab" data-cat="bg">🏞️<span>ステージ</span></button>
+    <button type="button" role="tab" data-cat="pic">🖼️<span>イラスト</span></button>
   </div>
   <div class="panel import-actions">
+    <p class="import-category-help hidden" id="categoryHelp"></p>
     <div class="row">
-      <button class="btn blue" id="pickBtn">ファイルを選ぶ</button>
-      <button class="btn blue" id="cameraBtn">カメラで撮る</button>
+      <button class="btn pink hidden" id="drawBtn">おえかきする</button>
+      <button class="btn green" id="pickBtn">ファイルをえらぶ</button>
+      <button class="btn blue" id="cameraBtn">さつえいする</button>
       <button class="info-btn" type="button" id="importInfo" aria-label="とりこみかたの説明">i</button>
     </div>
   </div>
@@ -50,7 +52,7 @@
     <label class="work-info-field"><span>作者名 <small>（任意）</small></span><input id="workInfoAuthor" type="text" maxlength="40" autocomplete="off" placeholder="例: さくらぐみ"></label>
     <label class="work-info-field"><span>絵の種類</span>
       <select id="workInfoCategory">
-        <option value="src">✂️ トリミング用の元素材</option>
+        <option value="src">✂️ トリミング用のもとそざい</option>
         <option value="char">🧍 キャラクターの全身</option>
         <option value="fuku">😀 キャラクターの顔</option>
         <option value="bg">🏞️ ステージ</option>
@@ -65,9 +67,9 @@
 </div>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=43"></script>
+<script src="js/core.js?v=44"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=28"></script>
+<script src="js/editors.js?v=29"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -82,6 +84,7 @@ const ENTRY_VIEWS = {
 };
 const ENTRY_VIEW = ENTRY_VIEWS[QUERY.get("cat")] || null;
 if (ENTRY_VIEW) {
+  document.body.classList.add("create-import-view");
   $("pageTitle").textContent = ENTRY_VIEW.title;
   $("pageTitleIcon").src = ENTRY_VIEW.icon;
   document.title = ENTRY_VIEW.title;
@@ -225,7 +228,7 @@ function row(r) {
     a.remove();
     Sound.tap();
   });
-  mk("削除", "red", async () => {
+  iconButton("削除", "red", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="m7 7 1 13h8l1-13"/><path d="M10 11v5M14 11v5"/></svg>', async () => {
     if (confirm(`「${r.name}」を削除しますか?`)) { await Store.remove(r.id); refresh(); }
   });
 
@@ -276,6 +279,14 @@ function setActiveCat(cat) {
   });
   $("catSwipe").querySelectorAll(".admin-cat-panel").forEach((panel) =>
     panel.classList.toggle("hidden", panel.dataset.cat !== cat));
+  const help = $("categoryHelp");
+  const helpText = {
+    bg: "みんなのせかいで キャラがあるくところ",
+    pic: "パズルと まちがいさがしの イラスト",
+  }[cat] || "";
+  help.textContent = helpText;
+  help.classList.toggle("hidden", !helpText);
+  $("drawBtn").classList.toggle("hidden", !ENTRY_VIEW || cat === "src");
 }
 
 $("catTabs").querySelectorAll("[data-cat]").forEach((button) => {
@@ -297,6 +308,11 @@ setActiveCat(activeCat);
 
 $("pickBtn").onclick = () => Editors.chooseFiles(activeCat);
 $("cameraBtn").onclick = () => Editors.chooseCamera(activeCat);
+$("drawBtn").onclick = () => {
+  if (activeCat === "src") return;
+  const p = new URLSearchParams({ cat: activeCat, back: IMPORT_SELF });
+  location.href = `draw.html?${p}`;
+};
 
 /* 長い説明は iボタンの中に(読みやすい箇条書きで) */
 $("importInfo").onclick = () => {
@@ -304,11 +320,11 @@ $("importInfo").onclick = () => {
   Ui.info("とりこみかたの コツ", `
     <h3>カテゴリの えらびかた</h3>
     <ul class="info-list">
-      <li><b>✂️ トリミング用の元素材</b> … 大きな紙に何人分も描いてある絵・写真の置き場。ここから何枚でも切り出せます</li>
+      <li><b>✂️ トリミング用のもとそざい</b> … 大きな紙に何人分も描いてある絵・写真の置き場。ここから何枚でも切り出せます</li>
       <li><b>🧍 キャラクターの全身</b> … 走る・跳ぶゲームで動く絵。取り込んだら「つくる」画面で <b>動き設定</b>(首・腰・中央の3本線)を合わせてください</li>
       <li><b>😀 キャラクターの顔</b> … ふくわらい用。「パーツ」で目・眉・鼻・口を四角く囲みます</li>
-      <li><b>🏞️ ステージ</b> … みんなのせかいで、キャラが歩く舞台です</li>
-      <li><b>🖼️ イラスト</b> … パズル・まちがいさがし用のイラストです</li>
+      <li><b>🏞️ ステージ</b> … みんなのせかいで キャラがあるくところです</li>
+      <li><b>🖼️ イラスト</b> … パズルと まちがいさがしの イラストです</li>
     </ul>
     <h3>きれいに取り込むコツ</h3>
     <ul class="info-list">
@@ -322,10 +338,10 @@ $("importInfo").onclick = () => {
     <h3>画像のサイズ</h3>
     <ul class="info-list">
       <li>取り込むと自動で縮小されるので、<b>元の大きさは気にしなくて大丈夫</b>です</li>
-      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、ステージ・イラストは <b>1100px</b>、元素材は <b>1600px</b></li>
+      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、ステージ・イラストは <b>1100px</b>、もとそざいは <b>1600px</b></li>
       <li>比率の決まりはありません。キャラクターは <b>たて長</b>、背景は <b>よこ長(16:9くらい)</b> が画面に収まりやすいです</li>
       <li>スマホやカメラの写真をそのまま入れてOK。PDFはページごとに読み込みます</li>
-      <li>PDFを2ファイル以上まとめて選ぶと、全ページを「トリミング用の元素材」へ一括で保存します</li>
+      <li>PDFを2ファイル以上まとめて選ぶと、全ページを「トリミング用のもとそざい」へ一括で保存します</li>
     </ul>
   `);
 };

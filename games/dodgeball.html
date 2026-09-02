@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=56">
+<link rel="stylesheet" href="../css/style.css?v=57">
 <style>
   /* ===== ドッヂボール専用スタイル(1ファイル完結) ===== */
 
@@ -195,7 +195,7 @@
     <div class="panel">
       <h2>たたかう キャラを えらんでね<br><span style="font-size:18px;font-weight:normal;color:#8a7a68">(タッチで えらぶ / はずす)</span></h2>
       <p class="sel-count" id="selNote"></p>
-      <div class="row compact"><button class="btn yellow select-all-btn" id="selectAllBtn">ぜんキャラ えらぶ</button></div>
+      <div class="row compact select-all-actions"><button class="btn yellow select-all-btn" id="selectAllBtn">ぜんキャラ えらぶ</button><button class="btn gray select-all-btn" id="clearAllBtn">ぜんキャラ はずす</button></div>
       <div class="gallery" id="gallery"></div>
 
       <div class="db-rules">
@@ -247,7 +247,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=43"></script>
+<script src="../js/core.js?v=44"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -324,6 +324,11 @@ function refreshDecide() {
 $("selectAllBtn").onclick = () => {
   Sound.tap();
   allChars.forEach((r) => selectedIds.add(r.id));
+  renderGallery();
+};
+$("clearAllBtn").onclick = () => {
+  Sound.tap();
+  selectedIds.clear();
   renderGallery();
 };
 /* ---- ルールのトグル ---- */

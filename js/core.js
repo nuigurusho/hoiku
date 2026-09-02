@@ -1420,16 +1420,25 @@ const Picker = {
         const sel = new Set((opts.preselect || []).slice(0, max));
         if (max >= recs.length && opts.selectAll !== false) {
           const allRow = document.createElement("div");
-          allRow.className = "row compact";
+          allRow.className = "row compact select-all-actions";
           const all = document.createElement("button");
           all.className = "btn yellow select-all-btn";
           all.type = "button";
           all.textContent = opts.selectAllLabel || "ぜんキャラ えらぶ";
-          allRow.appendChild(all);
+          const clear = document.createElement("button");
+          clear.className = "btn gray select-all-btn";
+          clear.type = "button";
+          clear.textContent = opts.clearAllLabel || "ぜんキャラ はずす";
+          allRow.append(all, clear);
           panel.insertBefore(allRow, gal);
           all.onclick = () => {
             Sound.tap();
             recs.forEach((r) => sel.add(r.id));
+            paintSelection();
+          };
+          clear.onclick = () => {
+            Sound.tap();
+            sel.clear();
             paintSelection();
           };
         }
@@ -1864,6 +1873,15 @@ const CustomQuiz = {
     const key = this.defaultKey(q);
     const hidden = this.hiddenDefaults();
     if (!hidden.includes(key)) hidden.push(key);
+    localStorage.setItem(this.HIDDEN_DEFAULTS_KEY, JSON.stringify(hidden));
+  },
+  defaultEnabled(q) { return !this.hiddenDefaults().includes(this.defaultKey(q)); },
+  toggleDefault(q) {
+    const key = this.defaultKey(q);
+    const hidden = this.hiddenDefaults();
+    const at = hidden.indexOf(key);
+    if (at >= 0) hidden.splice(at, 1);
+    else hidden.push(key);
     localStorage.setItem(this.HIDDEN_DEFAULTS_KEY, JSON.stringify(hidden));
   },
   defaultVisible(list) {

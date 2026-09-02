@@ -1415,6 +1415,22 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
 .admin-list { max-width: 1000px; margin: 0 auto; }
 .import-actions { margin: 0 0 14px; padding: 18px; }
 .import-actions .row { margin: 0; align-items: center; }
+.create-import-view .import-actions {
+  padding: 4px 0 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.create-import-view .import-actions .row { flex-wrap: wrap; }
+.create-import-view .import-actions .btn { flex: 1 1 180px; font-size: 20px; }
+.import-category-help {
+  margin: 2px auto 12px;
+  color: #6f604f;
+  font-size: clamp(17px, 2.7vw, 20px);
+  font-weight: 800;
+  text-align: center;
+}
 .import-actions .info-btn { flex: none; width: 34px; height: 34px; margin: 0 0 0 2px; font-size: 18px; }
 .admin-cat-tabs {
   display: grid;
@@ -1867,6 +1883,7 @@ body.ingame .back-float { display: flex; }
   font-weight: 800;
 }
 .select-all-btn { font-size: clamp(15px, 2.5vw, 18px); padding: 8px 18px 10px; }
+.select-all-actions { gap: 8px; }
 .uk-team-reveal { margin-top: 12px; }
 .uk-team-reveal .mt-teamcol { padding-top: 8px; }
 .uk-team-text { font-weight: 800; }

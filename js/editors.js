@@ -233,7 +233,7 @@ async function importFiles(files, cat, meta) {
     try {
       const maxDim = { char: 900, src: 1600 }[cat] || 1100;   // 元素材は切り出し前提で高画質のまま保持
       const dataURL = await Util.fileToDataURL(f, maxDim);
-      const base = { char: "キャラ", bg: "ステージ", pic: "イラスト", fuku: "ふくわらい", src: "元素材" }[cat];
+      const base = { char: "キャラ", bg: "ステージ", pic: "イラスト", fuku: "ふくわらい", src: "もとそざい" }[cat];
       n++;
       const numberedName = meta.name && files.length > 1 ? `${meta.name} ${ok + 1}` : meta.name;
       const rec = { name: numberedName || `${base}${n}`, cat, dataURL };
@@ -282,7 +282,7 @@ async function importPdfPagesAsSources(pdfs) {
   await changed();
   if (ok > 0) {
     Sound.good();
-    Ui.msg(`${pdfs.length}個のPDFから ${ok}ページを元素材へ取り込みました`, 2200, "#51cf66");
+    Ui.msg(`${pdfs.length}個のPDFから ${ok}ページを もとそざいへ とりこみました`, 2200, "#51cf66");
   }
   if (fails.length) {
     alert("PDFの読み込みに失敗しました:\n" + fails.join("\n"));
@@ -319,7 +319,7 @@ async function pdfToCanvases(file) {
    pages: 元画像のcanvas配列(PDFは複数ページ、画像は1枚) */
 const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null, sc: 1, saved: 0, pendingRec: null };
 const CROP_CAT_LABELS = {
-  src: "✂️ トリミング用の元素材",
+  src: "✂️ トリミング用のもとそざい",
   char: "🧍 キャラクターの全身",
   fuku: "😀 キャラクターの顔",
   bg: "🏞️ はいけい",
@@ -1495,8 +1495,11 @@ function refreshQuizList() {
     toggle.innerHTML = '<span class="knob"></span>';
     toggle.onclick = () => { CustomQuiz.toggle(i); refreshQuizList(); Sound.tap(); };
     const del = document.createElement("button");
-    del.className = "btn gray";
-    del.textContent = "削除";
+    del.className = "btn red icon-btn";
+    del.type = "button";
+    del.setAttribute("aria-label", "削除");
+    del.title = "削除";
+    del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="m7 7 1 13h8l1-13"/><path d="M10 11v5M14 11v5"/></svg>';
     del.onclick = () => { CustomQuiz.remove(i); refreshQuizList(); Sound.tap(); };
     d.classList.toggle("off", q.enabled === false);
     d.append(t, toggle, del);
@@ -1507,7 +1510,7 @@ function refreshQuizList() {
 function refreshDefaultQuizList() {
   const box = $("quizDefaultList");
   if (!box) return;
-  const list = CustomQuiz.defaultVisible(window.QUIZ || []);
+  const list = Array.isArray(window.QUIZ) ? window.QUIZ : [];
   box.innerHTML = list.length ? "" : '<p class="note">ありません</p>';
   list.forEach((q) => {
     const d = document.createElement("div");
@@ -1515,15 +1518,20 @@ function refreshDefaultQuizList() {
     const t = document.createElement("span");
     t.className = "nm";
     t.textContent = `${q.emoji || "❓"} ${q.q}(正解: ${q.choices[q.answer]})`;
-    const del = document.createElement("button");
-    del.className = "btn gray";
-    del.textContent = "削除";
-    del.onclick = () => {
-      CustomQuiz.hideDefault(q);
+    const enabled = CustomQuiz.defaultEnabled(q);
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "mt-toggle" + (enabled ? " on" : "");
+    toggle.setAttribute("aria-label", enabled ? "この問題を使わない" : "この問題を使う");
+    toggle.setAttribute("aria-pressed", String(enabled));
+    toggle.innerHTML = '<span class="knob"></span>';
+    toggle.onclick = () => {
+      CustomQuiz.toggleDefault(q);
       refreshDefaultQuizList();
       Sound.tap();
     };
-    d.append(t, del);
+    d.classList.toggle("off", !enabled);
+    d.append(t, toggle);
     box.appendChild(d);
   });
 }
@@ -1829,7 +1837,7 @@ function mountLists(defs, opts) {
         { value: "draw", label: "おえかきする", color: "pink" },
         { value: "file", label: "ファイルを えらぶ", color: "green" },
         { value: "camera", label: "カメラで とる", color: "blue" },
-        { value: "src", label: "元素材から きりだす", color: "purple" },
+        { value: "src", label: "もとそざいから きりだす", color: "purple" },
       ],
     });
     if (!how) return;
@@ -1843,11 +1851,11 @@ function mountLists(defs, opts) {
     /* 元素材から:えらんだ 1枚を そのまま きりだし画面へ(保存先は このカテゴリ) */
     const srcs = await Store.all("src");
     if (!srcs.length) {
-      Ui.msg("元素材が まだ ないよ", 1800, "#4dabf7");
+      Ui.msg("もとそざいが まだ ないよ", 1800, "#4dabf7");
       return;
     }
     const rec = await Picker.one({
-      title: "どの 元素材から きりだす?",
+      title: "どの もとそざいから きりだす?",
       note: "つぎの がめんで かこんだ ところが「" + L.what + "」に なります",
       records: srcs,
     });
