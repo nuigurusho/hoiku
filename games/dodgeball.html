@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=57">
+<link rel="stylesheet" href="../css/style.css?v=58">
 <style>
   /* ===== ドッヂボール専用スタイル(1ファイル完結) ===== */
 
@@ -485,7 +485,11 @@ cv.addEventListener("pointerdown", (e) => {
 
 function innerP(team) { return M.players.filter((p) => p.team === team && p.zone === "inner"); }
 function outP(team) { return M.players.filter((p) => p.team === team && p.zone === "out"); }
-function activeP(team) { return M.players.filter((p) => p.team === team && (p.zone === "inner" || p.zone === "out")); }
+function activeP(team) {
+  return M.players.filter((p) => p.team === team && (
+    p.zone === "inner" || (p.zone === "out" && (!p.outState || p.outState === "settled"))
+  ));
+}
 function innerCount(team) { return innerP(team).length; }
 
 /* ふだん むく むき(内野=相手コートの方、外野=相手の内野の方) */

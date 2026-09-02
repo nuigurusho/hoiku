@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=57">
+<link rel="stylesheet" href="css/style.css?v=58">
 <style>
   /* ===== うんどうかい(番組しんこう)だけの ちょうせい ===== */
   .uk-step {
@@ -187,7 +187,7 @@
 
 <script src="js/core.js?v=44"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/meet.js?v=20"></script>
+<script src="js/meet.js?v=21"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -539,7 +539,7 @@ function teamVersus() {
 }
 
 async function autoTeamReveal(myRun) {
-  const c = card({ clear: true, no: "チームわけ", ttl: "チームが きまったよ" });
+  const c = card({ clear: true, ttl: "🎪 チームわけ!" });
   const teams = document.createElement("div");
   teams.className = "mt-teams uk-team-reveal";
   const lists = {};
@@ -586,6 +586,21 @@ async function autoTeamReveal(myRun) {
   return myRun === runId;
 }
 
+function waitTeamRevealChoice() {
+  return new Promise((resolve) => {
+    const row = $("insertActionRow");
+    row.innerHTML = "";
+    const buttons = document.createElement("div");
+    buttons.className = "row compact";
+    buttons.append(
+      button("btn big yellow", "やりなおす", () => { Sound.tap(); row.classList.add("hidden"); resolve("redo"); }),
+      button("btn big green", "スタート!", () => { Sound.pon(); row.classList.add("hidden"); resolve("start"); }),
+    );
+    row.appendChild(buttons);
+    row.classList.remove("hidden");
+  });
+}
+
 async function runProgramme() {
   const myRun = ++runId;
   askLandscape();
@@ -611,8 +626,14 @@ async function runProgramme() {
   show("playScreen");
 
   if (teamMode === "auto") {
-    if (!(await autoTeamReveal(myRun))) return;
-    await pause(0, "はじめる");
+    while (myRun === runId) {
+      if (!(await autoTeamReveal(myRun))) return;
+      const choice = await waitTeamRevealChoice();
+      if (choice === "start") break;
+      balance();
+      renderTeams();
+      save();
+    }
     if (myRun !== runId) return;
   }
 
@@ -1000,7 +1021,7 @@ function pause(ms, label, extras = [], lead = null) {
     buttons.className = "row compact";
     for (const b of extras) buttons.appendChild(b);
     if (label) {
-      buttons.appendChild(button("btn green", label, () => { Sound.tap(); go(); }));
+      buttons.appendChild(button("btn big green", label, () => { Sound.tap(); go(); }));
       stack.appendChild(buttons);
       row.appendChild(stack);
       row.classList.remove("hidden");

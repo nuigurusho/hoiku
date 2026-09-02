@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=57">
+<link rel="stylesheet" href="css/style.css?v=58">
 </head>
 <body>
 <header class="bar">
@@ -30,8 +30,8 @@
   <div class="panel import-actions">
     <p class="import-category-help hidden" id="categoryHelp"></p>
     <div class="row">
-      <button class="btn pink hidden" id="drawBtn">おえかきする</button>
-      <button class="btn green" id="pickBtn">ファイルをえらぶ</button>
+      <button class="btn blue hidden" id="drawBtn">おえかきする</button>
+      <button class="btn blue" id="pickBtn">ファイルをえらぶ</button>
       <button class="btn blue" id="cameraBtn">さつえいする</button>
       <button class="info-btn" type="button" id="importInfo" aria-label="とりこみかたの説明">i</button>
     </div>
@@ -69,7 +69,7 @@
 <script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=44"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=29"></script>
+<script src="js/editors.js?v=30"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -82,7 +82,8 @@ const ENTRY_VIEWS = {
   char: { title: "キャラクター", icon: "assets/buttons/character-intro.png", cats: ["src", "char", "fuku"] },
   bg: { title: "はいけい", icon: "assets/buttons/museum.png", cats: ["src", "bg", "pic"] },
 };
-const ENTRY_VIEW = ENTRY_VIEWS[QUERY.get("cat")] || null;
+const ENTRY_VIEW_KEY = QUERY.get("cat");
+const ENTRY_VIEW = ENTRY_VIEWS[ENTRY_VIEW_KEY] || null;
 if (ENTRY_VIEW) {
   document.body.classList.add("create-import-view");
   $("pageTitle").textContent = ENTRY_VIEW.title;
@@ -308,8 +309,22 @@ setActiveCat(activeCat);
 
 $("pickBtn").onclick = () => Editors.chooseFiles(activeCat);
 $("cameraBtn").onclick = () => Editors.chooseCamera(activeCat);
-$("drawBtn").onclick = () => {
+$("drawBtn").onclick = async () => {
   if (activeCat === "src") return;
+  if (ENTRY_VIEW_KEY === "char") {
+    const kinds = [...Guide.CHAR_ORDER, "face"];
+    const kind = await Ui.menu({
+      title: "おえかきの なにを かく?",
+      items: kinds.map((key) => {
+        const guide = Guide.get(key);
+        return { value: key, label: `${guide.emoji} ${guide.label}`, color: "blue" };
+      }),
+    });
+    if (!kind) return;
+    const p = new URLSearchParams({ kind, back: IMPORT_SELF });
+    location.href = `draw.html?${p}`;
+    return;
+  }
   const p = new URLSearchParams({ cat: activeCat, back: IMPORT_SELF });
   location.href = `draw.html?${p}`;
 };

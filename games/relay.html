@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=57">
+<link rel="stylesheet" href="../css/style.css?v=58">
 <style>
   /* ===== リレー専用スタイル(1ファイル完結) ===== */
 
@@ -522,8 +522,12 @@ function nameSpan(c) {
 function txt(t) { return document.createTextNode(t); }
 function showBanner(nodes, edgeTeam) {
   if (!M) return;
-  const text = nodes.map((node) => node.textContent || "").join("");
-  M.narrations.push({ text, team: edgeTeam || "", t: 0, y: 650 });
+  const parts = nodes.map((node) => ({
+    text: node.textContent || "",
+    team: node.classList && node.classList.contains("red") ? "red"
+      : node.classList && node.classList.contains("blue") ? "blue" : "",
+  }));
+  M.narrations.push({ text: parts.map((part) => part.text).join(""), parts, team: edgeTeam || "", t: 0, y: 650 });
   if (M.narrations.length > 5) M.narrations.shift();
 }
 function hideBanner() { $("banner").classList.add("hidden"); }
@@ -534,7 +538,7 @@ function addFloat(x, y, txt, col, big) {
 
 function addNarration(t) {
   const team = t.key === "red" ? "あかチーム" : "あおチーム";
-  showBanner([txt(`${team} ゴール！`)], t.key);
+  showBanner([nameSpan({ name: team, team: t.key }), txt(" ゴール！")], t.key);
 }
 
 function stepNarrations(dt) {
@@ -548,20 +552,31 @@ function stepNarrations(dt) {
 
 function drawNarrations() {
   ctx.save();
-  ctx.font = '800 27px "Hoiku Rounded", sans-serif';
-  ctx.textAlign = "right";
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   for (const note of M.narrations) {
     const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
-    const w = Math.min(430, ctx.measureText(note.text).width + 42);
+    ctx.font = '800 27px "Hoiku Rounded", sans-serif';
+    const natural = ctx.measureText(note.text).width;
+    const size = Math.max(16, 27 * Math.min(1, 520 / Math.max(1, natural)));
+    ctx.font = `800 ${size}px "Hoiku Rounded", sans-serif`;
+    const textW = ctx.measureText(note.text).width;
+    const w = Math.min(562, textW + 42);
     const x = CW - 24;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = "rgba(255,253,245,.94)";
     ctx.strokeStyle = note.team ? teamColor(note.team) : "#d8c8aa";
     ctx.lineWidth = 4;
     ctx.beginPath(); ctx.roundRect(x - w, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = note.team === "red" ? "#d6336c" : note.team === "blue" ? "#1c7ed6" : "#4a3f35";
-    ctx.fillText(note.text, x - 18, note.y + 1);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x - w + 12, note.y - 19, w - 24, 38); ctx.clip();
+    let px = x - 18 - textW;
+    for (const part of note.parts || [{ text: note.text, team: "" }]) {
+      ctx.fillStyle = part.team === "red" ? "#d6336c" : part.team === "blue" ? "#1c7ed6" : "#4a3f35";
+      ctx.fillText(part.text, px, note.y + 1);
+      px += ctx.measureText(part.text).width;
+    }
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -799,7 +814,7 @@ function leadWatch(dt) {
   M.leader = cur;
   M.pendLeader = null;
   if (!firstTime && M.raceT > 2.5) {
-    showBanner([txt(teamLabel(cur)), txt(" ぎゃくてん🔥")], cur);
+    showBanner([nameSpan({ name: teamLabel(cur), team: cur }), txt(" ぎゃくてん🔥")], cur);
     Sound.good();
     cheerTeam(M.T[cur]);
   }

@@ -701,8 +701,17 @@ canvas.stage {
 .collection-card.bg .collection-frame { border-color: #ae7a42; box-shadow: 0 8px 0 #79502a, 0 14px 24px rgba(87,59,27,.18); }
 .collection-frame img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .collection-card.bg .collection-frame img { object-fit: cover; }
-.collection-caption { display: block; padding: 14px 4px 0; text-align: center; }
+.collection-caption { display: block; min-width: 0; padding: 14px 4px 0; text-align: center; }
 .collection-caption strong { display: block; font-size: 19px; }
+.marquee-viewport {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.marquee-text { display: inline-block; min-width: max-content; }
+.marquee-viewport:not(.is-overflowing) .marquee-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .collection-caption small { display: block; margin-top: 5px; color: #786b5a; font-size: 14px; }
 .collection-card:active .collection-frame { transform: translateY(8px); box-shadow: 0 0 0 transparent; }
 .collection-card:focus-visible, .character-stage:focus-visible, .exhibit button:focus-visible { outline: 5px solid #1864ab; outline-offset: 4px; }

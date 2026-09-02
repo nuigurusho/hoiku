@@ -395,7 +395,7 @@ const Meet = (() => {
     } else {
       a.puppet.walking = true;
       a.eventCd -= dt;
-      if (a.eventCd <= 0 && a.prog > 140 && a.prog < KK_GOAL - 200) kkEvent(a, gap);
+      if (a.eventCd <= 0 && a.prog > 140 && a.prog < KK_GOAL - 200) kkEvent(M, a, gap);
     }
     a.prog += Math.max(0, v) * dt;
 
@@ -407,7 +407,7 @@ const Meet = (() => {
       const pt = E.lanes.length - a.rank + 1;
       E.pts[a.team] += pt;
       if (a.rank === 1) E.firsts[a.team]++;
-      addNarration(M, `${a.name || "キャラ"} ゴール！`, a.team);
+      addNarrationParts(M, [a, " ゴール！"], a.team);
       addFloat(M, 1150, KK_TOP + M.E.laneH * (M.E.lanes.indexOf(a) + 1) - 60, `+${pt}`, COLD[a.team], a.rank === 1);
       if (a.rank === 1) { Sound.fanfare(); Sound.playVoice(a.voices, ["joy"]); }
       else Sound.good();
@@ -415,7 +415,7 @@ const Meet = (() => {
     }
   }
 
-  function kkEvent(a, gap) {
+  function kkEvent(M, a, gap) {
     const leading  = gap < KK_GOAL * 0.05;
     const trailing = gap > KK_GOAL * 0.13;
     const roll = Math.random();
@@ -426,9 +426,9 @@ const Meet = (() => {
     else if (roll < 0.60)             ev = "sleep";
     else                              ev = "boost";
     a.event = ev;
-    if (ev === "sleep")   { a.eventT = Util.rand(1.0, 2.2); a.emo = "💤"; if (leading)  Sound.beep(320, 0.55, "sine", 0.06, 0, -170); }
-    if (ev === "boost")   { a.eventT = Util.rand(0.9, 1.7); a.emo = "💨"; if (trailing) Sound.beep(440, 0.16, "square", 0.07, 0, 260); }
-    if (ev === "stumble") { a.eventT = Util.rand(0.5, 1.0); a.emo = "💫"; }
+    if (ev === "sleep")   { a.eventT = Util.rand(1.0, 2.2); a.emo = "💤"; addNarrationParts(M, [a, " ねちゃった…"], a.team); if (leading)  Sound.beep(320, 0.55, "sine", 0.06, 0, -170); }
+    if (ev === "boost")   { a.eventT = Util.rand(0.9, 1.7); a.emo = "💨"; addNarrationParts(M, [a, " スピードアップ！"], a.team); if (trailing) Sound.beep(440, 0.16, "square", 0.07, 0, 260); }
+    if (ev === "stumble") { a.eventT = Util.rand(0.5, 1.0); a.emo = "💫"; addNarrationParts(M, [a, " ころんじゃった！"], a.team); }
   }
 
   function kkEnd(M) {
@@ -873,14 +873,20 @@ const Meet = (() => {
   function addNarration(M, text, team) {
     if (M.silentNarration) return;
     const notes = M.E.narrations || (M.E.narrations = []);
-    notes.push({ text, team, t: 0, y: 650 });
+    notes.push({ text, parts: [{ text, team: "" }], team, t: 0, y: 650 });
     if (notes.length > 5) notes.shift();
   }
   function narrationText(parts) {
     return parts.map((part) => typeof part === "string" ? part : (part.name || "キャラ")).join("");
   }
   function addNarrationParts(M, parts, team) {
-    addNarration(M, narrationText(parts), team);
+    if (M.silentNarration) return;
+    const notes = M.E.narrations || (M.E.narrations = []);
+    const styled = parts.map((part) => typeof part === "string"
+      ? { text: part, team: "" }
+      : { text: part.name || "キャラ", team: part.team || "" });
+    notes.push({ text: narrationText(parts), parts: styled, team, t: 0, y: 650 });
+    if (notes.length > 5) notes.shift();
   }
   function stepNarrations(M, dt) {
     const notes = M.E.narrations || [];
@@ -895,12 +901,16 @@ const Meet = (() => {
   function drawNarrations(M, side) {
     const ctx = M.ctx, notes = M.E.narrations || [];
     ctx.save();
-    ctx.font = '800 27px "Hoiku Rounded", sans-serif';
     ctx.textBaseline = "middle";
-    ctx.textAlign = side === "right" ? "right" : "left";
+    ctx.textAlign = "left";
     for (const note of notes) {
       const alpha = note.t < 2.55 ? 1 : Util.clamp((3.4 - note.t) / 0.85, 0, 1);
-      const w = Math.min(430, ctx.measureText(note.text).width + 42);
+      ctx.font = '800 27px "Hoiku Rounded", sans-serif';
+      const natural = ctx.measureText(note.text).width;
+      const size = Math.max(16, 27 * Math.min(1, 520 / Math.max(1, natural)));
+      ctx.font = `800 ${size}px "Hoiku Rounded", sans-serif`;
+      const textW = ctx.measureText(note.text).width;
+      const w = Math.min(562, textW + 42);
       const x = side === "right" ? CW - 24 : 24;
       const left = side === "right" ? x - w : x;
       ctx.globalAlpha = alpha;
@@ -908,8 +918,15 @@ const Meet = (() => {
       ctx.strokeStyle = COL[note.team] || "#d8c8aa";
       ctx.lineWidth = 4;
       ctx.beginPath(); ctx.roundRect(left, note.y - 21, w, 42, 18); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = COLD[note.team] || "#4a3f35";
-      ctx.fillText(note.text, side === "right" ? x - 18 : x + 18, note.y + 1);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(left + 12, note.y - 19, w - 24, 38); ctx.clip();
+      let px = side === "right" ? x - 18 - textW : x + 18;
+      for (const part of note.parts || [{ text: note.text, team: "" }]) {
+        ctx.fillStyle = COLD[part.team] || "#4a3f35";
+        ctx.fillText(part.text, px, note.y + 1);
+        px += ctx.measureText(part.text).width;
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1601,11 +1618,11 @@ const Meet = (() => {
       if (t.rank === 1) {
         E.winTeam = t;
         E.winWait = 0;
-        addNarration(M, `${M.names[t.key]} ゴール！`, t.key);
+        addNarrationParts(M, [M.team(t.key), " ゴール！"], t.key);
         Sound.good(); Sound.pon();
         rlCheer(t);
       } else {
-        addNarration(M, `${M.names[t.key]} ゴール！`, t.key);
+        addNarrationParts(M, [M.team(t.key), " ゴール！"], t.key);
         Sound.good();
       }
       rlHud(M);

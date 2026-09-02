@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=57">
+<link rel="stylesheet" href="../css/style.css?v=58">
 <style>
   .stages { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
   .stages .btn { width: 78px; height: 78px; padding: 5px; opacity: .55; }
@@ -100,7 +100,7 @@ async function init() {
   stageBgs.land = land; stageBgs.water = water; stageBgs.house = house;
   stageBgs.playground = playground; stageBgs.forest = forest;
   /* とりこんだ背景があるときは、おかのせかいだけその絵を使う */
-  const customBg = bgs.find((r) => r.id !== "sample-bg-crayon-hills-v1" && r.name !== "おそらとおやま");
+  const customBg = bgs.find((r) => !String(r.id || "").startsWith("sample-bg-") && r.name !== "おそらとおやま");
   if (customBg) stageBgs.land = await Util.loadImage(customBg.dataURL);
 
   for (const rec of recs.filter((r) => r.cat === "char")) {

@@ -10,10 +10,11 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ゲームパック">
-  <link rel="stylesheet" href="css/style.css?v=57">
+  <link rel="stylesheet" href="css/style.css?v=58">
   <style>
     body.ingame .collection-main { padding-top: 12px; }
     .exhibit-heading { grid-template-columns: 1fr auto; padding: 0 84px; }
+    .exhibit-heading > div { min-width: 0; }
     .work-pager {
       position: fixed;
       top: 50%;
@@ -116,6 +117,41 @@ const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function text(el, value) { el.textContent = value || ""; }
 
+/* 長い作品名だけ、最後まで読める速さで左へ流す。端で1秒、先頭へ戻って4秒休む。 */
+function setMarquee(el, value) {
+  if (el._marqueeAnimation) el._marqueeAnimation.cancel();
+  el._marqueeAnimation = null;
+  el.classList.add("marquee-viewport");
+  el.dataset.marquee = "";
+  el.title = value;
+  el.textContent = "";
+  const line = document.createElement("span");
+  line.className = "marquee-text";
+  line.textContent = value;
+  el.appendChild(line);
+  requestAnimationFrame(() => startMarquee(el));
+}
+
+function startMarquee(el) {
+  if (el._marqueeAnimation) el._marqueeAnimation.cancel();
+  el._marqueeAnimation = null;
+  const line = el.querySelector(".marquee-text");
+  if (!line) return;
+  line.style.transform = "translateX(0)";
+  const distance = Math.ceil(line.scrollWidth - el.clientWidth);
+  el.classList.toggle("is-overflowing", distance > 1);
+  if (distance <= 1 || reducedMotion) return;
+  const travel = Math.max(1200, distance / 36 * 1000);
+  const total = travel * 2 + 5000;
+  el._marqueeAnimation = line.animate([
+    { transform: "translateX(0)", offset: 0 },
+    { transform: `translateX(-${distance}px)`, offset: travel / total },
+    { transform: `translateX(-${distance}px)`, offset: (travel + 1000) / total },
+    { transform: "translateX(0)", offset: (travel * 2 + 1000) / total },
+    { transform: "translateX(0)", offset: 1 },
+  ], { duration: total, iterations: Infinity, easing: "linear" });
+}
+
 function setupCopy() {
   const isChar = kind === "char";
   document.title = isChar ? "キャラしょうかい" : "びじゅつかん";
@@ -142,7 +178,7 @@ function renderShelf() {
     const caption = document.createElement("span");
     caption.className = "collection-caption";
     const name = document.createElement("strong");
-    name.textContent = work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん");
+    setMarquee(name, work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん"));
     caption.appendChild(name);
     if (work.author) {
       const author = document.createElement("small");
@@ -160,7 +196,7 @@ async function openWork(index) {
   if (!works.length) return;
   current = (index + works.length) % works.length;
   const work = works[current];
-  text($("workName"), work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん"));
+  setMarquee($("workName"), work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん"));
   text($("workAuthor"), work.author ? "作者: " + work.author : "");
   text($("workCount"), `${current + 1} / ${works.length}`);
   $("shelfScreen").classList.add("hidden");
@@ -274,6 +310,11 @@ addEventListener("DOMContentLoaded", () => {
     back.setAttribute("aria-label", "いちらん");
     back.addEventListener("click", showShelf);
   }
+});
+let marqueeResizeTimer = 0;
+addEventListener("resize", () => {
+  clearTimeout(marqueeResizeTimer);
+  marqueeResizeTimer = setTimeout(() => document.querySelectorAll("[data-marquee]").forEach(startMarquee), 120);
 });
 
 (async () => {

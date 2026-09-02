@@ -1834,10 +1834,10 @@ function mountLists(defs, opts) {
       title: L.what + "を ふやす",
       note: "やりかたを えらんでね",
       items: [
-        { value: "draw", label: "おえかきする", color: "pink" },
-        { value: "file", label: "ファイルを えらぶ", color: "green" },
-        { value: "camera", label: "カメラで とる", color: "blue" },
-        { value: "src", label: "もとそざいから きりだす", color: "purple" },
+        { value: "draw", label: "おえかきする", color: "blue" },
+        { value: "file", label: "ファイルをえらぶ", color: "blue" },
+        { value: "camera", label: "さつえいする", color: "blue" },
+        { value: "src", label: "もとそざいから きりだす", color: "blue" },
       ],
     });
     if (!how) return;
