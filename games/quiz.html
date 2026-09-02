@@ -55,15 +55,15 @@
 
     <div class="mode-sec">🔥 ガチンコ</div>
     <div class="row" id="gachiRow">
-      <button class="btn big green" data-mode="gachi" data-quiz-kind="standard">4たくクイズ<br><span style="font-size:14px">5もん れんぞく</span></button>
-      <button class="btn big green" data-mode="gachi" data-quiz-kind="character">キャラクタークイズ<br><span style="font-size:14px">5もん れんぞく</span></button>
+      <button class="btn big green" data-mode="gachi" data-quiz-kind="standard">4たくクイズ<br><span style="font-size:14px">10もんちゅう 7もんで クリア</span></button>
+      <button class="btn big green" data-mode="gachi" data-quiz-kind="character">キャラクタークイズ<br><span style="font-size:14px">10もんちゅう 7もんで クリア</span></button>
     </div>
     <button class="btn rank-open" id="rankBtn" type="button">🏆 ランキング</button>
   </div>
 
   <div id="quizScreen" class="hidden">
     <div class="qnum" id="qnum"></div>
-    <div class="hud hidden" id="gachiHud"><span id="streakHud"></span><span id="heartHud"></span></div>
+    <div class="hud hidden" id="gachiHud"><span id="scoreHud"></span><span id="passHud"></span></div>
     <div class="qemoji" id="qemoji"></div>
     <img class="qimage hidden" id="qimage" alt="">
     <div class="qtext" id="qtext"></div>
@@ -90,14 +90,14 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
-const GAME = "quiz";
+const GAME = "quiz10"; // 旧「連続正解」ルールのランキングと分ける
 const RANK_LABELS = ["クイズ"];
 const MODES = {
   miru:   { label: "みんなで", n: 0, view: true },
-  gachi: { label: "ガチンコ", goal: 5, missLimit: 3, lv: 1 },
+  gachi: { label: "ガチンコ", total: 10, pass: 7, lv: 1 },
 };
 let queue = [], idx = 0, score = 0, busy = false;
-let mode = null, streak = 0, miss = 0;
+let mode = null;
 let quizKind = "standard";
 let left = false;   // 「もどる」で ぬけたか(あとから 出る タイマーを とめる)
 
@@ -133,16 +133,26 @@ async function startRun() {
     Ui.msg(message, 2200, "#4dabf7");
     return;
   }
-  if (mode.n > 0) queue = queue.slice(0, mode.n);
-  idx = 0; score = 0; streak = 0; miss = 0; left = false;
+  if (mode.total) queue = pickQuestions(queue, mode.total);
+  idx = 0; score = 0; left = false;
   $("startScreen").classList.add("hidden");
   $("endScreen").classList.add("hidden");
   $("quizScreen").classList.remove("hidden");
-  $("gachiHud").classList.toggle("hidden", !mode.goal);
+  $("gachiHud").classList.toggle("hidden", !mode.total);
   document.body.classList.toggle("view-mode", !!mode.view);
   $("viewRow").classList.toggle("hidden", !mode.view);
   updateGachiHud();
   show();
+}
+
+/* 候補が10問未満でも、同じ並びが続かないよう混ぜ直しながら必要数を選ぶ。 */
+function pickQuestions(list, count) {
+  const picked = [];
+  while (picked.length < count) {
+    const bag = Util.shuffle(list);
+    picked.push(...bag.slice(0, count - picked.length));
+  }
+  return picked;
 }
 
 /* 登録済みキャラクターから、名前・作者名を当てる4択問題を作る。 */
@@ -168,16 +178,16 @@ async function makeCharacterQuestions() {
 }
 
 function updateGachiHud() {
-  if (!mode.goal) return;
-  $("streakHud").textContent = `れんぞく: ${streak} / ${mode.goal}`;
-  $("heartHud").textContent = "❤".repeat(Math.max(0, mode.missLimit - miss));
+  if (!mode.total) return;
+  $("scoreHud").textContent = `せいかい: ${score}もん`;
+  $("passHud").textContent = `${mode.pass}もんで クリア`;
 }
 
 function show() {
   const q = queue[idx];
   busy = false;
-  $("qnum").textContent = mode.goal
-    ? `だい ${idx + 1} もん`
+  $("qnum").textContent = mode.total
+    ? `だい ${idx + 1} もん / ${mode.total} もん`
     : `だい ${idx + 1} もん / ${queue.length} もん`;
   $("qemoji").textContent = q.image ? "" : (q.emoji || "❓");
   $("qemoji").classList.toggle("hidden", !!q.image);
@@ -272,45 +282,46 @@ function answer(ci, btn) {
     else b.classList.add("dim");
   });
   if (ok) {
-    score++; streak++;
+    score++;
     Sound.good();
     Ui.msg("せいかい!⭕", 1100, "#51cf66");
   } else {
-    streak = 0;
     Sound.bad();
     Ui.msg("ざんねん…", 1100, "#4dabf7");
-    if (mode.goal) miss++;
   }
-  if (mode.goal) updateGachiHud();
+  if (mode.total) updateGachiHud();
 
   setTimeout(() => {
     if (left) return;
-    if (streak >= mode.goal) return clearGachi();
-    if (miss >= mode.missLimit) return failGachi();
-    idx = (idx + 1) % queue.length;   // つぎつぎ 出しつづける
-    if (idx === 0) queue = Util.shuffle(queue);
+    idx++;
+    if (idx >= mode.total) return finishGachi();
     show();
   }, 1500);
 }
 
-/* ガチンコ:ノルマたっせい */
+function finishGachi() {
+  if (score >= mode.pass) clearGachi();
+  else failGachi();
+}
+
+/* ガチンコ:7問以上正解 */
 function clearGachi() {
   $("quizScreen").classList.add("hidden");
   $("endScreen").classList.remove("hidden");
   $("stars").textContent = "⭐⭐⭐";
-  $("scoreText").textContent = `クリア!🏆 ${score}もん せいかい!`;
+  $("scoreText").textContent = `クリア!🏆 10もんちゅう ${score}もん せいかい!`;
   Tiers.addRank(GAME, mode.lv, "?", score);
   Sound.fanfare();
   Ui.confetti();
   Ui.msg("クリア！", 1600);
 }
 
-/* ガチンコ:ミスしすぎ */
+/* ガチンコ:正解が7問未満 */
 function failGachi() {
   $("quizScreen").classList.add("hidden");
   $("endScreen").classList.remove("hidden");
   $("stars").textContent = "⭐";
-  $("scoreText").textContent = `ざんねん!${score}もん せいかい`;
+  $("scoreText").textContent = `ざんねん! 10もんちゅう ${score}もん せいかい`;
   Tiers.addRank(GAME, mode.lv, "?", score);
   Sound.bad();
 }
