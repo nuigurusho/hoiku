@@ -2587,6 +2587,11 @@ const GameChrome = {
       backHref = (location.pathname.includes("/games/") ? "../" : "") + backPages[from];
       if (back) back.href = backHref;
     }
+    if (back) {
+      back.innerHTML = this.BACK_ICON;
+      back.title = "もどる";
+      back.setAttribute("aria-label", "もどる");
+    }
     const f = document.createElement("a");
     f.className = "back-float";
     f.href = backHref;

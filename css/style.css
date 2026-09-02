@@ -65,6 +65,12 @@ body {
   left: max(12px, env(safe-area-inset-left, 0px));
   bottom: max(14px, env(safe-area-inset-bottom, 0px));
   z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 54px;
+  padding: 0;
   text-decoration: none;
   color: var(--ink);
   font-weight: bold;
@@ -72,11 +78,11 @@ body {
   background: #fff;
   border: 3px solid var(--cream-d);
   border-radius: 999px;
-  padding: 8px 16px;
   box-shadow: 0 5px 0 var(--cream-d);
   transition: transform .08s, box-shadow .08s;
 }
 .bar .back:active { transform: translateY(5px); box-shadow: none; }
+.bar .back svg { width: 26px; height: 26px; display: block; }
 .bar .spacer { display: none; }
 
 main { padding: 14px; }
@@ -2274,7 +2280,7 @@ body.fitstage header.bar { display: none; }
   .bar { gap: 6px; padding-inline: 8px; }
   .bar h1 { font-size: 18px; gap: 5px; }
   .bar h1 img.bar-icon { width: 36px; height: 36px; }
-  .bar .back { font-size: 14px; padding: 7px 10px; }
+  .bar .back { font-size: 14px; }
   .bar .spacer { display: none; }
   .panel { padding: 18px; }
   .panel h2 { font-size: 22px; }
