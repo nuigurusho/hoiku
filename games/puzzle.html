@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=44">
+<link rel="stylesheet" href="../css/style.css?v=45">
 </head>
 <body>
 <header class="bar">
@@ -68,7 +68,7 @@ let selected = null, allPics = [];
 let game = null;
 
 async function initSelect() {
-  allPics = (await Store.forGame()).filter((r) => r.cat === "bg" || r.cat === "pic");
+  allPics = (await Store.forGame()).filter((r) => r.cat === "pic");
   selected = allPics[0] || null;
   refreshLocks();
 }

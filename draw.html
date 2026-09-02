@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=44">
+<link rel="stylesheet" href="css/style.css?v=45">
 <style>
   /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -582,8 +582,8 @@ function isBlank() {
 }
 
 /* えらび がめんから きたとき:なにを かくかは きまっているので えらばせない */
-const CAT_NAME = { char: "キャラクターの ぜんしん", bg: "はいけい", pic: "しゃしん・え", fuku: "キャラクターの かお" };
-const CAT_BASE = { char: "キャラ", bg: "はいけい", pic: "え", fuku: "ふくわらい" };
+const CAT_NAME = { char: "キャラクターの ぜんしん", bg: "ステージ", pic: "イラスト", fuku: "キャラクターの かお" };
+const CAT_BASE = { char: "キャラ", bg: "ステージ", pic: "イラスト", fuku: "ふくわらい" };
 if (fixedCat) {
   document.querySelector(`input[name="cat"][value="${fixedCat}"]`).checked = true;
   $("catRow").classList.add("hidden");

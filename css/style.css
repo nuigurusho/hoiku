@@ -1270,15 +1270,20 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
   font-weight: 900;
   cursor: pointer;
 }
+.admin-cat-tabs button .tab-copy { display: grid; gap: 2px; min-width: 0; text-align: left; }
+.admin-cat-tabs button .tab-copy b { font-size: 17px; line-height: 1.1; }
+.admin-cat-tabs button .tab-copy small { max-width: 210px; font-size: 11px; font-weight: 700; line-height: 1.25; opacity: .72; }
 .admin-cat-tabs button[data-cat="src"] { --cat-edge: #8a7a68; }
 .admin-cat-tabs button[data-cat="char"] { --cat-edge: var(--green-d); }
 .admin-cat-tabs button[data-cat="fuku"] { --cat-edge: var(--pink-d); }
 .admin-cat-tabs button[data-cat="bg"] { --cat-edge: var(--blue-d); }
+.admin-cat-tabs button[data-cat="pic"] { --cat-edge: var(--purple-d); }
 .admin-cat-tabs button.active { color: #fff; transform: translateY(5px); box-shadow: none; }
 .admin-cat-tabs button[data-cat="src"].active { background: #a99177; }
 .admin-cat-tabs button[data-cat="char"].active { background: var(--green); }
 .admin-cat-tabs button[data-cat="fuku"].active { background: var(--pink); }
 .admin-cat-tabs button[data-cat="bg"].active { background: var(--blue); }
+.admin-cat-tabs button[data-cat="pic"].active { background: var(--purple); }
 .admin-cat-swipe {
   min-height: 180px;
   padding: 4px 2px 18px;
@@ -1422,6 +1427,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .admin-cat-tabs { gap: 6px; }
   .admin-cat-tabs button { flex-direction: column; gap: 2px; padding: 8px 3px; font-size: 23px; border-width: 3px; }
   .admin-cat-tabs button span { font-size: 13px; }
+  .admin-cat-tabs button .tab-copy { text-align: center; }
+  .admin-cat-tabs button .tab-copy b { font-size: 13px; }
+  .admin-cat-tabs button .tab-copy small { font-size: 9px; line-height: 1.2; }
 }
 label.radio { font-size: 17px; font-weight: bold; margin: 0 8px; }
 

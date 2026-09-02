@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=44">
+<link rel="stylesheet" href="css/style.css?v=45">
 </head>
 <body>
 <header class="bar">
@@ -24,7 +24,8 @@
     <button type="button" role="tab" data-cat="src">✂️<span>元素材</span></button>
     <button type="button" role="tab" data-cat="char" class="active">🧍<span>全身</span></button>
     <button type="button" role="tab" data-cat="fuku">😀<span>顔</span></button>
-    <button type="button" role="tab" data-cat="bg">🏞️<span>はいけい</span></button>
+    <button type="button" role="tab" data-cat="bg">🏞️<span class="tab-copy"><b>ステージ</b><small>みんなのせかいで、キャラが歩く舞台</small></span></button>
+    <button type="button" role="tab" data-cat="pic">🖼️<span class="tab-copy"><b>イラスト</b><small>パズル／まちがいさがし用のイラスト</small></span></button>
   </div>
   <div class="panel import-actions">
     <div class="row">
@@ -38,6 +39,7 @@
     <section class="admin-cat-panel" data-cat="char"><div id="listChar"></div></section>
     <section class="admin-cat-panel hidden" data-cat="fuku"><div id="listFuku"></div></section>
     <section class="admin-cat-panel hidden" data-cat="bg"><div id="listBg"></div></section>
+    <section class="admin-cat-panel hidden" data-cat="pic"><div id="listPic"></div></section>
   </div>
 </main>
 
@@ -51,7 +53,8 @@
         <option value="src">✂️ トリミング用の元素材</option>
         <option value="char">🧍 キャラクターの全身</option>
         <option value="fuku">😀 キャラクターの顔</option>
-        <option value="bg">🏞️ はいけい</option>
+        <option value="bg">🏞️ ステージ</option>
+        <option value="pic">🖼️ イラスト</option>
       </select>
     </label>
     <div class="row work-info-actions">
@@ -64,7 +67,7 @@
 <script src="js/vendor/pdf.min.js"></script>
 <script src="js/core.js?v=36"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=26"></script>
+<script src="js/editors.js?v=27"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -75,7 +78,7 @@ const $ = (id) => document.getElementById(id);
 const QUERY = new URLSearchParams(location.search);
 const ENTRY_VIEWS = {
   char: { title: "キャラクター", icon: "assets/buttons/character-intro.png", cats: ["src", "char", "fuku"] },
-  bg: { title: "はいけい", icon: "assets/buttons/museum.png", cats: ["src", "bg"] },
+  bg: { title: "はいけい", icon: "assets/buttons/museum.png", cats: ["src", "bg", "pic"] },
 };
 const ENTRY_VIEW = ENTRY_VIEWS[QUERY.get("cat")] || null;
 if (ENTRY_VIEW) {
@@ -97,14 +100,15 @@ if (START_CAT) SELF_QUERY.set("cat", START_CAT);
 const SELF_QUERY_STRING = SELF_QUERY.toString();
 const IMPORT_SELF = `admin.html${SELF_QUERY_STRING ? `?${SELF_QUERY_STRING}` : ""}`;
 
-/* 一覧の並び順:元素材 → キャラ全身 → キャラ顔 → はいけい。
-   旧「写真・絵」も同じ一覧に残し、既存データを壊さない。 */
+/* 一覧の並び順:元素材 → キャラ全身 → キャラ顔 → ステージ → イラスト。 */
 const CATS = [
   [["src"], "listSrc"], [["char"], "listChar"], [["fuku"], "listFuku"],
-  [["bg", "pic"], "listBg"],
+  [["bg"], "listBg"], [["pic"], "listPic"],
 ];
-const ALLOWED_CATS = ENTRY_VIEW ? ENTRY_VIEW.cats : ["src", "char", "fuku", "bg"];
-$("catTabs").style.gridTemplateColumns = `repeat(${ALLOWED_CATS.length}, minmax(0, 1fr))`;
+const ALLOWED_CATS = ENTRY_VIEW ? ENTRY_VIEW.cats : ["src", "char", "fuku", "bg", "pic"];
+$("catTabs").style.gridTemplateColumns = ENTRY_VIEW
+  ? `repeat(${ALLOWED_CATS.length}, minmax(0, 1fr))`
+  : "repeat(auto-fit, minmax(145px, 1fr))";
 $("catTabs").querySelectorAll("[data-cat]").forEach((button) =>
   button.classList.toggle("hidden", !ALLOWED_CATS.includes(button.dataset.cat)));
 $("workInfoCategory").querySelectorAll("option").forEach((option) => {
@@ -112,6 +116,13 @@ $("workInfoCategory").querySelectorAll("option").forEach((option) => {
   option.hidden = !allowed;
   option.disabled = !allowed;
 });
+const cropCats = ALLOWED_CATS.filter((cat) => cat !== "src");
+document.querySelectorAll('input[name="cropCat"]').forEach((input) =>
+  input.closest("label").classList.toggle("hidden", !cropCats.includes(input.value)));
+const checkedCropCat = document.querySelector('input[name="cropCat"]:checked');
+if (checkedCropCat && !cropCats.includes(checkedCropCat.value) && cropCats.length) {
+  document.querySelector(`input[name="cropCat"][value="${cropCats[0]}"]`).checked = true;
+}
 let workInfoRec = null;
 
 function closeWorkInfo() {
@@ -123,7 +134,7 @@ function openWorkInfo(r) {
   workInfoRec = r;
   $("workInfoName").value = r.name || "";
   $("workInfoAuthor").value = r.author || "";
-  $("workInfoCategory").value = r.cat === "pic" ? "bg" : r.cat;
+  $("workInfoCategory").value = r.cat;
   $("workInfoModal").classList.remove("hidden");
   requestAnimationFrame(() => $("workInfoName").focus());
 }
@@ -196,7 +207,7 @@ function row(r) {
     mk("こえ", "blue", () => Editors.openVoice(r));
   }
   if (r.cat === "fuku") mk("パーツ", "blue", () => Editors.openFuku(r));
-  if (r.cat === "bg" || r.cat === "pic") {
+  if (r.cat === "pic") {
     const hasDiff = Array.isArray(r.diffVariants) && r.diffVariants.length > 0;
     mk(hasDiff ? "さぶん" : "＋", "blue", () => Editors.openSpot(r, {
       back: IMPORT_SELF,
@@ -296,7 +307,8 @@ $("importInfo").onclick = () => {
       <li><b>✂️ トリミング用の元素材</b> … 大きな紙に何人分も描いてある絵・写真の置き場。ここから何枚でも切り出せます</li>
       <li><b>🧍 キャラクターの全身</b> … 走る・跳ぶゲームで動く絵。取り込んだら「つくる」画面で <b>動き設定</b>(首・腰・中央の3本線)を合わせてください</li>
       <li><b>😀 キャラクターの顔</b> … ふくわらい用。「パーツ」で目・眉・鼻・口を四角く囲みます</li>
-      <li><b>🏞️ はいけい</b> … パズル・まちがいさがし・カードあわせ・「おえかきのたび」で使います</li>
+      <li><b>🏞️ ステージ</b> … みんなのせかいで、キャラが歩く舞台です</li>
+      <li><b>🖼️ イラスト</b> … パズル・まちがいさがし用のイラストです</li>
     </ul>
     <h3>きれいに取り込むコツ</h3>
     <ul class="info-list">
@@ -310,7 +322,7 @@ $("importInfo").onclick = () => {
     <h3>画像のサイズ</h3>
     <ul class="info-list">
       <li>取り込むと自動で縮小されるので、<b>元の大きさは気にしなくて大丈夫</b>です</li>
-      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、はいけいは <b>1100px</b>、元素材は <b>1600px</b></li>
+      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、ステージ・イラストは <b>1100px</b>、元素材は <b>1600px</b></li>
       <li>比率の決まりはありません。キャラクターは <b>たて長</b>、背景は <b>よこ長(16:9くらい)</b> が画面に収まりやすいです</li>
       <li>スマホやカメラの写真をそのまま入れてOK。PDFはページごとに読み込みます</li>
       <li>PDFを2ファイル以上まとめて選ぶと、全ページを「トリミング用の元素材」へ一括で保存します</li>

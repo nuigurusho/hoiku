@@ -169,7 +169,8 @@ document.body.insertAdjacentHTML("beforeend", `
     <div class="crop-destination"><span>取り込み先</span><strong id="cropDestination"></strong></div>
     <p style="margin:4px 0" id="cropCatRow">
       <label class="radio"><input type="radio" name="cropCat" value="char" checked> 🧍 キャラ</label>
-      <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ はいけい</label>
+      <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ ステージ</label>
+      <label class="radio"><input type="radio" name="cropCat" value="pic"> 🖼️ イラスト</label>
       <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 キャラクターの顔</label>
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
@@ -232,7 +233,7 @@ async function importFiles(files, cat, meta) {
     try {
       const maxDim = { char: 900, src: 1600 }[cat] || 1100;   // 元素材は切り出し前提で高画質のまま保持
       const dataURL = await Util.fileToDataURL(f, maxDim);
-      const base = { char: "キャラ", bg: "背景", pic: "絵・写真", fuku: "ふくわらい", src: "元素材" }[cat];
+      const base = { char: "キャラ", bg: "ステージ", pic: "イラスト", fuku: "ふくわらい", src: "元素材" }[cat];
       n++;
       const numberedName = meta.name && files.length > 1 ? `${meta.name} ${ok + 1}` : meta.name;
       const rec = { name: numberedName || `${base}${n}`, cat, dataURL };
