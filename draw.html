@@ -97,6 +97,9 @@
   .tool-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .tool-row .btn { font-size: 16px; padding: 10px 16px; box-shadow: 0 4px 0 var(--shade); }
   .tool-row .btn:active { transform: translateY(4px); box-shadow: none; }
+  .draw-rotate { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; margin-top: 12px; font-weight: bold; }
+  .draw-rotate input { width: 100%; accent-color: var(--orange); }
+  .draw-rotate output { min-width: 3em; color: var(--orange-d); text-align: right; }
   .cat-row label.radio { display: block; margin: 6px 0; font-size: 16px; }
 
   /* スマホ:ミニどうぐバーが 何だんにも ならないように ちぢめる。
@@ -169,6 +172,7 @@
       <button class="btn blue" id="guideBtn">あたり</button>
       <button class="btn yellow" id="clearBtn">ぜんぶけす</button>
     </div>
+    <label class="draw-rotate"><span>↻ かいてん</span><input id="rotateRange" type="range" min="-30" max="30" step="1" value="0"><output id="rotateOut">0°</output></label>
     <p class="note" id="toolHint" style="margin:6px 0 0">ペンで かけます</p>
 
     <h3 id="catTitle">なんの え?</h3>
@@ -198,7 +202,7 @@
   </div>
 </aside>
 
-<script src="js/core.js?v=35"></script>
+<script src="js/core.js?v=36"></script>
 <script src="js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -226,6 +230,15 @@ const isEraser = () => state.tool === "eraser";
 const cv = $("drawCanvas");
 const ctx = cv.getContext("2d");
 const gcv = $("guideCanvas");
+const drawRotate = { base: null, total: 0, start: 0 };
+
+function resetDrawRotate() {
+  drawRotate.base = null;
+  drawRotate.total = 0;
+  drawRotate.start = 0;
+  $("rotateRange").value = "0";
+  $("rotateOut").textContent = "0°";
+}
 
 /* ---------- どこから きて、なにを かくのか ----------
    ?kind= … 「なにを かく?」で えらんだ しゅるい(Guide.KINDS のキー)。
@@ -237,7 +250,8 @@ const gcv = $("guideCanvas");
 const q = new URLSearchParams(location.search);
 const BACK_PAGES = ["index.html", "create.html", "draw-pick.html",
                     "draw-pick.html?from=create", "create-diff.html", "admin.html",
-                    "admin.html?from=create"];
+                    "admin.html?from=create", "admin.html?from=create&cat=char",
+                    "admin.html?from=create&cat=bg"];
 const BACK = BACK_PAGES.includes(q.get("back")) ? q.get("back") : "index.html";
 $("backLink").setAttribute("href", BACK);
 if (q.get("diff")) $("saveBtn").disabled = true;
@@ -464,6 +478,7 @@ function strokeStyle() {
 }
 
 cv.addEventListener("pointerdown", (e) => {
+  resetDrawRotate();
   Sound.ensure();
   pushHistory();
   const at = Util.canvasPos(cv, e);
@@ -501,10 +516,11 @@ cv.addEventListener("pointerleave", endStroke);
 /* ---------- どうぐ ---------- */
 $("eraserBtn").onclick = () => { Sound.tap(); state.tool = isEraser() ? "pen" : "eraser"; syncTools(); };
 $("fillBtn").onclick = () => { Sound.tap(); state.tool = state.tool === "fill" ? "pen" : "fill"; syncTools(); };
-$("undoBtn").onclick = undo;
-$("redoBtn").onclick = redo;
+$("undoBtn").onclick = () => { resetDrawRotate(); undo(); };
+$("redoBtn").onclick = () => { resetDrawRotate(); redo(); };
 $("clearBtn").onclick = () => {
   if (!confirm("かいた えを ぜんぶ けしますか?")) return;
+  resetDrawRotate();
   pushHistory();
   fillWhite();
   state.dirty = true;
@@ -518,6 +534,7 @@ $("guideBtn").onclick = () => { Sound.tap(); guideShow(!guide.on); };
    どうぶつは あたまが ひだり、ちょうちょは からだが ひだり と むきが きまっているので、
    かきなおさずに ひっくりかえせるように しておく */
 $("flipBtn").onclick = () => {
+  resetDrawRotate();
   pushHistory();
   const tmp = Util.makeCanvas(cv.width, cv.height);
   tmp.getContext("2d").drawImage(cv, 0, 0);
@@ -530,6 +547,28 @@ $("flipBtn").onclick = () => {
   state.dirty = true;
   Sound.pop();
   Ui.msg("左右を いれかえたよ", 1000, "#ff922b");
+};
+
+/* 回転スライダーは、つまみを動かし始めた時点の絵を基準にする。
+   同じ操作の途中で何度も重ね掛けせず、もどす履歴も1回だけ増やす。 */
+$("rotateRange").oninput = (e) => {
+  const degrees = +e.target.value;
+  if (!drawRotate.base) {
+    drawRotate.base = Util.makeCanvas(cv.width, cv.height);
+    drawRotate.base.getContext("2d").drawImage(cv, 0, 0);
+    drawRotate.start = drawRotate.total;
+    pushHistory();
+  }
+  const rotated = Util.rotateCanvas(drawRotate.base, degrees - drawRotate.start);
+  fillWhite();
+  ctx.drawImage(rotated, 0, 0);
+  $("rotateOut").textContent = `${degrees}°`;
+  state.dirty = true;
+};
+$("rotateRange").onchange = (e) => {
+  drawRotate.total = +e.target.value;
+  drawRotate.base = null;
+  Sound.pop();
 };
 
 /* ---------- ほぞん ---------- */
@@ -565,6 +604,7 @@ async function loadForEdit(rec) {
   cv.height = Math.max(1, Math.round(img.height * sc));
   fillWhite();
   ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  resetDrawRotate();
   clearHistory();
   state.dirty = false;
 

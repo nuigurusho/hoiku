@@ -41,6 +41,30 @@ const Util = {
     return c;
   },
 
+  /* 絵の中心を軸に回転する。キャンバスの大きさは変えず、空いた所は白で埋める。 */
+  rotateCanvas(source, degrees, fill = "#fff") {
+    const out = Util.makeCanvas(source.width, source.height);
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = fill;
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.translate(out.width / 2, out.height / 2);
+    ctx.rotate((Number(degrees) || 0) * Math.PI / 180);
+    ctx.drawImage(source, -source.width / 2, -source.height / 2);
+    return out;
+  },
+
+  /* 回転後も、筆跡や関節位置が絵と一緒に動くように正規化座標を変換する。 */
+  rotatePoint(x, y, degrees, width, height) {
+    const rad = (Number(degrees) || 0) * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const dx = (Number(x) - 0.5) * width;
+    const dy = (Number(y) - 0.5) * height;
+    return {
+      x: Util.clamp((dx * cos - dy * sin) / width + 0.5, 0, 1),
+      y: Util.clamp((dx * sin + dy * cos) / height + 0.5, 0, 1),
+    };
+  },
+
   /* ファイル → 縮小データURL(長辺 max px) */
   fileToDataURL(file, max = 1000) {
     return new Promise((res, rej) => {

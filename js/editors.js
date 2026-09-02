@@ -42,6 +42,12 @@ document.body.insertAdjacentHTML("beforeend", `
         <section class="advanced-settings" id="rigAdvanced">
           <div class="advanced-title">高度な設定</div>
           <div class="rig-advanced-scroll">
+            <div class="advanced-block">
+              <h3>絵のかたむき</h3>
+              <div class="advanced-sliders">
+                <label>↻ 回転 <output id="rigRotateOut">0°</output><input id="rigRotate" type="range" min="-30" max="30" step="1" value="0"></label>
+              </div>
+            </div>
             <div class="advanced-block trim-block">
               <button class="btn blue" type="button" id="rigTrimWhitespace">余白をカット</button>
               <span class="note">絵のまわりの空白だけを詰めます</span>
@@ -520,6 +526,7 @@ const rigEd = {
   rec: null, dataURL: "", img: null, keyed: null, trimmed: null, rig: null, cutout: null,
   drag: null, parts: null, puppet: null, raf: 0, cutoutRaf: 0,
   brush: "keep", painting: false, afterSave: null, afterCancel: null,
+  rotateBase: null, rotateRig: null, rotateCutout: null, rotateTotal: 0, rotateStart: 0,
 };
 
 async function openRig(rec, opts) {
@@ -533,6 +540,13 @@ async function openRig(rec, opts) {
   rigEd.cutout.strokes = rigEd.cutout.strokes.map((s) => ({ ...s }));
   rigEd.dataURL = rec.dataURL;
   rigEd.img = await Util.loadImage(rigEd.dataURL);
+  rigEd.rotateBase = null;
+  rigEd.rotateRig = null;
+  rigEd.rotateCutout = null;
+  rigEd.rotateTotal = 0;
+  rigEd.rotateStart = 0;
+  $("rigRotate").value = "0";
+  $("rigRotateOut").textContent = "0°";
   $("rigModal").classList.remove("hidden");
   syncCutoutControls();
   refreshRigImage();
@@ -553,6 +567,79 @@ function visibleBounds(cv, pad = 8) {
   maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
+
+function rotateRigSettings(base, degrees, width, height) {
+  const out = JSON.parse(JSON.stringify(base));
+  const point = (x, y) => Util.rotatePoint(x, y, degrees, width, height);
+  const centerX = base.centerX == null ? 0.5 : base.centerX;
+  const hipY = base.hipY == null ? 0.7 : base.hipY;
+
+  if (base.neckY != null) out.neckY = point(centerX, base.neckY).y;
+  if (base.hipY != null) out.hipY = point(centerX, base.hipY).y;
+  if (base.centerX != null) out.centerX = point(base.centerX, hipY).x;
+  if (base.bellyY != null) out.bellyY = point(centerX, base.bellyY).y;
+  if (base.hingeX != null) out.hingeX = point(base.hingeX, 0.5).x;
+  if (base.legLeftX != null) out.legLeftX = point(base.legLeftX, hipY).x;
+  if (base.legRightX != null) out.legRightX = point(base.legRightX, hipY).x;
+
+  if (base.arms) {
+    for (const side of ["left", "right"]) {
+      const arm = base.arms[side];
+      if (!arm) continue;
+      const corners = [
+        point(arm.x, arm.y), point(arm.x + arm.w, arm.y),
+        point(arm.x, arm.y + arm.h), point(arm.x + arm.w, arm.y + arm.h),
+      ];
+      const minX = Math.min(...corners.map((p) => p.x));
+      const maxX = Math.max(...corners.map((p) => p.x));
+      const minY = Math.min(...corners.map((p) => p.y));
+      const maxY = Math.max(...corners.map((p) => p.y));
+      const pivot = point(arm.px, arm.py);
+      out.arms[side] = {
+        ...arm,
+        x: minX, y: minY,
+        w: Math.max(0.04, maxX - minX), h: Math.max(0.04, maxY - minY),
+        px: pivot.x, py: pivot.y,
+      };
+    }
+  }
+  return out;
+}
+
+function rotateCutoutSettings(base, degrees, width, height) {
+  const out = { ...base, strokes: (base.strokes || []).map((stroke) => {
+    const p = Util.rotatePoint(stroke.x, stroke.y, degrees, width, height);
+    return { ...stroke, x: p.x, y: p.y };
+  }) };
+  return out;
+}
+
+$("rigRotate").oninput = (e) => {
+  const degrees = +e.target.value;
+  if (!rigEd.rotateBase) {
+    rigEd.rotateBase = Util.makeCanvas(rigEd.img.width, rigEd.img.height);
+    rigEd.rotateBase.getContext("2d").drawImage(rigEd.img, 0, 0);
+    rigEd.rotateRig = JSON.parse(JSON.stringify(rigEd.rig));
+    rigEd.rotateCutout = { ...rigEd.cutout, strokes: rigEd.cutout.strokes.map((s) => ({ ...s })) };
+    rigEd.rotateStart = rigEd.rotateTotal;
+  }
+  const delta = degrees - rigEd.rotateStart;
+  const out = Util.rotateCanvas(rigEd.rotateBase, delta);
+  rigEd.img = out;
+  rigEd.dataURL = out.toDataURL("image/png");
+  rigEd.rig = rotateRigSettings(rigEd.rotateRig, delta, out.width, out.height);
+  rigEd.cutout = rotateCutoutSettings(rigEd.rotateCutout, delta, out.width, out.height);
+  $("rigRotateOut").textContent = `${degrees}°`;
+  syncCutoutControls();
+  refreshRigImage();
+};
+$("rigRotate").onchange = (e) => {
+  rigEd.rotateTotal = +e.target.value;
+  rigEd.rotateBase = null;
+  rigEd.rotateRig = null;
+  rigEd.rotateCutout = null;
+  Sound.pop();
+};
 
 $("rigTrimWhitespace").onclick = async () => {
   const b = visibleBounds(rigEd.keyed);
