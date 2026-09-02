@@ -613,12 +613,21 @@ const Store = {
       }
       await this.put(rec);
     }
+
+    /* 基本の顔は初期版では「データが空のとき」しか追加されなかった。
+       既存端末にも不足分だけ補い、ふくわらいへ直接入っても使えるようにする。 */
+    const hasBasicFukuFace = list.some((r) =>
+      r.id === Samples.FUKU_FACE_ID || r.sampleKey === Samples.FUKU_FACE_ID ||
+      r.name === "サンプルの おかお");
+    if (!hasBasicFukuFace) await this.put(Samples.fukuFace());
+
     return this.all();
   },
 };
 
 /* ---------------- Samples(クレヨン風サンプル画像を生成) ---------------- */
 const Samples = {
+  FUKU_FACE_ID: "sample-fuku-basic-face-v1",
   /* 画像生成で作った内蔵サンプル。固定IDで既存端末にも1回だけ追加する */
   ASSET_SAMPLES: [
     {
@@ -1132,7 +1141,8 @@ const Samples = {
     ctx.beginPath(); ctx.arc(120, 330, 20, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(360, 330, 20, 0, 7); ctx.fill();
 
-    return { name: "サンプルの おかお", cat: "fuku", dataURL: c.toDataURL("image/png"),
+    return { id: this.FUKU_FACE_ID, sampleKey: this.FUKU_FACE_ID,
+             name: "サンプルの おかお", cat: "fuku", dataURL: c.toDataURL("image/png"),
              fukuParts: [
                { kind: "め",     x: 0.250, y: 0.393, w: 0.188, h: 0.125 },
                { kind: "め",     x: 0.562, y: 0.393, w: 0.188, h: 0.125 },

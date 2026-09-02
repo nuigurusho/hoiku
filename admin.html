@@ -22,8 +22,8 @@
 <main class="admin-list">
   <div class="admin-cat-tabs" id="catTabs" role="tablist" aria-label="取り込みカテゴリ">
     <button type="button" role="tab" data-cat="src">✂️<span>もとそざい</span></button>
-    <button type="button" role="tab" data-cat="char" class="active">🧍<span>全身</span></button>
-    <button type="button" role="tab" data-cat="fuku">😀<span>顔</span></button>
+    <button type="button" role="tab" data-cat="char" class="active">🧍<span>ぜんしん</span></button>
+    <button type="button" role="tab" data-cat="fuku">😀<span>かお</span></button>
     <button type="button" role="tab" data-cat="bg">🏞️<span>ステージ</span></button>
     <button type="button" role="tab" data-cat="pic">🖼️<span>イラスト</span></button>
   </div>
@@ -53,8 +53,8 @@
     <label class="work-info-field"><span>絵の種類</span>
       <select id="workInfoCategory">
         <option value="src">✂️ トリミング用のもとそざい</option>
-        <option value="char">🧍 キャラクターの全身</option>
-        <option value="fuku">😀 キャラクターの顔</option>
+        <option value="char">🧍 キャラクターのぜんしん</option>
+        <option value="fuku">😀 キャラクターのかお</option>
         <option value="bg">🏞️ ステージ</option>
         <option value="pic">🖼️ イラスト</option>
       </select>
@@ -67,9 +67,9 @@
 </div>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=47"></script>
+<script src="js/core.js?v=48"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=31"></script>
+<script src="js/editors.js?v=32"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
@@ -336,8 +336,8 @@ $("importInfo").onclick = () => {
     <h3>カテゴリの えらびかた</h3>
     <ul class="info-list">
       <li><b>✂️ トリミング用のもとそざい</b> … 大きな紙に何人分も描いてある絵・写真の置き場。ここから何枚でも切り出せます</li>
-      <li><b>🧍 キャラクターの全身</b> … 走る・跳ぶゲームで動く絵。取り込んだら「つくる」画面で <b>動き設定</b>(首・腰・中央の3本線)を合わせてください</li>
-      <li><b>😀 キャラクターの顔</b> … ふくわらい用。「パーツ」で目・眉・鼻・口を四角く囲みます</li>
+      <li><b>🧍 キャラクターのぜんしん</b> … 走る・跳ぶゲームで動く絵。取り込んだら「つくる」画面で <b>動き設定</b>(首・腰・中央の3本線)を合わせてください</li>
+      <li><b>😀 キャラクターのかお</b> … ふくわらい用。「パーツ」で目・眉・鼻・口を四角く囲みます</li>
       <li><b>🏞️ ステージ</b> … みんなのせかいで キャラがあるくところです</li>
       <li><b>🖼️ イラスト</b> … パズルと まちがいさがしの イラストです</li>
     </ul>
@@ -345,15 +345,15 @@ $("importInfo").onclick = () => {
     <ul class="info-list">
       <li>白い紙に <b>濃く・はっきり</b> 描く(うすい鉛筆は消えやすい)</li>
       <li>明るい場所で <b>影が入らないよう</b> 真上からまっすぐ撮る</li>
-      <li>キャラクターは、紙の外側につながる白だけを自動で透明にします。輪郭の中の白い顔・服・体は残ります</li>
+      <li>キャラクターは、紙の外側につながる白だけを自動で透明にします。輪郭の中の白いかお・服・体は残ります</li>
       <li>輪郭が薄い・切れている絵は、「つくる」画面の <b>動き設定 → 高度な設定</b> で白の判定や隙間補正、残す／消す筆を調整できます</li>
       <li>キャラクターは <b>紙いっぱいに大きく</b> 描くと、動かしたときにきれいです</li>
-      <li>顔の絵は、目・鼻・口が重ならないよう <b>大きく</b> 描くとパーツを切り出しやすいです</li>
+      <li>かおの絵は、目・鼻・口が重ならないよう <b>大きく</b> 描くとパーツを切り出しやすいです</li>
     </ul>
     <h3>画像のサイズ</h3>
     <ul class="info-list">
       <li>取り込むと自動で縮小されるので、<b>元の大きさは気にしなくて大丈夫</b>です</li>
-      <li>長辺の目安 … キャラクターの全身・顔は <b>900px</b>、ステージ・イラストは <b>1100px</b>、もとそざいは <b>1600px</b></li>
+      <li>長辺の目安 … キャラクターのぜんしん・かおは <b>900px</b>、ステージ・イラストは <b>1100px</b>、もとそざいは <b>1600px</b></li>
       <li>比率の決まりはありません。キャラクターは <b>たて長</b>、背景は <b>よこ長(16:9くらい)</b> が画面に収まりやすいです</li>
       <li>スマホやカメラの写真をそのまま入れてOK。PDFはページごとに読み込みます</li>
       <li>PDFを2ファイル以上まとめて選ぶと、全ページを「トリミング用のもとそざい」へ一括で保存します</li>

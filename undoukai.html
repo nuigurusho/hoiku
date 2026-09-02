@@ -25,7 +25,8 @@
     box-shadow: 0 3px 0 var(--yellow-d);
   }
   .uk-panel { max-width: 900px; }
-  .uk-mem { cursor: grab; touch-action: none; }
+  /* 縦方向はページのスクロールへ渡し、左右への動きだけチーム移動に使う。 */
+  .uk-mem { cursor: grab; touch-action: pan-y; }
   .uk-mem:active { transform: scale(.94); }
   .uk-mem.dragging { opacity: .28; cursor: grabbing; }
   .mt-teamcol.drag-over {
@@ -87,6 +88,28 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .uk-rainbow-transition { display: none; }
+  }
+  @media (max-width: 760px) and (orientation: portrait) {
+    /* リレー／ドッヂボールのチーム発表と同じく、名簿が長くても
+       上下に動かせるようにし、下の操作ボタンぶんを空けておく。 */
+    body.fitstage .mt-over.team-reveal-over {
+      bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 18px;
+    }
+    body.fitstage .team-reveal-card {
+      width: min(96%, 900px);
+      margin-bottom: 8px;
+    }
+  }
+  @media (max-width: 480px) and (orientation: portrait) {
+    /* 幅が狭くボタンが2段になる端末では、その高さも確保する。 */
+    body.fitstage .mt-over.team-reveal-over {
+      bottom: calc(226px + env(safe-area-inset-bottom, 0px));
+    }
   }
 </style>
 </head>
@@ -170,7 +193,7 @@
   </div>
 </div>
 
-<script src="js/core.js?v=47"></script>
+<script src="js/core.js?v=48"></script>
 <script src="js/rig.js?v=17"></script>
 <script src="js/meet.js?v=22"></script>
 <script>
@@ -351,7 +374,15 @@ function renderTeams() {
       d.onpointermove = (e) => {
         const drag = activeTeamDrag;
         if (!drag || drag.el !== d || drag.pointerId !== e.pointerId) return;
-        if (!drag.dragging && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 10) {
+        const dx = e.clientX - drag.sx;
+        const dy = e.clientY - drag.sy;
+        /* 指を上下へ動かしたときは、チーム移動ではなく画面スクロールにする。 */
+        if (!drag.dragging && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+          activeTeamDrag = null;
+          if (d.releasePointerCapture && d.hasPointerCapture && d.hasPointerCapture(e.pointerId)) d.releasePointerCapture(e.pointerId);
+          return;
+        }
+        if (!drag.dragging && Math.hypot(dx, dy) > 10) {
           drag.dragging = true;
           d.classList.add("dragging");
           drag.ghost = d.cloneNode(true);
@@ -532,6 +563,7 @@ function teamVersus() {
 
 async function autoTeamReveal(myRun) {
   const c = card({ clear: true, ttl: "🎪 チームわけ!" });
+  $("over").classList.add("team-reveal-over");
   c.classList.add("team-reveal-card");
   const teams = document.createElement("div");
   teams.className = "mt-teams uk-team-reveal";

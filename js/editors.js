@@ -56,7 +56,7 @@ document.body.insertAdjacentHTML("beforeend", `
               <h3>白い体を残して背景を抜く</h3>
               <p class="note">輪郭が薄いときだけ白の判定と隙間補正を調整します。</p>
               <div class="cutout-mode" id="cutoutModes">
-                <label class="radio-row"><input type="radio" name="cutoutMode" value="edge"> <span><b>外側の白だけ抜く</b><small>白い顔・服・体を残す</small></span></label>
+                <label class="radio-row"><input type="radio" name="cutoutMode" value="edge"> <span><b>外側の白だけ抜く</b><small>白いかお・服・体を残す</small></span></label>
                 <label class="radio-row"><input type="radio" name="cutoutMode" value="legacy"> <span><b>白をすべて抜く</b><small>これまでと同じ方式</small></span></label>
               </div>
               <div class="advanced-sliders">
@@ -171,7 +171,7 @@ document.body.insertAdjacentHTML("beforeend", `
       <label class="radio"><input type="radio" name="cropCat" value="char" checked> 🧍 キャラ</label>
       <label class="radio"><input type="radio" name="cropCat" value="bg"> 🏞️ ステージ</label>
       <label class="radio"><input type="radio" name="cropCat" value="pic"> 🖼️ イラスト</label>
-      <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 キャラクターの顔</label>
+      <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 キャラクターのかお</label>
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
     <div class="row crop-photo-tools">
@@ -339,8 +339,8 @@ const cropEd = {
 };
 const CROP_CAT_LABELS = {
   src: "✂️ トリミング用のもとそざい",
-  char: "🧍 キャラクターの全身",
-  fuku: "😀 キャラクターの顔",
+  char: "🧍 キャラクターのぜんしん",
+  fuku: "😀 キャラクターのかお",
   bg: "🏞️ はいけい",
 };
 
