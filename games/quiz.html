@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=63">
+<link rel="stylesheet" href="../css/style.css?v=64">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -76,7 +76,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=49"></script>
+<script src="../js/core.js?v=50"></script>
 <script src="../js/quiz-data.js?v=13"></script>
 <script>
 "use strict";
@@ -94,13 +94,6 @@ let mode = null, streak = 0, miss = 0;
 let left = false;   // 「もどる」で ぬけたか(あとから 出る タイマーを とめる)
 
 function refreshLocks() {
-  const lv = Tiers.unlock(GAME);
-  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
-    const need = MODES[b.dataset.mode].lv;
-    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
-    b.classList.toggle("locked", need > lv);
-    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
-  });
   Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "もん" });
 }
 refreshLocks();
@@ -108,11 +101,6 @@ refreshLocks();
 document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
   b.onclick = () => {
     mode = MODES[b.dataset.mode];
-    if (mode.lv && mode.lv > Tiers.unlock(GAME)) {
-      Sound.bad();
-      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
-      return;
-    }
     Sound.tap();
     startRun();
   };
@@ -268,7 +256,6 @@ function clearGachi() {
   $("endScreen").classList.remove("hidden");
   $("stars").textContent = "⭐⭐⭐";
   $("scoreText").textContent = `クリア!🏆 ${score}もん せいかい!`;
-  Tiers.setUnlock(GAME, Math.min(3, mode.lv + 1));
   Tiers.addRank(GAME, mode.lv, "?", score);
   Sound.fanfare();
   Ui.confetti();

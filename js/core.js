@@ -1570,31 +1570,14 @@ const ActorTouch = {
   },
 };
 
-/* ---------------- Tiers(ガチンコの解放レベル & ランキング) ----------------
+/* ---------------- Tiers(ガチンコのランキング) ----------------
    ゲームを 🌈ゆるふわ / 🔥ガチンコ の2層で あそぶための共通基盤。
-   ガチンコは「かんたん→ふつう→むずかしい」を クリアで順に解放し、
-   段階ごとに TOP5 ランキングを のこす。
+   難易度ごとに TOP5 ランキングを のこす。
    localStorageキー:
-     tier_unlock_<game>       解放レベル(1〜3)
      tier_rank_<game>_<lv>    その段階の TOP5 [{name,score}]
    タイム系(みじかいほど よい)は addRank/rankHtml に lowerIsBetter を わたす。 */
 const Tiers = {
-  _uKey(game) { return "tier_unlock_" + game; },
   _rKey(game, lv) { return "tier_rank_" + game + "_" + lv; },
-
-  /* 解放レベル(デフォルト1) */
-  unlock(game) {
-    const v = parseInt(localStorage.getItem(this._uKey(game)), 10);
-    return v >= 1 ? v : 1;
-  },
-
-  /* いまより 大きいレベルだけ 保存する */
-  setUnlock(game, lv) {
-    const cur = this.unlock(game);
-    const next = Math.max(cur, lv | 0);
-    if (next > cur) localStorage.setItem(this._uKey(game), String(next));
-    return next;
-  },
 
   /* その段階の ランキング配列 [{name,score}] */
   rank(game, lv) {

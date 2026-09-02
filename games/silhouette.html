@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=63">
+<link rel="stylesheet" href="../css/style.css?v=64">
 <style>
   .shadow-box {
     width: min(420px, 80vw);
@@ -84,7 +84,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=49"></script>
+<script src="../js/core.js?v=50"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -125,13 +125,6 @@ const GMODES = {
 };
 
 function refreshLocks() {
-  const lv = Tiers.unlock(GAME);
-  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
-    const need = GMODES[b.dataset.mode].lv;
-    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
-    b.classList.toggle("locked", need > lv);
-    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
-  });
   Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "もん" });
 }
 refreshLocks();
@@ -151,11 +144,6 @@ $("viewBtn").onclick = async () => {
 document.querySelectorAll("#gachiRow [data-mode]").forEach((b) => {
   b.onclick = () => {
     const m = GMODES[b.dataset.mode];
-    if (m.lv > Tiers.unlock(GAME)) {
-      Sound.bad();
-      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
-      return;
-    }
     gmode = m; aview = false; startAnimal();
   };
 });
@@ -263,7 +251,6 @@ $("aNextBtn").onclick = () => {
 function clearGachi() {
   swap("endScreen");
   $("scoreText").textContent = `クリア!🏆 ${ascore}もん せいかい!`;
-  Tiers.setUnlock(GAME, Math.min(3, gmode.lv + 1));
   Tiers.addRank(GAME, gmode.lv, "?", ascore);
   Sound.fanfare();
   Ui.confetti();

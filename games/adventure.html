@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=63">
+<link rel="stylesheet" href="../css/style.css?v=64">
 </head>
 <body>
 <header class="bar">
@@ -61,7 +61,7 @@
   </div>
 </div>
 
-<script src="../js/core.js?v=49"></script>
+<script src="../js/core.js?v=50"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -107,13 +107,6 @@ async function pickCharAndBg() {
 }
 
 function refreshLocks() {
-  const lv = Tiers.unlock(GAME);
-  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
-    const need = MODES[b.dataset.mode].lv;
-    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
-    b.classList.toggle("locked", need > lv);
-    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
-  });
   Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "びょう" });
 }
 
@@ -133,11 +126,6 @@ let curMode = MODES.ren;
 document.querySelectorAll("#selectScreen [data-mode]").forEach((b) => {
   b.onclick = async () => {
     const m = MODES[b.dataset.mode];
-    if (m.lv && m.lv > Tiers.unlock(GAME)) {
-      Sound.bad();
-      Ui.msg("まえのだんかいを クリアしてね", 1600, "#4dabf7");
-      return;
-    }
     Sound.tap();
     if (!(await pickCharAndBg())) return;
     curMode = m;
@@ -282,7 +270,6 @@ async function startGame(mode) {
       Ui.confetti();
       if (g.mode.time) {
         const left = Math.max(0, Math.round(g.t));
-        Tiers.setUnlock(GAME, Math.min(3, g.mode.lv + 1));
         Tiers.addRank(GAME, g.mode.lv, (selChar && selChar.name) || "?", left);
         Ui.msg("クリア！", 1600);
         Ui.result("clearRow", "クリア！", `のこり ${left}びょう`);

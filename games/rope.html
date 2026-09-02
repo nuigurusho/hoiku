@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=63">
+<link rel="stylesheet" href="../css/style.css?v=64">
 </head>
 <body>
 <header class="bar">
@@ -54,7 +54,7 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=49"></script>
+<script src="../js/core.js?v=50"></script>
 <script src="../js/rig.js?v=17"></script>
 <script>
 "use strict";
@@ -73,7 +73,6 @@ const MODES = {
 };
 const GAME = "rope";
 const RANK_LABELS = ["かんたん", "ふつう", "むずかしい"];
-const unlockLv = () => Tiers.unlock(GAME);
 
 let selChar = null, allChars = [], G = null;
 
@@ -85,13 +84,6 @@ async function initSelect() {
   refreshLocks();
 }
 function refreshLocks() {
-  const lv = unlockLv();
-  document.querySelectorAll("#gachiRow .btn").forEach((b) => {
-    const need = MODES[b.dataset.mode].lv;
-    if (!b.dataset.orig) b.dataset.orig = b.innerHTML;
-    b.classList.toggle("locked", need > lv);
-    b.innerHTML = (need > lv ? "🔒 " : "") + b.dataset.orig;
-  });
   Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "かい" });
 }
 initSelect();
@@ -99,11 +91,6 @@ initSelect();
 document.querySelectorAll("[data-mode]").forEach((b) => {
   b.onclick = async () => {
     const m = MODES[b.dataset.mode];
-    if (m.lv && m.lv > unlockLv()) {
-      Sound.bad();
-      Ui.msg(`まえのだんかいを クリアしてね`, 1600, "#4dabf7");
-      return;
-    }
     Sound.tap();
     const rec = await Picker.one({
       title: "だれが とぶ?", records: allChars, selectedId: selChar && selChar.id,
@@ -267,7 +254,6 @@ function clearGame() {
   Ui.msg("クリア！", 1600);
   Ui.result("endRow", "クリア！", `${g.best}かい`);
   const lv = g.mode.lv;
-  Tiers.setUnlock(GAME, Math.min(3, lv + 1));
   saveRank(lv, g.best);
   $("endRow").classList.remove("hidden");
 }
