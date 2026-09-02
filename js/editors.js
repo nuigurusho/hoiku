@@ -174,8 +174,23 @@ document.body.insertAdjacentHTML("beforeend", `
       <label class="radio"><input type="radio" name="cropCat" value="fuku"> 😀 キャラクターの顔</label>
     </p>
     <canvas id="cropCanvas" class="edit-canvas" width="660" height="460"></canvas>
-    <div class="row">
-      <button class="btn yellow" id="cropRotate">↻ 回転</button>
+    <div class="row crop-photo-tools">
+      <button class="btn blue" id="cropEnhance" aria-expanded="false">✨ みやすくする</button>
+      <button class="btn yellow" id="cropRotate">↻ かいてん</button>
+    </div>
+    <div class="crop-adjust hidden" id="cropAdjustPanel">
+      <div class="row crop-adjust-actions">
+        <button class="btn blue" id="cropAdjustAuto">✨ じどう</button>
+        <button class="btn yellow" id="cropAdjustReset">↶ もとにもどす</button>
+      </div>
+      <div class="crop-adjust-sliders">
+        <label><span>あかるさ</span><input id="cropBrightness" type="range" min="-30" max="60" value="0"></label>
+        <label><span>せんをくっきり</span><input id="cropContrast" type="range" min="-20" max="70" value="0"></label>
+        <label><span>かみのかげ</span><input id="cropPaper" type="range" min="0" max="100" value="0"></label>
+        <label><span>いろのこさ</span><input id="cropSaturation" type="range" min="-20" max="80" value="0"></label>
+      </div>
+    </div>
+    <div class="row crop-save-tools">
       <button class="btn green" id="cropSave">✂ 切り出して保存</button>
       <button class="btn blue" id="cropWhole">□ ページ全体を保存</button>
       <button class="btn purple hidden" id="cropNext">次のページ ▶</button>
@@ -317,7 +332,11 @@ async function pdfToCanvases(file) {
 
 /* ---------- きりだし(トリミング)エディタ ----------
    pages: 元画像のcanvas配列(PDFは複数ページ、画像は1枚) */
-const cropEd = { forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null, sc: 1, saved: 0, pendingRec: null };
+const PHOTO_ADJUST_DEFAULTS = { brightness: 0, contrast: 0, paper: 0, saturation: 0 };
+const cropEd = {
+  forceCat: null, pages: [], idx: 0, baseName: "", author: "", rect: null, drag: null,
+  sc: 1, saved: 0, pendingRec: null, adjustments: [], preview: null, previewFrame: 0,
+};
 const CROP_CAT_LABELS = {
   src: "✂️ トリミング用のもとそざい",
   char: "🧍 キャラクターの全身",
@@ -346,6 +365,10 @@ function openCrop(pages, baseName, opts) {
   cropEd.author = (opts.author || "").trim();
   cropEd.saved = 0;
   cropEd.pendingRec = null;
+  cropEd.adjustments = pages.map(() => ({ ...PHOTO_ADJUST_DEFAULTS }));
+  cropEd.preview = null;
+  $("cropAdjustPanel").classList.add("hidden");
+  $("cropEnhance").setAttribute("aria-expanded", "false");
   $("cropModal").classList.remove("hidden");
   syncCropDestination();
   showCropPage();
@@ -359,6 +382,7 @@ function showCropPage() {
   cv.width = Math.round(src.width * cropEd.sc);
   cv.height = Math.round(src.height * cropEd.sc);
   cropEd.rect = null;
+  cropEd.preview = null;
   $("cropTitle").textContent = cropEd.pages.length > 1
     ? `✂ 切り出して取り込む(${cropEd.idx + 1} / ${cropEd.pages.length}ページ)`
     : "✂ 切り出して取り込む";
@@ -370,7 +394,7 @@ function drawCrop() {
   const src = cropEd.pages[cropEd.idx];
   const cv = $("cropCanvas"), ctx = cv.getContext("2d");
   ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.drawImage(src, 0, 0, cv.width, cv.height);
+  ctx.drawImage(cropEd.preview || src, 0, 0, cv.width, cv.height);
   if (cropEd.rect) {
     const { x, y, w, h } = cropEd.rect;
     ctx.fillStyle = "rgba(0,0,0,.35)";           // そとがわを くらく
@@ -384,6 +408,161 @@ function drawCrop() {
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
   }
+}
+
+function cropAdjustValue() {
+  return cropEd.adjustments[cropEd.idx] || { ...PHOTO_ADJUST_DEFAULTS };
+}
+
+function hasCropAdjustment(adjustment) {
+  return Object.values(adjustment).some((value) => Number(value) !== 0);
+}
+
+/* 暗い紙写真を、線や塗りの濃淡を残したまま見やすくする。
+   小さくぼかした画像を紙の照明ムラとみなし、局所的に明るさを補正する。 */
+function adjustPhotoCanvas(source, adjustment, outW, outH) {
+  const width = Math.max(1, Math.round(outW || source.width));
+  const height = Math.max(1, Math.round(outH || source.height));
+  const out = Util.makeCanvas(width, height);
+  const ctx = out.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0, width, height);
+  if (!hasCropAdjustment(adjustment)) return out;
+
+  const shadeW = Math.max(10, Math.round(width / 42));
+  const shadeH = Math.max(10, Math.round(height / 42));
+  const shadeSmall = Util.makeCanvas(shadeW, shadeH);
+  shadeSmall.getContext("2d").drawImage(out, 0, 0, shadeW, shadeH);
+  const shade = Util.makeCanvas(width, height);
+  const shadeCtx = shade.getContext("2d", { willReadFrequently: true });
+  shadeCtx.imageSmoothingEnabled = true;
+  shadeCtx.imageSmoothingQuality = "high";
+  shadeCtx.drawImage(shadeSmall, 0, 0, width, height);
+
+  const pixels = ctx.getImageData(0, 0, width, height);
+  const background = shadeCtx.getImageData(0, 0, width, height).data;
+  const data = pixels.data;
+  const paperStrength = Util.clamp(Number(adjustment.paper) || 0, 0, 100) / 100;
+  const brightness = (Number(adjustment.brightness) || 0) * 2.15;
+  const contrast = Util.clamp(Number(adjustment.contrast) || 0, -20, 70);
+  const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+  const saturationFactor = 1 + (Number(adjustment.saturation) || 0) / 100;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const bgLum = background[i] * .2126 + background[i + 1] * .7152 + background[i + 2] * .0722;
+    const localLift = (242 - bgLum) * paperStrength;
+    let r = data[i] + localLift + brightness;
+    let g = data[i + 1] + localLift + brightness;
+    let b = data[i + 2] + localLift + brightness;
+
+    const lum = r * .2126 + g * .7152 + b * .0722;
+    r = lum + (r - lum) * saturationFactor;
+    g = lum + (g - lum) * saturationFactor;
+    b = lum + (b - lum) * saturationFactor;
+    r = contrastFactor * (r - 128) + 128;
+    g = contrastFactor * (g - 128) + 128;
+    b = contrastFactor * (b - 128) + 128;
+
+    // 紙越しの薄い文字など、彩度の低い中間色だけを控えめに白へ寄せる。
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const correctedLum = r * .2126 + g * .7152 + b * .0722;
+    if (paperStrength > 0 && max - min < 18 && correctedLum > 118) {
+      const fade = paperStrength * Util.clamp((correctedLum - 118) / 105, 0, 1) * .58;
+      r += (255 - r) * fade;
+      g += (255 - g) * fade;
+      b += (255 - b) * fade;
+    }
+    data[i] = Util.clamp(Math.round(r), 0, 255);
+    data[i + 1] = Util.clamp(Math.round(g), 0, 255);
+    data[i + 2] = Util.clamp(Math.round(b), 0, 255);
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return out;
+}
+
+function automaticPhotoAdjustment(source) {
+  const sampleMax = 220;
+  const scale = Math.min(1, sampleMax / Math.max(source.width, source.height));
+  const sample = Util.makeCanvas(Math.max(1, Math.round(source.width * scale)), Math.max(1, Math.round(source.height * scale)));
+  const ctx = sample.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0, sample.width, sample.height);
+  const data = ctx.getImageData(0, 0, sample.width, sample.height).data;
+  const histogram = new Uint32Array(256);
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = Math.round(data[i] * .2126 + data[i + 1] * .7152 + data[i + 2] * .0722);
+    histogram[lum]++;
+  }
+  const percentile = (ratio) => {
+    const target = sample.width * sample.height * ratio;
+    let total = 0;
+    for (let i = 0; i < histogram.length; i++) {
+      total += histogram[i];
+      if (total >= target) return i;
+    }
+    return 255;
+  };
+  const light = percentile(.9);
+  const dark = percentile(.12);
+  return {
+    brightness: Util.clamp(Math.round((232 - light) / 4), 0, 38),
+    contrast: Util.clamp(Math.round(16 + (118 - (light - dark)) * .16), 12, 34),
+    paper: light < 225 ? 76 : 52,
+    saturation: 28,
+  };
+}
+
+function syncCropAdjustControls() {
+  const adjustment = cropAdjustValue();
+  $("cropBrightness").value = adjustment.brightness;
+  $("cropContrast").value = adjustment.contrast;
+  $("cropPaper").value = adjustment.paper;
+  $("cropSaturation").value = adjustment.saturation;
+  $("cropEnhance").classList.toggle("active", hasCropAdjustment(adjustment));
+}
+
+function refreshCropPreview() {
+  cancelAnimationFrame(cropEd.previewFrame);
+  cropEd.previewFrame = requestAnimationFrame(() => {
+    const cv = $("cropCanvas");
+    cropEd.preview = adjustPhotoCanvas(cropEd.pages[cropEd.idx], cropAdjustValue(), cv.width, cv.height);
+    drawCrop();
+  });
+}
+
+function openCropAdjustment(runAuto) {
+  $("cropAdjustPanel").classList.remove("hidden");
+  $("cropEnhance").setAttribute("aria-expanded", "true");
+  if (runAuto) {
+    cropEd.adjustments[cropEd.idx] = automaticPhotoAdjustment(cropEd.pages[cropEd.idx]);
+    syncCropAdjustControls();
+    refreshCropPreview();
+  }
+}
+
+$("cropEnhance").onclick = () => {
+  Sound.tap();
+  const hidden = $("cropAdjustPanel").classList.contains("hidden");
+  if (hidden) openCropAdjustment(!hasCropAdjustment(cropAdjustValue()));
+  else {
+    $("cropAdjustPanel").classList.add("hidden");
+    $("cropEnhance").setAttribute("aria-expanded", "false");
+  }
+};
+$("cropAdjustAuto").onclick = () => { Sound.tap(); openCropAdjustment(true); };
+$("cropAdjustReset").onclick = () => {
+  Sound.tap();
+  cropEd.adjustments[cropEd.idx] = { ...PHOTO_ADJUST_DEFAULTS };
+  syncCropAdjustControls();
+  refreshCropPreview();
+};
+for (const [id, key] of [
+  ["cropBrightness", "brightness"], ["cropContrast", "contrast"],
+  ["cropPaper", "paper"], ["cropSaturation", "saturation"],
+]) {
+  $(id).addEventListener("input", (event) => {
+    cropAdjustValue()[key] = Number(event.target.value);
+    syncCropAdjustControls();
+    refreshCropPreview();
+  });
 }
 
 (() => {
@@ -417,7 +596,8 @@ function returnToCrop() {
   cropEd.pendingRec = null;
   $("cropMetaModal").classList.add("hidden");
   $("cropModal").classList.remove("hidden");
-  drawCrop();
+  syncCropAdjustControls();
+  refreshCropPreview();
 }
 
 async function finishCropSave(rec) {
@@ -443,6 +623,7 @@ function openCropMeta(rec) {
 
 async function saveCropRegion(rect) {
   const src = cropEd.pages[cropEd.idx];
+  const adjusted = adjustPhotoCanvas(src, cropAdjustValue(), src.width, src.height);
   const cat = cropCategory();
   const sx = rect.x / cropEd.sc, sy = rect.y / cropEd.sc;
   const sw = rect.w / cropEd.sc, sh = rect.h / cropEd.sc;
@@ -452,7 +633,7 @@ async function saveCropRegion(rect) {
   const ctx = out.getContext("2d");
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, out.width, out.height);
-  ctx.drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  ctx.drawImage(adjusted, sx, sy, sw, sh, 0, 0, out.width, out.height);
   const rec = {
     name: nextCropName(),
     cat,

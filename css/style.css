@@ -1324,6 +1324,29 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
 .spot-panel canvas { max-height: calc(100dvh - 300px); }
 .fuku-panel, .crop-panel { width: min(920px, calc(100vw - 24px)); }
 .fuku-panel canvas, .crop-panel canvas { max-height: calc(100dvh - 250px); width: auto; }
+.crop-photo-tools { margin-bottom: 5px !important; }
+.crop-photo-tools .btn.active { outline: 3px solid #8bc9f0; outline-offset: 2px; }
+.crop-adjust {
+  width: min(720px, 100%);
+  margin: 4px auto 10px;
+  padding: 10px 14px 13px;
+  border: 3px solid #8bc9f0;
+  border-radius: 18px;
+  background: #eff9ff;
+}
+.crop-adjust-actions { margin: 0 0 9px !important; }
+.crop-adjust-actions .btn { padding: 8px 13px !important; font-size: 14px !important; }
+.crop-adjust-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; text-align: left; }
+.crop-adjust-sliders label {
+  display: grid;
+  grid-template-columns: 8em minmax(100px, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: bold;
+}
+.crop-adjust-sliders input[type="range"] { width: 100%; accent-color: var(--blue-d); }
+.crop-save-tools { margin-top: 5px !important; }
 .voice-panel { width: min(820px, calc(100vw - 24px)); }
 .rig-panel { display: grid; grid-template-rows: minmax(0, 1fr) auto; width: min(1180px, calc(100vw - 24px)); height: min(780px, calc(100dvh - 24px)); max-width: none; overflow: hidden !important; padding: 16px; }
 .rig-workspace { display: grid; grid-template-columns: minmax(190px, .7fr) minmax(300px, 1fr) minmax(330px, .9fr); gap: 16px; min-height: 0; }
@@ -1413,6 +1436,10 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
   .rig-visual .rig-types .btn { padding: 7px 5px; font-size: 12px; }
   .rig-flex { gap: 8px; }
   .rig-preview-wrap { max-width: none; }
+  .crop-panel canvas { max-height: calc(100dvh - 310px); }
+  .crop-adjust { padding: 9px 10px 11px; }
+  .crop-adjust-sliders { grid-template-columns: 1fr; gap: 7px; }
+  .crop-adjust-sliders label { grid-template-columns: 7.5em minmax(90px, 1fr); font-size: 14px; }
 }
 
 /* ---------- ダイアログの ラジオ・メニュー ---------- */
