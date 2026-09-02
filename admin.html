@@ -15,7 +15,7 @@
 <body>
 <header class="bar">
   <a class="back" href="index.html" id="backLink">← もどる</a>
-  <h1><img class="bar-icon" src="assets/buttons/import.png" alt=""> 取り込み</h1>
+  <h1><img class="bar-icon" id="pageTitleIcon" src="assets/buttons/import.png" alt=""> <span id="pageTitle">取り込み</span></h1>
   <div class="spacer"></div>
 </header>
 
@@ -73,6 +73,16 @@ if (window.pdfjsLib) {
 const $ = (id) => document.getElementById(id);
 
 const QUERY = new URLSearchParams(location.search);
+const ENTRY_VIEWS = {
+  char: { title: "キャラクター", icon: "assets/buttons/character-intro.png", cats: ["src", "char", "fuku"] },
+  bg: { title: "はいけい", icon: "assets/buttons/museum.png", cats: ["src", "bg"] },
+};
+const ENTRY_VIEW = ENTRY_VIEWS[QUERY.get("cat")] || null;
+if (ENTRY_VIEW) {
+  $("pageTitle").textContent = ENTRY_VIEW.title;
+  $("pageTitleIcon").src = ENTRY_VIEW.icon;
+  document.title = ENTRY_VIEW.title;
+}
 
 /* 「つくる」から来たときは「つくる」へ戻る(トップの歯車から来たときはトップへ) */
 if (QUERY.get("from") === "create") {
@@ -93,6 +103,15 @@ const CATS = [
   [["src"], "listSrc"], [["char"], "listChar"], [["fuku"], "listFuku"],
   [["bg", "pic"], "listBg"],
 ];
+const ALLOWED_CATS = ENTRY_VIEW ? ENTRY_VIEW.cats : ["src", "char", "fuku", "bg"];
+$("catTabs").style.gridTemplateColumns = `repeat(${ALLOWED_CATS.length}, minmax(0, 1fr))`;
+$("catTabs").querySelectorAll("[data-cat]").forEach((button) =>
+  button.classList.toggle("hidden", !ALLOWED_CATS.includes(button.dataset.cat)));
+$("workInfoCategory").querySelectorAll("option").forEach((option) => {
+  const allowed = ALLOWED_CATS.includes(option.value);
+  option.hidden = !allowed;
+  option.disabled = !allowed;
+});
 let workInfoRec = null;
 
 function closeWorkInfo() {
@@ -232,7 +251,7 @@ function showImagePreview(r, src) {
   wrap.querySelector("button").focus();
 }
 
-const CAT_KEYS = ["src", "char", "fuku", "bg"];
+const CAT_KEYS = ALLOWED_CATS;
 let activeCat = CAT_KEYS.includes(START_CAT) ? START_CAT : "char";
 let swipeStart = null;
 
