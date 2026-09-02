@@ -1439,7 +1439,11 @@ function initQuiz() {
   };
   initQuizTemplates();
   refreshQuizList();
+  refreshDefaultQuizList();
   $("qfAdd").onclick = qfAdd;
+  $("quizExport").onclick = exportQuiz;
+  $("quizImport").onclick = () => $("quizImportInput").click();
+  $("quizImportInput").onchange = importQuiz;
 }
 
 function initQuizTemplates() {
@@ -1483,13 +1487,70 @@ function refreshQuizList() {
     const t = document.createElement("span");
     t.className = "nm";
     t.textContent = `${q.emoji || "❓"} ${q.q}(正解: ${q.choices[q.answer]})`;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "mt-toggle" + (q.enabled === false ? "" : " on");
+    toggle.setAttribute("aria-label", q.enabled === false ? "この問題を使う" : "この問題を使わない");
+    toggle.setAttribute("aria-pressed", q.enabled === false ? "false" : "true");
+    toggle.innerHTML = '<span class="knob"></span>';
+    toggle.onclick = () => { CustomQuiz.toggle(i); refreshQuizList(); Sound.tap(); };
     const del = document.createElement("button");
     del.className = "btn gray";
     del.textContent = "削除";
     del.onclick = () => { CustomQuiz.remove(i); refreshQuizList(); Sound.tap(); };
+    d.classList.toggle("off", q.enabled === false);
+    d.append(t, toggle, del);
+    box.appendChild(d);
+  });
+}
+
+function refreshDefaultQuizList() {
+  const box = $("quizDefaultList");
+  if (!box) return;
+  const list = CustomQuiz.defaultVisible(window.QUIZ || []);
+  box.innerHTML = list.length ? "" : '<p class="note">ありません</p>';
+  list.forEach((q) => {
+    const d = document.createElement("div");
+    d.className = "admin-row";
+    const t = document.createElement("span");
+    t.className = "nm";
+    t.textContent = `${q.emoji || "❓"} ${q.q}(正解: ${q.choices[q.answer]})`;
+    const del = document.createElement("button");
+    del.className = "btn gray";
+    del.textContent = "削除";
+    del.onclick = () => {
+      CustomQuiz.hideDefault(q);
+      refreshDefaultQuizList();
+      Sound.tap();
+    };
     d.append(t, del);
     box.appendChild(d);
   });
+}
+
+function exportQuiz() {
+  const blob = new Blob([JSON.stringify(CustomQuiz.exportData(), null, 2)], { type: "application/json" });
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  Backup.download(blob, `hoiku-quiz-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.json`);
+  Sound.good();
+}
+
+async function importQuiz(e) {
+  const file = e.target.files[0];
+  e.target.value = "";
+  if (!file) return;
+  if (!confirm("この端末のクイズを、選んだファイルの内容に置き換えます。よろしいですか?")) return;
+  try {
+    const data = JSON.parse(await file.text());
+    CustomQuiz.importData(data);
+    refreshQuizList();
+    refreshDefaultQuizList();
+    Sound.good();
+    Ui.msg("クイズをインポートしました", 1500, "#51cf66");
+  } catch (err) {
+    alert("インポートに失敗しました:\n" + ((err && err.message) || err));
+  }
 }
 
 function qfAdd() {

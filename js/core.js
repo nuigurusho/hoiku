@@ -1736,6 +1736,7 @@ const Tiers = {
    端末の外に出ないので、園の名前などの固有名詞を入れても公開されない。 */
 const CustomQuiz = {
   KEY: "customQuiz",
+  HIDDEN_DEFAULTS_KEY: "quizHiddenDefaults",
   all() {
     try {
       const a = JSON.parse(localStorage.getItem(this.KEY) || "[]");
@@ -1745,6 +1746,53 @@ const CustomQuiz = {
   save(list) { localStorage.setItem(this.KEY, JSON.stringify(list)); },
   add(q) { const l = this.all(); l.push(q); this.save(l); return l; },
   remove(i) { const l = this.all(); l.splice(i, 1); this.save(l); return l; },
+  toggle(i) {
+    const l = this.all();
+    if (!l[i]) return l;
+    l[i].enabled = l[i].enabled === false;
+    this.save(l);
+    return l;
+  },
+  enabled() { return this.all().filter((q) => q.enabled !== false); },
+  defaultKey(q) { return JSON.stringify([q.q, q.emoji || "", q.choices, q.answer]); },
+  hiddenDefaults() {
+    try {
+      const a = JSON.parse(localStorage.getItem(this.HIDDEN_DEFAULTS_KEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  },
+  hideDefault(q) {
+    const key = this.defaultKey(q);
+    const hidden = this.hiddenDefaults();
+    if (!hidden.includes(key)) hidden.push(key);
+    localStorage.setItem(this.HIDDEN_DEFAULTS_KEY, JSON.stringify(hidden));
+  },
+  defaultVisible(list) {
+    const hidden = new Set(this.hiddenDefaults());
+    return (Array.isArray(list) ? list : []).filter((q) => !hidden.has(this.defaultKey(q)));
+  },
+  exportData() {
+    return {
+      app: "hoiku-quiz",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      questions: this.all(),
+      hiddenDefaults: this.hiddenDefaults(),
+    };
+  },
+  importData(data) {
+    if (!data || data.app !== "hoiku-quiz" || !Array.isArray(data.questions)) {
+      throw new Error("クイズのデータではありません");
+    }
+    const valid = data.questions.every((q) => q && typeof q.q === "string"
+      && Array.isArray(q.choices) && q.choices.length === 4
+      && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4);
+    if (!valid) throw new Error("問題データが壊れています");
+    this.save(data.questions);
+    localStorage.setItem(this.HIDDEN_DEFAULTS_KEY, JSON.stringify(
+      Array.isArray(data.hiddenDefaults) ? data.hiddenDefaults.filter((v) => typeof v === "string") : []
+    ));
+  },
 };
 
 /* ---------------- Backup(設定まるごと zip でエクスポート/インポート) ----------------

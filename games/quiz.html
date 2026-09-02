@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="../css/style.css?v=45">
+<link rel="stylesheet" href="../css/style.css?v=46">
 <style>
   .qemoji { text-align: center; font-size: 90px; margin: 6px 0; }
   .qtext {
@@ -76,8 +76,8 @@
   </div>
 </main>
 
-<script src="../js/core.js?v=36"></script>
-<script src="../js/quiz-data.js?v=11"></script>
+<script src="../js/core.js?v=37"></script>
+<script src="../js/quiz-data.js?v=12"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -127,7 +127,11 @@ $("retryBtn").onclick = () => {
 
 function startRun() {
   // 内蔵の問題 + この端末で作ったオリジナル問題
-  queue = Util.shuffle(window.QUIZ.concat(CustomQuiz.all()));
+  queue = Util.shuffle(CustomQuiz.defaultVisible(window.QUIZ).concat(CustomQuiz.enabled()));
+  if (!queue.length) {
+    Ui.msg("使う問題を1つ以上オンにしてください", 1800, "#4dabf7");
+    return;
+  }
   if (mode.n > 0) queue = queue.slice(0, mode.n);
   idx = 0; score = 0; streak = 0; miss = 0; left = false;
   $("startScreen").classList.add("hidden");

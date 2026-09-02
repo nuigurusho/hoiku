@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=45">
+<link rel="stylesheet" href="css/style.css?v=46">
 </head>
 <body>
 <header class="bar">
@@ -32,7 +32,7 @@
       </select>
     </div>
 
-    <h3>かんたん作成 — 答えを入れるだけ</h3>
+    <h3>かんたん作成</h3>
     <div id="quizTemplates"></div>
 
     <h3>自分で作る</h3>
@@ -48,8 +48,19 @@
       <button class="btn green" id="qfAdd">クイズに追加</button>
     </div>
 
-    <h3>この端末のオリジナル問題</h3>
+    <h3>この端末の問題</h3>
     <div id="quizList"></div>
+
+    <details class="quiz-defaults">
+      <summary>デフォルトの問題</summary>
+      <div id="quizDefaultList"></div>
+    </details>
+
+    <div class="row quiz-transfer">
+      <button class="btn blue" id="quizExport" type="button">エクスポート</button>
+      <button class="btn blue" id="quizImport" type="button">インポート</button>
+      <input type="file" id="quizImportInput" accept=".json,application/json" hidden>
+    </div>
   </div>
 
   <p class="note" style="max-width:1000px;margin:18px auto;text-align:center">
@@ -58,9 +69,10 @@
 </main>
 
 <script src="js/vendor/pdf.min.js"></script>
-<script src="js/core.js?v=36"></script>
+<script src="js/core.js?v=37"></script>
+<script src="js/quiz-data.js?v=12"></script>
 <script src="js/rig.js?v=17"></script>
-<script src="js/editors.js?v=27"></script>
+<script src="js/editors.js?v=28"></script>
 <script>
 "use strict";
 if (window.pdfjsLib) {
