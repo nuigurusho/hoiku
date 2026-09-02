@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="あそぶ">
-  <path d="M17 24h30c6 0 10 5 11 12l1 9c1 7-7 11-12 6l-7-7H24l-7 7C12 56 4 52 5 45l1-9c1-7 5-12 11-12Z" fill="#e9ecef" stroke="#5a4632" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M20 31v12M14 37h12" stroke="#5a4632" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="44" cy="34" r="3" fill="#ff8fab"/><circle cx="50" cy="41" r="3" fill="#4dabf7"/>
+  <path d="M17 20h30c6 0 10 5 11 13l1 10c1 8-7 12-12 6l-7-8H24l-7 8C12 55 4 51 5 43l1-10c1-8 5-13 11-13Z" fill="#e9ecef" stroke="#5a4632" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M20 27v14M13 34h14" stroke="#5a4632" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="44" cy="30" r="3.2" fill="#ff8fab"/><circle cx="50" cy="38" r="3.2" fill="#4dabf7"/>
 </svg>
