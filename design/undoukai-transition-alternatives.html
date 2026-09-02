@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>うんどうかい・競技間トランジション別案</title>
+<style>
+@font-face{font-family:Rounded;src:url(../assets/fonts/RoundedMplus1c-ExtraBold.woff2)}
+@font-face{font-family:Pop;src:url(../assets/fonts/MochiyPopOne-Regular.woff2)}
+:root{--ink:#4a3f35;--paper:#fffaf0;--line:#ead7b8;--yellow:#ffd43b;--yellow-d:#d8a700;--green:#71c75c;--sky:#bde7ff;--field:#91d673;--track:#e6a067;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:#f4ead9;color:var(--ink);font-family:Rounded,"M PLUS Rounded 1c",sans-serif}
+main{width:min(1180px,96vw);margin:28px auto 56px}h1{margin:0;font:400 clamp(28px,4vw,47px)/1.25 Pop,sans-serif}.lead{margin:8px 0 20px;color:#756554;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{position:relative;padding:14px;background:#fff;border:4px solid var(--line);border-radius:25px;box-shadow:0 7px 0 var(--line)}.card.recommend{border-color:#f3c323;box-shadow:0 7px 0 #d8a700}.tag{position:absolute;z-index:9;right:14px;top:14px;padding:6px 12px 8px;border-radius:999px;background:var(--yellow);box-shadow:0 3px 0 var(--yellow-d);font-size:14px}
+.demo{position:relative;overflow:hidden;aspect-ratio:4/3;border-radius:17px;background:linear-gradient(var(--sky) 0 39%,var(--field) 39%);isolation:isolate}.cloud{position:absolute;width:90px;height:28px;border-radius:99px;background:#ffffffa6;top:40px;left:28px;box-shadow:190px 35px 0 -4px #ffffff82}.track{position:absolute;left:4%;right:4%;bottom:-23%;height:60%;border:30px solid var(--track);border-radius:50%;box-shadow:inset 0 0 0 3px #ffffffbb}
+.next{position:absolute;z-index:7;left:50%;top:48%;display:flex;align-items:center;gap:9px;padding:8px 15px 10px;border-radius:999px;background:#fff;box-shadow:0 5px 0 #7153282b;font:400 19px Pop,sans-serif;white-space:nowrap;opacity:0}.next img{width:48px;height:48px;object-fit:contain}
+.baton{position:absolute;z-index:8;left:-22%;top:57%;width:90px;height:22px;border:5px solid #fff;border-radius:99px;background:var(--yellow);box-shadow:0 4px 0 #8d671f38;transform:rotate(-16deg);animation:baton 4.4s cubic-bezier(.2,.8,.25,1) infinite}.swoop{position:absolute;z-index:6;left:9%;right:9%;top:61%;height:4px;border-radius:99px;background:linear-gradient(90deg,transparent,var(--yellow),transparent);opacity:0;animation:swoop 4.4s ease infinite}.baton-next{animation:batonNext 4.4s cubic-bezier(.2,.9,.25,1) infinite}
+@keyframes baton{0%,14%{left:-22%;opacity:0}21%{opacity:1}43%{left:44%;opacity:1}55%,100%{left:112%;opacity:0}}
+@keyframes swoop{0%,18%,61%,100%{opacity:0;transform:scaleX(.2)}31%,51%{opacity:.85;transform:scaleX(1)}}
+@keyframes batonNext{0%,31%{opacity:0;transform:translate(-50%,-38%) scale(.82)}40%,62%{opacity:1;transform:translate(-50%,-50%) scale(1)}73%,100%{opacity:0;transform:translate(-50%,-62%) scale(1.04)}}
+.steps{position:absolute;z-index:7;inset:0}.foot{position:absolute;font-size:34px;opacity:0;filter:sepia(1) saturate(4) hue-rotate(355deg);animation:step 4.4s ease infinite}.foot:nth-child(1){left:12%;top:69%;animation-delay:0s}.foot:nth-child(2){left:27%;top:55%;transform:rotate(18deg);animation-delay:.11s}.foot:nth-child(3){left:43%;top:66%;transform:rotate(-12deg);animation-delay:.22s}.foot:nth-child(4){left:59%;top:51%;transform:rotate(16deg);animation-delay:.33s}.foot:nth-child(5){left:74%;top:62%;transform:rotate(-9deg);animation-delay:.44s}.steps-next{animation:stepsNext 4.4s ease infinite}
+@keyframes step{0%,16%{opacity:0;scale:.7}25%,53%{opacity:.9;scale:1}69%,100%{opacity:0;scale:1.08}}
+@keyframes stepsNext{0%,37%{opacity:0;transform:translate(-50%,-44%) scale(.85)}47%,66%{opacity:1;transform:translate(-50%,-50%) scale(1)}76%,100%{opacity:0;transform:translate(-50%,-58%) scale(1.03)}}
+.whistle{position:absolute;z-index:7;left:50%;top:54%;font-size:62px;filter:sepia(1) saturate(3);animation:whistle 4.4s ease infinite}.sound{position:absolute;z-index:6;left:50%;top:55%;width:65px;height:65px;border:6px solid var(--yellow);border-radius:50%;opacity:0;animation:sound 4.4s ease-out infinite}.line{position:absolute;z-index:6;top:66%;width:48%;height:8px;border-radius:99px;background:#fff;box-shadow:0 4px 0 #7953292b}.line.l{left:-55%;animation:lineL 4.4s ease infinite}.line.r{right:-55%;animation:lineR 4.4s ease infinite}.whistle-next{animation:whistleNext 4.4s ease infinite}
+@keyframes whistle{0%,13%{opacity:0;transform:translate(-50%,-50%) rotate(-25deg) scale(.7)}23%,36%{opacity:1;transform:translate(-50%,-50%) rotate(8deg) scale(1)}44%,100%{opacity:0;transform:translate(-50%,-50%) rotate(14deg) scale(.92)}}
+@keyframes sound{0%,22%{opacity:0;transform:translate(-50%,-50%) scale(.35)}29%{opacity:.85}46%,100%{opacity:0;transform:translate(-50%,-50%) scale(2.1)}}
+@keyframes lineL{0%,23%{left:-55%}37%,62%{left:2%}73%,100%{left:105%}}@keyframes lineR{0%,23%{right:-55%}37%,62%{right:2%}73%,100%{right:105%}}
+@keyframes whistleNext{0%,40%{opacity:0;transform:translate(-50%,-42%) scale(.85)}49%,66%{opacity:1;transform:translate(-50%,-50%) scale(1)}76%,100%{opacity:0;transform:translate(-50%,-60%) scale(1.03)}}
+h2{margin:14px 5px 5px;font:400 23px Pop,sans-serif}.card p{margin:0 5px 5px;color:#746452;line-height:1.6}.good{color:#4b922f;font-weight:800}.note{margin-top:24px;padding:17px 20px;background:#fff;border:3px solid var(--line);border-radius:20px;line-height:1.8}.note b{color:#996f00}.controls{display:flex;justify-content:flex-end;margin-top:14px}.replay{border:0;border-radius:999px;background:#2ecc71;color:white;padding:11px 21px 13px;font:800 17px Rounded;box-shadow:0 5px 0 #159447;cursor:pointer}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.demo{aspect-ratio:16/9}.next{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.baton,.swoop,.next,.foot,.whistle,.sound,.line{animation-play-state:paused;animation-delay:-1.9s}}
+</style>
+</head>
+<body>
+<main>
+  <h1>チーム色を使わない 切り替え案</h1>
+  <p class="lead">ピンク・青は勝敗表示だけに残し、競技間は「運動会の道具と動き」で統一します。</p>
+  <div class="grid" id="grid">
+    <article class="card recommend"><span class="tag">推奨</span><div class="demo"><div class="cloud"></div><div class="track"></div><div class="swoop"></div><i class="baton"></i><div class="next baton-next"><img src="../assets/buttons/tamaire.png" alt="">つぎは たまいれ</div></div><h2>A　バトンパス</h2><p><span class="good">最もおすすめ。</span>黄色いバトンが一本だけ走り、軌跡から次の競技が現れる。色の矛盾がなく、覆う面積も最小。</p></article>
+    <article class="card"><div class="demo"><div class="cloud"></div><div class="track"></div><div class="steps"><i class="foot">👣</i><i class="foot">👣</i><i class="foot">👣</i><i class="foot">👣</i><i class="foot">👣</i></div><div class="next steps-next"><img src="../assets/buttons/tamaire.png" alt="">つぎは たまいれ</div></div><h2>B　足あとステップ</h2><p>足あとがリズムよく横切る。子どもらしく楽しいが、絵文字ではなく専用の足あと画像を作る必要がある。</p></article>
+    <article class="card"><div class="demo"><div class="cloud"></div><div class="track"></div><div class="sound"></div><div class="whistle">📣</div><i class="line l"></i><i class="line r"></i><div class="next whistle-next"><img src="../assets/buttons/tamaire.png" alt="">つぎは たまいれ</div></div><h2>C　合図のライン</h2><p>合図と同時に白いラインが左右へ走る。切り替えは明快だが、毎競技で鳴らすと開始合図と混同しやすい。</p></article>
+  </div>
+  <div class="controls"><button class="replay" id="replay">もういちど みる</button></div>
+  <div class="note"><b>実装方針：</b>A案なら約0.85秒。バトンが中央を通る瞬間に背景だけを次の競技へ切り替え、文字は「つぎは ○○」だけをフェード表示します。白フラッシュも全画面幕も使いません。</div>
+</main>
+<script>document.getElementById("replay").onclick=()=>{const g=document.getElementById("grid"),c=g.cloneNode(true);g.replaceWith(c)}</script>
+</body>
+</html>
