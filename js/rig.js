@@ -208,6 +208,7 @@ class Puppet {
     this.roll = 0;                 // からだ全体のかたむき(rad)。いぬかき・魚の ゆらゆら用
     this.kick = false;             // バタ足フォーム(あしのふりが こまかく はやくなる)
     this.perched = false;          // とまりフォーム(ちょうちょが 花に とまって はねを たたむ)
+    this.showJoints = false;        // キャラしょうかい用の関節マーカー
   }
 
   /* ちょうちょは え1まいが「はね」で、ひろげると よこ2ばいに なる。
@@ -245,11 +246,16 @@ class Puppet {
     ctx.scale(s * this.facing, s);
     ctx.translate(-p.cx, -p.H);
 
+    const jointPoints = [];
     const part = (pt, ang) => {
       if (!pt) return;
       ctx.save();
       ctx.translate(pt.pivot.x, pt.pivot.y);
       ctx.rotate(ang || 0);
+      if (this.showJoints) {
+        const m = ctx.getTransform();
+        if (!jointPoints.some((p) => Math.hypot(p.x - m.e, p.y - m.f) < 2)) jointPoints.push({ x: m.e, y: m.f });
+      }
       ctx.drawImage(pt.c, pt.ox - pt.pivot.x, pt.oy - pt.pivot.y);
       ctx.restore();
     };
@@ -262,6 +268,23 @@ class Puppet {
       default:      this._drawBiped(ctx, part, s, airY);
     }
     ctx.restore();
+    if (this.showJoints) {
+      ctx.save();
+      for (const point of jointPoints) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,.94)";
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#dc4c79";
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#dc4c79";
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   /* --- にほんあし(現行動作) --- */

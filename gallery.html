@@ -41,17 +41,97 @@
       cursor: default;
     }
     .voice-btn:disabled:active { transform: none; box-shadow: 0 4px 0 #c8c8c8; }
+    .character-exhibit > .character-stage { grid-row: span 3; }
+    .collection-frame { position: relative; }
+    .character-category-mark {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 3px solid rgba(121,80,42,.45);
+      border-radius: 50%;
+      background: rgba(255,255,255,.94);
+      box-shadow: 0 3px 0 rgba(121,80,42,.28);
+      font-size: 24px;
+      line-height: 1;
+    }
+    .character-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 58px;
+      padding: 8px 12px;
+      border: 3px solid #ead58d;
+      border-radius: 20px;
+      background: rgba(255,251,226,.94);
+    }
+    .character-category {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .character-category-emoji { font-size: 27px; line-height: 1; }
+    .joint-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .joint-toggle input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .joint-switch {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      border: 3px solid #b9aa94;
+      border-radius: 999px;
+      background: #d8d0c4;
+      transition: background .15s, border-color .15s;
+    }
+    .joint-switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(58,43,27,.25);
+      transition: transform .15s;
+    }
+    .joint-toggle input:checked + .joint-switch { border-color: #dc4c79; background: #f783ac; }
+    .joint-toggle input:checked + .joint-switch::after { transform: translateX(22px); }
+    .joint-toggle input:focus-visible + .joint-switch { outline: 4px solid #1864ab; outline-offset: 3px; }
     @media (max-width: 760px) {
       .exhibit-heading { grid-template-columns: 1fr auto; padding: 0 54px; }
       .exhibit-heading .exhibit-count { grid-column: auto; grid-row: auto; justify-self: end; }
       .work-pager button { width: 56px; height: 74px; }
+      .character-exhibit > .character-stage { grid-row: auto; }
+      .character-info { flex-wrap: wrap; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .joint-switch, .joint-switch::after { transition: none; }
     }
   </style>
 </head>
 <body class="collection-page">
 <header class="bar">
   <a class="back" href="view.html" id="backLink">← もどる</a>
-  <h1 id="pageTitle">みんなの さくひん</h1>
+  <h1><img class="bar-icon" id="pageTitleIcon" src="assets/buttons/character-intro.png" alt=""><span id="pageTitle">みんなの さくひん</span></h1>
   <div class="spacer"></div>
 </header>
 
@@ -74,6 +154,14 @@
       <button class="character-stage" id="characterStage" type="button" aria-label="キャラクターをタップして反応を見る">
         <canvas id="characterCanvas" width="760" height="540"></canvas>
       </button>
+      <div class="character-info">
+        <span class="character-category" id="characterCategory"></span>
+        <label class="joint-toggle">
+          <span>かんせつ</span>
+          <input id="jointToggle" type="checkbox" role="switch">
+          <span class="joint-switch" aria-hidden="true"></span>
+        </label>
+      </div>
       <div class="control-group">
         <h3>うごき</h3>
         <div class="exhibit-controls">
@@ -101,7 +189,7 @@
 </main>
 
 <script src="js/core.js?v=51"></script>
-<script src="js/rig.js?v=17"></script>
+<script src="js/rig.js?v=18"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -123,6 +211,12 @@ const galleryFirstOrder = [
 ];
 
 function text(el, value) { el.textContent = value || ""; }
+
+function characterCategory(work) {
+  const type = (work.rig && work.rig.type) || "biped";
+  const kindByType = { biped: "human", skirt: "skirt", quad: "animal", butterfly: "fly", float: "float" };
+  return Guide.get(kindByType[type] || "human");
+}
 
 function orderGalleryWorks(list) {
   return list.map((work, index) => {
@@ -170,7 +264,8 @@ function startMarquee(el) {
 function setupCopy() {
   const isChar = kind === "char";
   document.title = isChar ? "キャラしょうかい" : "びじゅつかん";
-  text($("pageTitle"), isChar ? "📖 キャラしょうかい" : "🖼️ びじゅつかん");
+  text($("pageTitle"), isChar ? "キャラしょうかい" : "びじゅつかん");
+  $("pageTitleIcon").src = isChar ? "assets/buttons/character-intro.png" : "assets/buttons/museum.png";
   $("emptyState").innerHTML = isChar
     ? "キャラクターが まだ いないよ<br><a href=\"admin.html\">とりこみ</a>で とうろくしてね"
     : "はいけいが まだ ないよ<br><a href=\"admin.html\">とりこみ</a>で とうろくしてね";
@@ -190,6 +285,15 @@ function renderShelf() {
     img.src = work.dataURL;
     img.alt = "";
     frame.appendChild(img);
+    if (kind === "char") {
+      const category = characterCategory(work);
+      const mark = document.createElement("span");
+      mark.className = "character-category-mark";
+      mark.textContent = category.emoji;
+      mark.title = category.label;
+      mark.setAttribute("aria-label", category.label);
+      frame.appendChild(mark);
+    }
     const caption = document.createElement("span");
     caption.className = "collection-caption";
     const name = document.createElement("strong");
@@ -224,11 +328,14 @@ async function openWork(index) {
     $("backgroundImage").alt = work.name || "はいけいの さくひん";
     return;
   }
+  const category = characterCategory(work);
+  $("characterCategory").innerHTML = `<span class="character-category-emoji" aria-hidden="true">${category.emoji}</span><span>${category.label}</span>`;
   renderVoiceButtons(work);
   try {
     const parts = await Rig.load(work);
     if (works[current] !== work) return;
     puppet = new Puppet(parts, { x: 380, y: 472, h: Math.min(390, 350 * 560 / Math.max(parts.H, 1)), facing: 1 });
+    puppet.showJoints = $("jointToggle").checked;
     puppet.h = Math.min(390, 350 * parts.H / Math.max(parts.W, parts.H));
     resetMotion();
   } catch (e) {
@@ -309,6 +416,10 @@ function draw(now) {
 
 document.querySelectorAll("[data-motion]").forEach((b) => { b.onclick = () => react(b.dataset.motion); });
 $("characterStage").onclick = randomReaction;
+$("jointToggle").onchange = (e) => {
+  Sound.tap();
+  if (puppet) puppet.showJoints = e.target.checked;
+};
 function showShelf(e) {
   if (e) e.preventDefault();
   resetMotion();
