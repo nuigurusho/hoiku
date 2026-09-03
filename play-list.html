@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=64">
+<link rel="stylesheet" href="css/style.css?v=65">
 </head>
 <body data-back-href="play.html">
 <main class="hub-page">
@@ -25,7 +25,7 @@
   </div>
   <div class="tiles play-list-tiles" id="gameList"></div>
 </main>
-<script src="js/core.js?v=51"></script>
+<script src="js/core.js?v=52"></script>
 <script>
 "use strict";
 const TYPE = ["solo", "duo", "multi", "games"].includes(new URLSearchParams(location.search).get("type"))
@@ -48,7 +48,7 @@ const GAMES = {
   ],
   duo: [["race", "かけっこ", "mode=vs"], ["sakasa", "さかさクイズ", ""]],
   multi: [
-    ["quiz", "４たくクイズ", "mode=miru"], ["silhouette", "かげえクイズ", "mode=miru"],
+    ["quiz", "４たくクイズ", "tier=yuru"], ["silhouette", "かげえクイズ", "mode=miru"],
     ["diff", "まちがいさがし", "mode=miru"], ["janken", "じゃんけん", "mode=crowd"],
     ["voice", "こえで ジャンプ", "mode=ren"],
   ],

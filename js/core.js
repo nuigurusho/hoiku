@@ -2269,13 +2269,19 @@ const Backup = {
                   (キャラえらびが ひつような ゲームは えらび がめんが でる)
    ・?tier=gachi … ゆるふわの みだしと「みるだけ(オート)」を かくして、
                    れんしゅう と なんいどだけの がめんに する
-   がめんの HTML には data-tier="yuru" を、みだしと オートのボタンの行に つける。 */
+   ・?tier=yuru  … その はんたい。ガチンコの みだしと ボタンを かくして、
+                   みんなで あそぶ ものだけを えらばせる
+                   (みんなでの なかに えらぶ ものが 2つ いじょう ある ゲーム用)
+   がめんの HTML には data-tier="yuru" / data-tier="gachi" を、
+   みだしと その行に つける。 */
 const Entry = {
   init() {
     const q = new URLSearchParams(location.search);
 
-    if (q.get("tier") === "gachi") {
-      document.querySelectorAll('[data-tier="yuru"]').forEach((el) => el.classList.add("hidden"));
+    const tier = q.get("tier");
+    if (tier === "gachi" || tier === "yuru") {
+      const hide = tier === "gachi" ? "yuru" : "gachi";
+      document.querySelectorAll(`[data-tier="${hide}"]`).forEach((el) => el.classList.add("hidden"));
     }
 
     const mode = q.get("mode");
