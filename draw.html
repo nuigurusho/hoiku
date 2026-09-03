@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#ff922b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
-<link rel="stylesheet" href="css/style.css?v=64">
+<link rel="stylesheet" href="css/style.css?v=65">
 <style>
   /* おえかきは がめん ぜんぶを つかう。どうぐは ドロワー(よこから 出る はこ)に しまう */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
@@ -102,10 +102,21 @@
   .draw-rotate output { min-width: 3em; color: var(--orange-d); text-align: right; }
   .cat-row label.radio { display: block; margin: 6px 0; font-size: 16px; }
 
+  /* ミニどうぐバーは した・うえ どちらにも おける。
+     ・した に あるとき、はばが せまいと 左下の「もどる」に かぶるので、
+       かぶる ときだけ もどるボタンの たかさぶん 上へ ずらす
+     ・↑ / ↓ の ボタンで、じぶんでも うえ・したを えらべる */
+  .minibar.lift { bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 62px); }
+  .minibar.at-top { top: max(10px, env(safe-area-inset-top, 0px)); bottom: auto; }
+  body.bar-top main { padding: 96px 0 0; }
+  /* バーを うえに あげた あいだは、ぜんがめんボタンを 下に にがす */
+  body.bar-top .fs-btn.float { top: auto; bottom: 10px; }
+
   /* スマホ:ミニどうぐバーが 何だんにも ならないように ちぢめる。
      もどす・やりなおしは 矢じるしだけに する */
   @media (max-width: 560px) {
     main { padding-bottom: 86px; }
+    body.bar-top main { padding: 86px 0 0; }
     #drawCanvas {
       max-width: calc(100vw - 108px);
       max-height: calc(100vh - 120px);
@@ -151,6 +162,7 @@
   <button class="btn gray" id="eraserBtn">けしゴム</button>
   <button class="btn green big" id="saveBtn">✔ ほぞん<span class="t">する</span></button>
   <button class="btn green big hidden" id="overwriteBtn">✔ うわがき<span class="t"> ほぞん</span></button>
+  <button class="btn gray" id="barMoveBtn" aria-label="どうぐバーを うえに うごかす">↑</button>
 </div>
 
 <!-- みぎ:どうぐばこ(ドロワー) -->
@@ -192,7 +204,7 @@
   </div>
 </aside>
 
-<script src="js/core.js?v=51"></script>
+<script src="js/core.js?v=52"></script>
 <script src="js/rig.js?v=18"></script>
 <script>
 "use strict";
@@ -794,6 +806,40 @@ $("nowColor").onclick    = () => openTools(true);
 drawer.addEventListener("click", (e) => {
   if (e.target.closest(".swatch, .size-btn")) openTools(false);
 });
+
+/* ---------- ミニどうぐバーの ばしょ ----------
+   はばが せまいと、まんなかの どうぐバーが 左下の「もどる」に かぶって
+   もどれなく なる。かぶって いる あいだだけ もどるボタンの ぶん 上へ ずらす。
+   それでも じゃまな ときの ために、↑ / ↓ で うえ・したも えらべるように する。 */
+const minibar = document.querySelector(".minibar");
+let barTop = false;
+
+function syncBarPos() {
+  document.body.classList.toggle("bar-top", barTop);
+  minibar.classList.toggle("at-top", barTop);
+  $("barMoveBtn").textContent = barTop ? "↓" : "↑";
+  $("barMoveBtn").setAttribute("aria-label",
+    barTop ? "どうぐバーを したに うごかす" : "どうぐバーを うえに うごかす");
+  minibar.classList.remove("lift");
+  if (barTop) return;
+  const back = document.querySelector(".back-float");
+  if (!back) return;
+  const b = back.getBoundingClientRect();
+  const m = minibar.getBoundingClientRect();
+  /* もどるボタンの さわれる はんい(::after で すこし ひろい)ぶんも みる */
+  if (m.left < b.right + 10 && m.bottom > b.top - 4 && m.top < b.bottom + 4) {
+    minibar.classList.add("lift");
+  }
+}
+
+$("barMoveBtn").onclick = () => { Sound.tap(); barTop = !barTop; syncBarPos(); };
+addEventListener("resize", syncBarPos);
+addEventListener("orientationchange", () => setTimeout(syncBarPos, 220));
+/* もどるボタンは core.js が DOMContentLoaded で つくるので、そのあとに はかる。
+   ボタンの 出しかえ(うわがき など)で バーの はばが かわる ときも はかりなおす */
+addEventListener("DOMContentLoaded", syncBarPos);
+if (window.ResizeObserver) new ResizeObserver(syncBarPos).observe(minibar);
+syncBarPos();
 
 syncTools();
 syncHistory();      // はじめは もどす・やりなおし とも おせない
