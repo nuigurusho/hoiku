@@ -20,6 +20,20 @@
 </header>
 
 <main class="admin-list">
+  <div class="panel" style="text-align:left">
+    <h2>👀 表示</h2>
+    <div class="mt-rows" style="max-width:none;margin:0">
+      <div class="mt-row" id="authorPrivacyRow">
+        <div class="txt">
+          <b>作者名を非表示</b>
+          <span>作品に作者名があることは、伏せ字で表示します</span>
+        </div>
+        <button class="mt-toggle" id="hideAuthorToggle" type="button" role="switch" aria-checked="false" aria-label="作者名を非表示"><span class="knob"></span></button>
+      </div>
+    </div>
+    <p class="note">オンにすると、鑑賞画面では「作者: ＊＊＊＊」と表示され、キャラクタークイズにも作者名の問題を出しません。登録した作者名は消えません。</p>
+  </div>
+
   <div class="panel pwa-admin-panel" style="text-align:left" id="pwaUpdatePanel">
     <h2>📱 オフライン・更新</h2>
     <p class="pwa-status" id="pwaStatus" aria-live="polite">準備状況を確認しています…</p>
@@ -58,9 +72,23 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
+const HIDE_AUTHOR_KEY = "hideAuthorNames";
 if (new URLSearchParams(location.search).get("from") === "create") {
   $("backLink").setAttribute("href", "create.html");
 }
+
+function syncAuthorPrivacy() {
+  const hidden = localStorage.getItem(HIDE_AUTHOR_KEY) === "1";
+  $("hideAuthorToggle").classList.toggle("on", hidden);
+  $("hideAuthorToggle").setAttribute("aria-checked", String(hidden));
+}
+$("hideAuthorToggle").onclick = () => {
+  const hidden = localStorage.getItem(HIDE_AUTHOR_KEY) !== "1";
+  localStorage.setItem(HIDE_AUTHOR_KEY, hidden ? "1" : "0");
+  syncAuthorPrivacy();
+  Sound.tap();
+};
+syncAuthorPrivacy();
 
 $("exportBtn").onclick = async () => {
   try {

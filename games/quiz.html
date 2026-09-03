@@ -128,7 +128,9 @@ async function startRun() {
     : Util.shuffle(CustomQuiz.defaultVisible(window.QUIZ).concat(CustomQuiz.enabled()));
   if (!queue.length) {
     const message = quizKind === "character"
-      ? "なまえか さくしゃを つけた キャラクターを 4にん いじょう とうろくしてね"
+      ? (localStorage.getItem("hideAuthorNames") === "1"
+        ? "なまえを つけた キャラクターを 4にん いじょう とうろくしてね"
+        : "なまえか さくしゃを つけた キャラクターを 4にん いじょう とうろくしてね")
       : "使う問題を1つ以上オンにしてください";
     Ui.msg(message, 2200, "#4dabf7");
     return;
@@ -159,10 +161,10 @@ function pickQuestions(list, count) {
 async function makeCharacterQuestions() {
   const characters = (await Store.forGame("char")).filter((rec) => rec && rec.dataURL);
   const questions = [];
-  const fields = [
-    { key: "name", q: "この キャラクターの なまえは?" },
-    { key: "author", q: "この キャラクターを かいたのは だれ?" },
-  ];
+  const fields = [{ key: "name", q: "この キャラクターの なまえは?" }];
+  if (localStorage.getItem("hideAuthorNames") !== "1") {
+    fields.push({ key: "author", q: "この キャラクターを かいたのは だれ?" });
+  }
   fields.forEach((field) => {
     const values = [...new Set(characters.map((rec) => (rec[field.key] || "").trim()).filter(Boolean))];
     if (values.length < 4) return;

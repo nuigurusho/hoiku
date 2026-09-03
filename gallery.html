@@ -43,6 +43,7 @@
     .voice-btn:disabled:active { transform: none; box-shadow: 0 4px 0 #c8c8c8; }
     .character-exhibit > .character-stage { grid-row: span 3; }
     .collection-frame { position: relative; }
+    .collection-caption { padding-top: 7px; padding-bottom: 14px; }
     .character-category-mark {
       position: absolute;
       right: 8px;
@@ -209,8 +210,14 @@ const galleryFirstOrder = [
   "sample-pic-crayon-picnic-v1",
   "sample-pic-crayon-playroom-v1",
 ];
+const hideAuthorNames = localStorage.getItem("hideAuthorNames") === "1";
+const authorMask = "＊＊＊＊";
 
 function text(el, value) { el.textContent = value || ""; }
+
+function authorText(work) {
+  return work.author ? "作者: " + (hideAuthorNames ? authorMask : work.author) : "";
+}
 
 function characterCategory(work) {
   const type = (work.rig && work.rig.type) || "biped";
@@ -226,7 +233,7 @@ function orderGalleryWorks(list) {
   }).sort((a, b) => a.rank - b.rank || a.index - b.index).map((item) => item.work);
 }
 
-/* 長い作品名だけ、最後まで読める速さで左へ流す。端で1秒、先頭へ戻って4秒休む。 */
+/* 長い作品名だけ、4秒待ってから全体が左へ消えるまで流し、瞬時に先頭へ戻す。 */
 function setMarquee(el, value) {
   if (el._marqueeAnimation) el._marqueeAnimation.cancel();
   el._marqueeAnimation = null;
@@ -250,14 +257,14 @@ function startMarquee(el) {
   const distance = Math.ceil(line.scrollWidth - el.clientWidth);
   el.classList.toggle("is-overflowing", distance > 1);
   if (distance <= 1 || reducedMotion) return;
-  const travel = Math.max(1200, distance / 36 * 1000);
-  const total = travel * 2 + 5000;
+  const exitDistance = Math.ceil(line.scrollWidth);
+  const pause = 4000;
+  const travel = Math.max(1800, exitDistance / 36 * 1000);
+  const total = pause + travel;
   el._marqueeAnimation = line.animate([
     { transform: "translateX(0)", offset: 0 },
-    { transform: `translateX(-${distance}px)`, offset: travel / total },
-    { transform: `translateX(-${distance}px)`, offset: (travel + 1000) / total },
-    { transform: "translateX(0)", offset: (travel * 2 + 1000) / total },
-    { transform: "translateX(0)", offset: 1 },
+    { transform: "translateX(0)", offset: pause / total },
+    { transform: `translateX(-${exitDistance}px)`, offset: 1 },
   ], { duration: total, iterations: Infinity, easing: "linear" });
 }
 
@@ -301,7 +308,7 @@ function renderShelf() {
     caption.appendChild(name);
     if (work.author) {
       const author = document.createElement("small");
-      author.textContent = "作者: " + work.author;
+      author.textContent = authorText(work);
       caption.appendChild(author);
     }
     button.append(frame, caption);
@@ -316,7 +323,7 @@ async function openWork(index) {
   current = (index + works.length) % works.length;
   const work = works[current];
   setMarquee($("workName"), work.name || (kind === "char" ? "なまえのない キャラクター" : "なまえのない さくひん"));
-  text($("workAuthor"), work.author ? "作者: " + work.author : "");
+  text($("workAuthor"), authorText(work));
   text($("workCount"), `${current + 1} / ${works.length}`);
   $("shelfScreen").classList.add("hidden");
   $("detailScreen").classList.remove("hidden");
