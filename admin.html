@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>取り込み</title>
+<title>とりこみ</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -15,7 +15,7 @@
 <body>
 <header class="bar">
   <a class="back" href="index.html" id="backLink">← もどる</a>
-  <h1><img class="bar-icon" id="pageTitleIcon" src="assets/buttons/import.png" alt=""> <span id="pageTitle">取り込み</span></h1>
+  <h1><img class="bar-icon" id="pageTitleIcon" src="assets/buttons/import.png?v=2" alt=""> <span id="pageTitle">とりこみ</span></h1>
   <div class="spacer"></div>
 </header>
 
@@ -82,13 +82,20 @@ const ENTRY_VIEWS = {
   char: { title: "キャラクター", icon: "assets/buttons/character-intro.png", cats: ["src", "char", "fuku"] },
   bg: { title: "はいけい", icon: "assets/buttons/museum.png", cats: ["src", "bg", "pic"] },
 };
+const ACTION_VIEWS = {
+  import: { title: "とりこみ", icon: "assets/buttons/import.png?v=2" },
+  camera: { title: "カメラ", icon: "assets/buttons/camera.png?v=1" },
+};
 const ENTRY_VIEW_KEY = QUERY.get("cat");
 const ENTRY_VIEW = ENTRY_VIEWS[ENTRY_VIEW_KEY] || null;
-if (ENTRY_VIEW) {
+const ACTION_VIEW_KEY = QUERY.get("mode");
+const ACTION_VIEW = ACTION_VIEWS[ACTION_VIEW_KEY] || null;
+const PAGE_VIEW = ENTRY_VIEW || ACTION_VIEW;
+if (PAGE_VIEW) {
   document.body.classList.add("create-import-view");
-  $("pageTitle").textContent = ENTRY_VIEW.title;
-  $("pageTitleIcon").src = ENTRY_VIEW.icon;
-  document.title = ENTRY_VIEW.title;
+  $("pageTitle").textContent = PAGE_VIEW.title;
+  $("pageTitleIcon").src = PAGE_VIEW.icon;
+  document.title = PAGE_VIEW.title;
 }
 
 /* 「つくる」から来たときは「つくる」へ戻る(トップの歯車から来たときはトップへ) */
@@ -101,6 +108,7 @@ const START_CAT = QUERY.get("cat");
 const SELF_QUERY = new URLSearchParams();
 if (FROM_CREATE) SELF_QUERY.set("from", "create");
 if (START_CAT) SELF_QUERY.set("cat", START_CAT);
+if (ACTION_VIEW) SELF_QUERY.set("mode", ACTION_VIEW_KEY);
 const SELF_QUERY_STRING = SELF_QUERY.toString();
 const IMPORT_SELF = `admin.html${SELF_QUERY_STRING ? `?${SELF_QUERY_STRING}` : ""}`;
 
@@ -306,6 +314,9 @@ $("catSwipe").addEventListener("pointerup", (e) => {
   if (CAT_KEYS[next] !== activeCat) { Sound.tap(); setActiveCat(CAT_KEYS[next]); }
 });
 setActiveCat(activeCat);
+
+if (ACTION_VIEW_KEY === "import") $("cameraBtn").classList.add("hidden");
+if (ACTION_VIEW_KEY === "camera") $("pickBtn").classList.add("hidden");
 
 $("pickBtn").onclick = () => Editors.chooseFiles(activeCat);
 $("cameraBtn").onclick = () => Editors.chooseCamera(activeCat);

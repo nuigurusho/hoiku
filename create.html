@@ -11,6 +11,29 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ゲームパック">
   <link rel="stylesheet" href="css/style.css?v=64">
+  <style>
+    .create-choice-section { width: min(980px, 100%); margin: 0 auto 24px; }
+    .create-choice-title {
+      margin: 0 0 10px;
+      color: #665744;
+      text-align: center;
+      font-size: 20px;
+    }
+    .create-choice-grid { align-items: stretch; }
+    .create-choice-grid .tile { min-height: 158px; justify-content: center; }
+    .create-method-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .create-subject-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 650px; }
+    .create-quiz-grid { grid-template-columns: minmax(0, 1fr); max-width: 320px; }
+    @media (max-width: 620px) {
+      .create-choice-section { margin-bottom: 20px; }
+      .create-choice-title { font-size: 18px; }
+      .create-choice-grid .tile { min-height: 142px; }
+      .create-method-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .create-method-grid .tile:last-child { grid-column: 1 / -1; width: calc(50% - 8px); justify-self: center; }
+      .create-subject-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .create-quiz-grid { width: calc(50% - 8px); }
+    }
+  </style>
 </head>
 <body>
 <a class="hub-back" href="index.html" title="もどる" aria-label="もどる"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
@@ -28,20 +51,41 @@
     <a class="hub-nav-link play" href="play.html"><img class="hub-nav-icon" src="assets/buttons/menu-play.svg?v=3" alt="">あそぶ</a>
   </nav>
 
-  <div class="tiles four hub-tiles">
-    <a class="tile" href="draw-pick.html?from=create">
-      <img class="icon" src="assets/buttons/draw.png" alt="">おえかき
-    </a>
-    <a class="tile" href="admin.html?from=create&amp;cat=char">
-      <img class="icon" src="assets/buttons/character-intro.png" alt="">キャラクター
-    </a>
-    <a class="tile" href="admin.html?from=create&amp;cat=bg">
-      <img class="icon" src="assets/buttons/museum.png" alt="">はいけい
-    </a>
-    <a class="tile" href="create-quiz.html">
-      <img class="icon" src="assets/buttons/quiz.png" alt="">４たくクイズ
-    </a>
-  </div>
+  <section class="create-choice-section" aria-labelledby="methodTitle">
+    <h2 class="create-choice-title" id="methodTitle">つくりかたから えらぶ</h2>
+    <div class="tiles hub-tiles create-choice-grid create-method-grid">
+      <a class="tile" href="draw-pick.html?from=create">
+        <img class="icon" src="assets/buttons/draw.png" alt="">おえかき
+      </a>
+      <a class="tile" href="admin.html?from=create&amp;mode=camera">
+        <img class="icon" src="assets/buttons/camera.png?v=1" alt="">カメラ
+      </a>
+      <a class="tile" href="admin.html?from=create&amp;mode=import">
+        <img class="icon" src="assets/buttons/import.png?v=2" alt="">とりこみ
+      </a>
+    </div>
+  </section>
+
+  <section class="create-choice-section" aria-labelledby="subjectTitle">
+    <h2 class="create-choice-title" id="subjectTitle">つくるものから えらぶ</h2>
+    <div class="tiles hub-tiles create-choice-grid create-subject-grid">
+      <a class="tile" href="admin.html?from=create&amp;cat=char">
+        <img class="icon" src="assets/buttons/character-intro.png" alt="">キャラクター
+      </a>
+      <a class="tile" href="admin.html?from=create&amp;cat=bg">
+        <img class="icon" src="assets/buttons/museum.png" alt="">はいけい
+      </a>
+    </div>
+  </section>
+
+  <section class="create-choice-section" aria-labelledby="quizTitle">
+    <h2 class="create-choice-title" id="quizTitle">クイズを つくる</h2>
+    <div class="tiles hub-tiles create-choice-grid create-quiz-grid">
+      <a class="tile" href="create-quiz.html">
+        <img class="icon" src="assets/buttons/quiz.png" alt="">４たくクイズ
+      </a>
+    </div>
+  </section>
 
 </main>
 
