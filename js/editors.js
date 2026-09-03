@@ -39,11 +39,12 @@ document.body.insertAdjacentHTML("beforeend", `
         <div class="rig-flex"><canvas id="rigCanvas" class="edit-canvas" width="380" height="480"></canvas></div>
       </section>
       <aside class="rig-side">
-        <details class="advanced-settings" id="rigAdvanced">
-          <summary>高度な設定</summary>
-          <div class="rig-advanced-scroll">
+        <section class="advanced-settings" id="rigAdvanced">
+          <button class="advanced-title" type="button" id="rigAdvancedToggle" aria-expanded="false" aria-controls="rigAdvancedBody">高度な設定</button>
+          <div class="rig-advanced-scroll" id="rigAdvancedBody" hidden>
             <div class="advanced-block">
-              <h3>絵のかたむき</h3>
+              <h3>絵の向き</h3>
+              <div class="rig-flip-row"><button class="btn orange" type="button" id="rigFlip">↔ 左右はんてん</button></div>
               <div class="advanced-sliders">
                 <label>↻ 回転 <output id="rigRotateOut">0°</output><input id="rigRotate" type="range" min="-30" max="30" step="1" value="0"></label>
               </div>
@@ -87,11 +88,10 @@ document.body.insertAdjacentHTML("beforeend", `
               </div>
             </div>
           </div>
-        </details>
+        </section>
       </aside>
     </div>
     <div class="row rig-actions">
-      <button class="btn orange" type="button" id="rigFlip">↔ 左右はんてん</button>
       <button class="btn green" id="rigSave">✔ 保存する</button>
       <button class="btn gray" id="rigCancel">キャンセル</button>
     </div>
@@ -708,9 +708,21 @@ const rigEd = {
   rotateBase: null, rotateRig: null, rotateCutout: null, rotateTotal: 0, rotateStart: 0,
 };
 
+/* 高度な設定の あけしめ。<details> は Safari と Chromium で 中身の たかさの
+   きまりかたが ちがい、よこ画面で 下が 切れて スクロールできなかった。
+   ふつうの ボタン+はこに して、はこの たかさを CSS で きめられるようにする。 */
+function setRigAdvanced(on) {
+  $("rigAdvanced").classList.toggle("open", on);
+  $("rigAdvancedBody").hidden = !on;
+  $("rigAdvancedToggle").setAttribute("aria-expanded", on ? "true" : "false");
+}
+$("rigAdvancedToggle").onclick = () => {
+  setRigAdvanced(!$("rigAdvanced").classList.contains("open"));
+};
+
 async function openRig(rec, opts) {
   opts = opts || {};
-  $("rigAdvanced").open = false;
+  setRigAdvanced(false);
   rigEd.rec = rec;
   rigEd.afterSave = opts.afterSave || null;
   rigEd.afterCancel = opts.afterCancel || null;

@@ -1357,10 +1357,10 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
 .rig-preview-wrap p { margin: 0; }
 .rig-preview-wrap canvas { max-width: 100%; max-height: 100%; background: #e7f5ff; border-radius: 12px; }
 .rig-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
-.rig-side .advanced-settings { display: grid; grid-template-rows: auto minmax(0, 1fr); flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; }
-.rig-side .advanced-settings:not([open]) { display: block; flex: 0 0 auto; }
-.advanced-settings:not([open]) > .rig-advanced-scroll { display: none; }
-.rig-advanced-scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.rig-side .advanced-settings { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; max-width: none; margin: 0; }
+.rig-side .advanced-settings:not(.open) { flex: 0 0 auto; }
+/* ひらいている あいだは、のこりの たかさを ぜんぶ つかって そのなかで スクロールする */
+.rig-advanced-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; -webkit-overflow-scrolling: touch; }
 .rig-actions { flex: none; justify-content: center; margin: 0; padding-top: 10px; }
 .rig-actions .btn { padding: 11px 18px; font-size: 17px; }
 .trim-block { display: flex; align-items: center; gap: 10px; padding-block: 10px; }
@@ -1377,16 +1377,27 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
   overflow: hidden;
   text-align: left;
 }
-.advanced-settings > summary, .advanced-title {
+.advanced-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  flex: none;
+  font-family: inherit;
+  text-align: left;
+  border: 0;
   cursor: pointer;
   padding: 15px 18px;
   font-size: 19px;
   font-weight: bold;
   color: #725000;
   background: #fff1bd;
-  list-style-position: inside;
 }
-.advanced-settings[open] > summary, .advanced-title { border-bottom: 3px solid #e3b341; }
+.advanced-title::before { content: "▶"; font-size: 13px; transition: transform .15s; }
+.advanced-settings.open > .advanced-title { border-bottom: 3px solid #e3b341; }
+.advanced-settings.open > .advanced-title::before { transform: rotate(90deg); }
+.rig-flip-row { margin: 0 0 12px; }
+.rig-flip-row .btn { padding: 9px 14px; font-size: 15px; border-width: 2px; box-shadow: 0 3px 0 var(--shade); }
 .advanced-block { padding: 14px 18px 18px; }
 .advanced-block + .advanced-block { border-top: 3px dashed #e5d2aa; }
 .advanced-block h3 { margin-top: 0 !important; }
@@ -1441,6 +1452,14 @@ body:has(.modal:not(.hidden)) { overflow: hidden; }
   .crop-adjust { padding: 9px 10px 11px; }
   .crop-adjust-sliders { grid-template-columns: 1fr; gap: 7px; }
   .crop-adjust-sliders label { grid-template-columns: 7.5em minmax(90px, 1fr); font-size: 14px; }
+}
+/* よこ画面で たかさが たりない ときは、3れつを たてに つみ、
+   パネルぜんたいを 1つの スクロールに する(高度な設定の 下が 切れないように) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .rig-panel { display: block; height: calc(100dvh - 20px); overflow: auto !important; }
+  .rig-workspace { height: auto; }
+  .rig-visual { min-height: 230px; }
+  .rig-side .advanced-settings { max-height: none; }
 }
 
 /* ---------- ダイアログの ラジオ・メニュー ---------- */
