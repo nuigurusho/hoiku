@@ -357,12 +357,21 @@ zip の中身は「画像ファイル(images/)+ 設定(manifest.json)」です�
 
     Copyright (c) 2026 aoki seiko
 
-コード・画像・文章の著作権は制作者にあります。
-利用条件(ライセンス)は検討中のため、まだ `LICENSE` ファイルを置いていません。
-複製・改変・再配布をご希望の場合は個別にご相談ください。
+**[PolyForm Noncommercial License 1.0.0](LICENSE)** で提供しています。
+非営利の目的であれば、使用・改変・再配布を自由に行えます。
 
-同梱しているフォント(M PLUS Rounded 1c / Mochiy Pop One)とライブラリ(PDF.js)の
-権利表示は **[NOTICE.md](NOTICE.md)** にまとめています。
+**保育園・幼稚園・認定こども園・学校・学童保育・自治体・地域の子育て支援団体が、
+自らの保育・教育・行事のために使うことは、運営主体が営利法人であっても許諾します。**
+そのまま使っていただいて構いませんし、園に合わせて作り替えてもらっても構いません。
+
+営利の目的で利用したい場合(ソフトを販売する、有償サービスに組み込むなど)は、
+別途の許諾が必要です。[Issue](https://github.com/nuigurusho/hoiku/issues) でご相談ください。
+
+同梱しているフォント(M PLUS Rounded 1c / Mochiy Pop One)とライブラリ(PDF.js)は
+別のライセンスです。権利表示は **[NOTICE.md](NOTICE.md)** にまとめています。
+
+外部からの Pull Request は受け付けていません(→ [CONTRIBUTING.md](CONTRIBUTING.md))。
+不具合の報告・要望は Issue へどうぞ。
 
 園児が描いた絵・名前・声は、このリポジトリに含まれません。
 取り込んだデータは遊ぶ端末の IndexedDB にだけ保存され、外部へ送信されません。

@@ -26,7 +26,7 @@ jobs:
       - run: rm -rf design notes
       # コミットごとに別の完成済みキャッシュを作り、古い版との混在を防ぐ
       - run: PWA_BUILD_ID="$GITHUB_SHA" node tools/build-pwa.mjs
-      - run: rm -rf tools CLAUDE.md README.md serve.bat serve.sh .gitignore
+      - run: rm -rf tools CLAUDE.md README.md CONTRIBUTING.md serve.bat serve.sh .gitignore
       - uses: actions/configure-pages@v5
         with:
           enablement: true
