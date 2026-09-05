@@ -21,6 +21,14 @@
     margin: 6px auto;
     filter: drop-shadow(0 7px 5px rgba(91, 74, 54, .18));
   }
+  /* キャラクタークイズは、図鑑と同じパペットを表示する。 */
+  .qcharacter {
+    display: block;
+    width: min(360px, 70vw, 54vh);
+    height: auto;
+    margin: 6px auto;
+    filter: drop-shadow(0 7px 5px rgba(91, 74, 54, .18));
+  }
   .qtext {
     text-align: center;
     font-size: clamp(22px, 4.5vw, 36px);
@@ -66,6 +74,7 @@
     <div class="hud hidden" id="gachiHud"><span id="scoreHud"></span><span id="passHud"></span></div>
     <div class="qemoji" id="qemoji"></div>
     <img class="qimage hidden" id="qimage" alt="">
+    <canvas class="qcharacter hidden" id="qcharacter" width="720" height="480" role="img"></canvas>
     <div class="qtext" id="qtext"></div>
     <div class="choices" id="choices"></div>
     <div class="answer-big hidden" id="answerBig"></div>
@@ -86,6 +95,7 @@
 </main>
 
 <script src="../js/core.js?v=52"></script>
+<script src="../js/rig.js?v=18"></script>
 <script src="../js/quiz-data.js?v=13"></script>
 <script>
 "use strict";
@@ -100,6 +110,11 @@ let queue = [], idx = 0, score = 0, busy = false;
 let mode = null;
 let quizKind = "standard";
 let left = false;   // 「もどる」で ぬけたか(あとから 出る タイマーを とめる)
+let characterPuppet = null;
+let characterToken = 0;
+let characterFrame = 0;
+let characterLast = performance.now();
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function refreshLocks() {
   Tiers.bindRankButton($("rankBtn"), GAME, RANK_LABELS, { unit: "もん" });
@@ -114,7 +129,15 @@ document.querySelectorAll("#startScreen [data-mode]").forEach((b) => {
     await startRun();
   };
 });
-Nav.onLeave(() => { left = true; busy = true; document.body.classList.remove("view-mode"); refreshLocks(); });
+Nav.onLeave(() => {
+  left = true;
+  busy = true;
+  characterPuppet = null;
+  characterToken++;
+  cancelAnimationFrame(characterFrame);
+  document.body.classList.remove("view-mode");
+  refreshLocks();
+});
 $("retryBtn").onclick = () => {
   document.body.classList.remove("view-mode");
   $("endScreen").classList.add("hidden");
@@ -193,13 +216,12 @@ function show() {
     : `だい ${idx + 1} もん / ${queue.length} もん`;
   $("qemoji").textContent = q.image ? "" : (q.emoji || "❓");
   $("qemoji").classList.toggle("hidden", !!q.image);
-  $("qimage").classList.toggle("hidden", !q.image);
-  $("qimage").src = q.image || "";
-  if (q.image && q.imageRec && q.imageRec.rig && q.imageRec.rig.type === "butterfly") {
-    Util.symCanvas(q.imageRec).then((canvas) => {
-      if (queue[idx] === q) $("qimage").src = canvas.toDataURL("image/png");
-    }).catch(() => {});
-  }
+  const isCharacterQuestion = !!q.imageRec;
+  $("qimage").classList.toggle("hidden", !q.image || isCharacterQuestion);
+  $("qimage").src = !isCharacterQuestion && q.image ? q.image : "";
+  $("qcharacter").classList.toggle("hidden", !isCharacterQuestion);
+  clearCharacterPreview();
+  if (isCharacterQuestion) mountCharacterPreview(q);
   $("qtext").textContent = q.q;
   const box = $("choices");
   box.innerHTML = "";
@@ -217,6 +239,63 @@ function show() {
     $("nextQBtn").classList.add("hidden");
   }
 }
+
+/* 図鑑と同じパペットを使うため、ちょうちょの元の切り出し画像は表示しない。 */
+function clearCharacterPreview() {
+  characterPuppet = null;
+  characterToken++;
+  const canvas = $("qcharacter");
+  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+}
+
+async function mountCharacterPreview(q) {
+  const token = characterToken;
+  const canvas = $("qcharacter");
+  canvas.setAttribute("aria-label", q.imageRec.name || "キャラクター");
+  try {
+    const parts = await Rig.load(q.imageRec);
+    if (token !== characterToken || queue[idx] !== q || left) return;
+    const maxSize = Math.min(canvas.height * .78, canvas.width * .7);
+    const baseHeight = maxSize * parts.H / Math.max(parts.W, parts.H, 1);
+    /* Puppetはちょうちょだけ内部で半分の高さにするため、表示サイズをそろえる。 */
+    const puppetHeight = parts.type === "butterfly" ? baseHeight * 2 : baseHeight;
+    characterPuppet = new Puppet(parts, {
+      x: canvas.width / 2,
+      y: canvas.height * .86,
+      h: puppetHeight,
+      facing: 1,
+    });
+  } catch (e) {
+    if (token !== characterToken || queue[idx] !== q || left) return;
+    /* 図鑑で読み込めない画像は、トリミング元を出さずに安全な対称表示へフォールバックする。 */
+    try {
+      const fallback = await Util.symCanvas(q.imageRec);
+      if (token !== characterToken || queue[idx] !== q || left) return;
+      $("qcharacter").classList.add("hidden");
+      $("qimage").src = fallback.toDataURL("image/png");
+      $("qimage").classList.remove("hidden");
+    } catch (_) {
+      $("qcharacter").classList.add("hidden");
+      $("qemoji").textContent = "❓";
+      $("qemoji").classList.remove("hidden");
+    }
+  }
+}
+
+function drawCharacterPreview(now) {
+  characterFrame = requestAnimationFrame(drawCharacterPreview);
+  const canvas = $("qcharacter");
+  if (canvas.classList.contains("hidden")) return;
+  const ctx = canvas.getContext("2d");
+  const dt = Math.min(.04, (now - characterLast) / 1000 || 0);
+  characterLast = now;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!characterPuppet) return;
+  if (!reducedMotion) characterPuppet.update(dt);
+  characterPuppet.draw(ctx);
+}
+
+characterFrame = requestAnimationFrame(drawCharacterPreview);
 
 /* ---------- みるモード:「こたえを みる」で こたえを おおきく出す ---------- */
 function revealViewAnswer(chosen) {
