@@ -21,6 +21,19 @@
 
 <main class="admin-list">
   <div class="panel" style="text-align:left">
+    <h2>🌐 <span>言語</span></h2>
+    <div class="mt-rows" style="max-width:none;margin:0">
+      <label class="mt-row" for="languageSelect">
+        <div class="txt">
+          <b>言語</b>
+          <span>画面に表示する言語</span>
+        </div>
+        <select id="languageSelect" data-i18n-skip style="width:min(280px,48vw);font-size:18px"></select>
+      </label>
+    </div>
+  </div>
+
+  <div class="panel" style="text-align:left">
     <h2>👀 表示</h2>
     <div class="mt-rows" style="max-width:none;margin:0">
       <div class="mt-row" id="authorPrivacyRow">
@@ -68,11 +81,23 @@
   </div>
 </main>
 
-<script src="js/core.js?v=52"></script>
+<script src="js/i18n.js?v=1"></script>
+<script src="js/core.js?v=53"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const HIDE_AUTHOR_KEY = "hideAuthorNames";
+for (const [code, locale] of Object.entries(I18n.LOCALES)) {
+  const option = document.createElement("option");
+  option.value = code;
+  option.textContent = locale.label;
+  option.selected = code === I18n.language;
+  $("languageSelect").appendChild(option);
+}
+$("languageSelect").onchange = (event) => {
+  Sound.tap();
+  I18n.setLanguage(event.target.value);
+};
 if (new URLSearchParams(location.search).get("from") === "create") {
   $("backLink").setAttribute("href", "create.html");
 }
