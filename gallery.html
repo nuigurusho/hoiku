@@ -189,7 +189,7 @@
   </section>
 </main>
 
-<script src="js/i18n.js?v=2"></script>
+<script src="js/i18n.js?v=3"></script>
 <script src="js/core.js?v=53"></script>
 <script src="js/rig.js?v=18"></script>
 <script>
@@ -217,7 +217,7 @@ const authorMask = "＊＊＊＊";
 function text(el, value) { el.textContent = value || ""; }
 
 function authorText(work) {
-  return work.author ? "作者: " + (hideAuthorNames ? authorMask : work.author) : "";
+  return work.author ? I18n.t("作者:") + " " + (hideAuthorNames ? authorMask : work.author) : "";
 }
 
 function characterCategory(work) {
