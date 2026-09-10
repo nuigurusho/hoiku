@@ -1,5 +1,5 @@
 /* 自動生成: tools/build-pwa.mjs を実行して更新する。 */
-self.HOIKU_PWA_BUILD = "source-preview-17";
+self.HOIKU_PWA_BUILD = "source-preview-18";
 self.HOIKU_PWA_ASSETS = [
   "./",
   "./admin.html",
@@ -13,6 +13,7 @@ self.HOIKU_PWA_ASSETS = [
   "./assets/backgrounds/world-water.jpg",
   "./assets/buttons/admin.png",
   "./assets/buttons/adventure.png",
+  "./assets/buttons/camera.png",
   "./assets/buttons/character-intro.png",
   "./assets/buttons/diff.png",
   "./assets/buttons/dodgeball.png",
@@ -52,7 +53,14 @@ self.HOIKU_PWA_ASSETS = [
   "./assets/fonts/RoundedMplus1c-ExtraBold.woff2",
   "./assets/fonts/RoundedMplus1c-Medium.woff2",
   "./assets/icon-512.png",
+  "./assets/logo-de.png",
+  "./assets/logo-en.png",
+  "./assets/logo-id.png",
+  "./assets/logo-ko.png",
+  "./assets/logo-zh-hans.png",
+  "./assets/logo-zh-hant.png",
   "./assets/logo.png",
+  "./assets/og-image.png",
   "./assets/samples/diff-fruit-base.jpg",
   "./assets/samples/diff-fruit-v1.jpg",
   "./assets/samples/diff-fruit-v2.jpg",
@@ -111,6 +119,7 @@ self.HOIKU_PWA_ASSETS = [
   "./index.html",
   "./js/core.js",
   "./js/editors.js",
+  "./js/i18n.js",
   "./js/meet.js",
   "./js/quiz-data.js",
   "./js/rig.js",

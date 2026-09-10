@@ -15,11 +15,20 @@ const I18n = (() => {
     "zh-Hant": { label: "繁體中文", htmlLang: "zh-Hant" },
     de: { label: "Deutsch", htmlLang: "de" },
   };
+  const LOGO_FILES = {
+    ja: "logo.png",
+    en: "logo-en.png",
+    id: "logo-id.png",
+    ko: "logo-ko.png",
+    "zh-Hans": "logo-zh-hans.png",
+    "zh-Hant": "logo-zh-hant.png",
+    de: "logo-de.png",
+  };
 
   /* 子ども向けの短い文言を中心にする。固有名・作品名・クイズの答えは翻訳しない。 */
   const PACKS = {
     en: {
-      "みんなの ゲームパック": "Everyone's Game Pack", "みんなのゲームパック": "Everyone's Game Pack", "ゲームパック": "Game Pack",
+      "みんなの ゲームパック": "Everyone’s Game Pack", "みんなのゲームパック": "Everyone’s Game Pack", "ゲームパック": "Game Pack",
       "つくる": "Create", "みる": "Watch", "あそぶ": "Play", "設定": "Settings", "せってい": "Settings", "もどる": "Back", "← もどる": "← Back", "表紙へ戻る": "Back to home",
       "つくる・みる・あそぶ": "Create, watch, or play", "やることを えらぶ": "Choose what to do", "あそびかたを えらぶ": "Choose how to play",
       "ひとりで": "Solo", "ふたりで": "Two players", "みんなで": "Group", "ゲーム別": "All games", "みるだけ(オート)": "Watch (Auto)", "れんしゅう": "Practice", "2Pたいせん": "2-player battle",
@@ -36,7 +45,7 @@ const I18n = (() => {
       "チームわけ": "Teams", "🎪 チームわけ!": "🎪 Teams!", "チームがえ": "Change teams", "じぶんで チームを きめる": "Choose teams", "よーい…": "Ready…", "かち!": "Winner!", "かんせい!": "Complete!", "ぽん!": "Go!", "ほんばんへ": "Main game", "めかくしモード": "Blindfold mode", "ぎゃくさいせい": "Reverse", "ろくおん": "Record", "きいてみる": "Listen", "ていし": "Stop", "ことば": "Word", "べつの ことば": "Another word"
     },
     id: {
-      "みんなの ゲームパック": "Paket Game Bersama", "みんなのゲームパック": "Paket Game Bersama", "ゲームパック": "Paket Game", "つくる": "Buat", "みる": "Lihat", "あそぶ": "Main", "設定": "Pengaturan", "せってい": "Pengaturan", "もどる": "Kembali", "← もどる": "← Kembali", "表紙へ戻る": "Kembali ke beranda", "つくる・みる・あそぶ": "Buat, lihat, atau main", "やることを えらぶ": "Pilih kegiatan", "あそびかたを えらぶ": "Pilih cara bermain",
+      "みんなの ゲームパック": "Paket Game untuk Semua", "みんなのゲームパック": "Paket Game untuk Semua", "ゲームパック": "Paket Game", "つくる": "Buat", "みる": "Lihat", "あそぶ": "Main", "設定": "Pengaturan", "せってい": "Pengaturan", "もどる": "Kembali", "← もどる": "← Kembali", "表紙へ戻る": "Kembali ke beranda", "つくる・みる・あそぶ": "Buat, lihat, atau main", "やることを えらぶ": "Pilih kegiatan", "あそびかたを えらぶ": "Pilih cara bermain",
       "ひとりで": "Sendiri", "ふたりで": "Berdua", "みんなで": "Bersama", "ゲーム別": "Semua game", "みるだけ(オート)": "Tonton (Otomatis)", "れんしゅう": "Latihan", "2Pたいせん": "Duel 2 pemain", "つくりかたから えらぶ": "Pilih cara membuat", "つくるものから えらぶ": "Pilih yang dibuat", "クイズを つくる": "Buat kuis", "おえかき": "Menggambar", "カメラ": "Kamera", "とりこみ": "Impor", "キャラクター": "Karakter", "はいけい": "Latar", "４たくクイズ": "Kuis 4 pilihan",
       "キャラしょうかい": "Galeri karakter", "びじゅつかん": "Galeri seni", "みんなの せかい": "Dunia Bersama", "かけっこ": "Balapan", "たまいれ": "Lempar bola", "ドッヂボール": "Bola hindar", "リレー": "Estafet", "うんどうかい": "Hari olahraga", "ふくわらい": "Susun wajah", "じゃんけん": "Suit", "かげえクイズ": "Kuis siluet", "さかさクイズ": "Kuis kata terbalik", "まちがいさがし": "Cari perbedaan", "カードあわせ": "Cocokkan kartu", "おえかきパズル": "Puzzle gambar", "おえかきのたび": "Petualangan gambar", "もぐらたたき": "Pukul tikus tanah", "こえで ジャンプ": "Lompat dengan suara", "なわとび": "Lompat tali",
       "スタート!": "Mulai!", "ゲームかいし": "Mulai game", "きめた！": "Selesai!", "つぎ ▶": "Berikutnya ▶", "つぎへ →": "Berikutnya →", "もういちど": "Sekali lagi", "やりなおす": "Pilih ulang", "やりなおし": "Ulangi", "もどす": "Urungkan", "おしまい!": "Selesai!", "けっかへ ▶": "Hasil ▶", "こたえを みる": "Lihat jawaban", "ほぞん": "Simpan", "✔ ほぞん": "✔ Simpan", "✔ 保存する": "✔ Simpan", "キャンセル": "Batal", "✕ とじる": "✕ Tutup", "シャッフル": "Acak", "🎲 シャッフル": "🎲 Acak", "🏆 ランキング": "🏆 Peringkat", "かんたん": "Mudah", "ふつう": "Normal", "むずかしい": "Sulit", "🔥 ガチンコ": "🔥 Tantangan", "🌈 ゆるふわ": "🌈 Santai", "ものしりクイズ": "Kuis pengetahuan", "キャラクタークイズ": "Kuis karakter",
@@ -378,8 +387,17 @@ const I18n = (() => {
     location.reload();
   }
 
+  function applyLogo() {
+    const file = LOGO_FILES[language] || LOGO_FILES.ja;
+    document.querySelectorAll("img.logo").forEach((logo) => {
+      const source = logo.getAttribute("src") || "assets/logo.png";
+      logo.setAttribute("src", source.replace(/logo(?:-[a-z-]+)?\.png(?:\?.*)?$/, file));
+    });
+  }
+
   function init() {
     document.documentElement.lang = LOCALES[language].htmlLang;
+    applyLogo();
     apply();
     const observer = new MutationObserver((changes) => {
       for (const change of changes) {
