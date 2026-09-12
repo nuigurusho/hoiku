@@ -7,3 +7,6 @@ design/*/*.html
 # Codexの添付・PDF目視確認で作る一時ファイル。園児名を含む原稿を誤って公開しない。
 .codex-remote-attachments/
 tmp/
+
+# Firebase Functions の依存パッケージはローカルで復元する。
+functions/node_modules/

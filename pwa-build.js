@@ -1,5 +1,5 @@
 /* 自動生成: tools/build-pwa.mjs を実行して更新する。 */
-self.HOIKU_PWA_BUILD = "source-preview-18";
+self.HOIKU_PWA_BUILD = "local-dev";
 self.HOIKU_PWA_ASSETS = [
   "./",
   "./admin.html",
@@ -128,6 +128,7 @@ self.HOIKU_PWA_ASSETS = [
   "./manifest.webmanifest",
   "./play-list.html",
   "./play.html",
+  "./privacy.html",
   "./settings.html",
   "./undoukai.html",
   "./view.html"

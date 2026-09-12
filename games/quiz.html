@@ -94,8 +94,8 @@
   </div>
 </main>
 
-<script src="../js/i18n.js?v=4"></script>
-<script src="../js/core.js?v=53"></script>
+<script src="../js/i18n.js?v=5"></script>
+<script src="../js/core.js?v=54"></script>
 <script src="../js/rig.js?v=18"></script>
 <script src="../js/quiz-data.js?v=13"></script>
 <script>
@@ -388,6 +388,7 @@ function finishGachi() {
 
 /* ガチンコ:7問以上正解 */
 function clearGachi() {
+  Analytics.complete();
   $("quizScreen").classList.add("hidden");
   $("endScreen").classList.remove("hidden");
   $("stars").textContent = "⭐⭐⭐";

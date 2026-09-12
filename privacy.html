@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>集計とプライバシーについて</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ff922b">
+<link rel="stylesheet" href="css/style.css?v=65">
+</head>
+<body>
+<header class="bar">
+  <a class="back" href="settings.html">← もどる</a>
+  <h1>集計とプライバシーについて</h1>
+  <div class="spacer"></div>
+</header>
+
+<main class="admin-list">
+  <section class="panel" style="text-align:left">
+    <h2>匿名の利用状況</h2>
+    <p>「みんなのゲームパック」では、ゲームをより使いやすくするため、公開版でゲームを開いた回数、プレイを始めた回数、クリアした回数を集計します。</p>
+    <p>プレイした端末数は、毎日作り直すランダムな匿名IDで数えます。日をまたいで同じ人や端末を追跡するためには使いません。</p>
+    <h2>送信しない情報</h2>
+    <p>名前、作品、写真、録音した声、作者名、クイズの内容、ランキング、機種、言語、正確な位置情報は送信しません。IPアドレスもアプリ独自の集計データとして保存しません。</p>
+    <h2>保存と送信</h2>
+    <p>オフライン中の記録は、この端末内に最大200件まで一時保存し、次にオンラインになったときに送信します。送信前に設定画面で集計をオフにすると、未送信の記録とその日の匿名IDを削除します。</p>
+    <p>受信した記録と匿名IDは35日後に削除し、ゲーム・日付ごとの合計数だけを残します。データはGoogle Firebase／Google Cloudの東京リージョンで処理します。Google Analyticsは使用しません。</p>
+    <p>集計は「設定」画面の「匿名の利用状況を送信」からいつでも停止できます。</p>
+  </section>
+
+  <section class="panel" lang="en" style="text-align:left">
+    <h2>Anonymous usage data</h2>
+    <p>Everyone’s Game Pack counts game opens, game starts, and completions on the official site to help improve the games. Daily players are counted with a random identifier that is replaced every day and is not used to track a person or device across days.</p>
+    <p>Names, artwork, photos, recorded voices, creator names, quiz content, rankings, device models, language, and precise location are not sent. IP addresses are not stored as part of the app’s analytics data.</p>
+    <p>Up to 200 events may be held on the device while offline and sent when it reconnects. Raw events and anonymous daily identifiers are deleted after 35 days; only totals by game and date remain. Data is processed in the Tokyo region using Google Firebase／Google Cloud. Google Analytics is not used.</p>
+    <p>You can stop analytics at any time under Settings → Send anonymous usage data. Turning it off also deletes unsent events and the current daily identifier from the device.</p>
+  </section>
+</main>
+
+<script src="js/i18n.js?v=5"></script>
+<script src="js/core.js?v=54"></script>
+</body>
+</html>

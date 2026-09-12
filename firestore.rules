@@ -1,0 +1,10 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 集計はCloud FunctionsのAdmin SDKだけが読み書きする。
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

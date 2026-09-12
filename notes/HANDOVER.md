@@ -25,9 +25,9 @@
 ### 保育園イベントと案内チラシ完了(2026-09-07)
 
 - 2026-09-03の保育園イベントは完了した。以後は他施設への横展開を検討対象として残す
-- 園内の保護者向けA4チラシは2ページ構成で完成。最終版は `F:\Users\Bluearrow\Claude\hoiku\docs\pdf\A4\みんなのゲームパック_A4チラシ_2ページ_2026-09-05_v9.pptx` / `.pdf` / `.mjs`
-- 1ページ目のゲームパックURLと2ページ目のBluearrow公式サイトURLは、どちらも「青い見出し、茶色の太字URL、補足」の順にそろえた
-- このチラシでの実名とBluearrowの併記は、園内保護者向けの限定配布だけに認めた例外。公開Web、SNS、noteへ転用しない
+- 園内の保護者向けA4チラシは2ページ構成で完成。最終版は非公開の作業フォルダに保管している
+- 1ページ目のゲームパックURLと2ページ目の別活動の公式サイトURLは、どちらも「青い見出し、茶色の太字URL、補足」の順にそろえた
+- このチラシでの実名と別活動の併記は、園内保護者向けの限定配布だけに認めた例外。公開Web、SNS、noteへ転用しない
 
 ### 高度な設定のスクロール・おえかきバー・クイズ入口の修正(2026-09-03)
 
@@ -423,6 +423,19 @@ index.html ──つくる──→ create.html(4つの入口だけ)
 ---
 
 ## 3. 積み残し(上から優先度順)
+
+### 匿名利用状況の集計(2026-09-12)
+
+- Firebaseプロジェク `nuigurusho-gamepack` をnuigurusho専用Googleアカウントで作成。他の活動のFirebaseとは分離した
+- Firestoreは `asia-northeast1`(東京)。クライアントの直接read/writeは全て拒否し、Cloud Function `collectGameEvent` だけが日別・ゲーム別に集計する
+- 送信元は `https://nuigurusho.github.io` の `/hoiku/` 配下に限定。リポジトリのフォークや別URLの複製版は集計対象外
+- 集計は `open` / `start` / `complete` のみ。名前・絵・写真・声・クイズ・ランキング・端末情報・正確な位置情報は送らない
+- ゲーム開始の日次IDは毎日作り直し、サーバーでハッシュ化。生イベントと日次IDは `expiresAt` の35日後にTTL削除する
+- オフライン時は最大200件を端末に待機。バックアップzipには集計IDと未送信キューを含めない
+- 設定に送信トグル、`privacy.html` に日英の説明を追加。Google Analyticsは使用しない
+- Blazeプラン、月100円の予算アラート(50% / 90% / 100%)を設定済み。Functionは `maxInstances: 1` で費用の上振れを抑える
+- 確認先: Firestoreの `analyticsDaily`。`openCount` / `startCount` / `uniquePlayers` / `completeCount` を見る
+- Cloud FunctionとFirestore拒否ルールはデプロイ済み。`analyticsEvents` / `players` のTTLポリシーは有効化処理中（空DBでも10分以上かかる場合がある）。Functionsの古いコンテナ画像を1日後に自動削除するポリシーも設定済み
 
 ### 次セッションの開始地点
 

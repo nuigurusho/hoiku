@@ -44,8 +44,8 @@
   </div>
 </main>
 
-<script src="../js/i18n.js?v=4"></script>
-<script src="../js/core.js?v=53"></script>
+<script src="../js/i18n.js?v=5"></script>
+<script src="../js/core.js?v=54"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -322,6 +322,7 @@ cv.addEventListener("pointermove", (e) => {
 cv.addEventListener("pointerup", () => { drag = null; });
 
 $("doneBtn").onclick = () => {
+  if (!completed) Analytics.complete();
   wiggle = 1.6;
   completed = true;
   Sound.laugh();

@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const build = (process.env.PWA_BUILD_ID || process.env.GITHUB_SHA || "local-dev").slice(0, 40);
-const excludedDirs = new Set([".git", ".github", ".codex-remote-attachments", "design", "notes", "tmp", "tools", "node_modules"]);
+const excludedDirs = new Set([".git", ".github", ".codex-remote-attachments", "design", "functions", "notes", "tmp", "tools", "node_modules"]);
 const excludedFiles = new Set([
   ".gitignore", "CLAUDE.md", "README.md", "serve.bat", "serve.sh", "pwa-build.js", "sw.js",
   "assets/logo-original.png",

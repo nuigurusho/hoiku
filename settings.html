@@ -57,6 +57,20 @@
   </div>
 
   <div class="panel" style="text-align:left">
+    <h2>📊 匿名の利用状況</h2>
+    <div class="mt-rows" style="max-width:none;margin:0">
+      <div class="mt-row" id="analyticsRow">
+        <div class="txt">
+          <b>匿名の利用状況を送信</b>
+          <span>ゲームごとの開始・クリア回数を送ります</span>
+        </div>
+        <button class="mt-toggle" id="analyticsToggle" type="button" role="switch" aria-checked="true" aria-label="匿名の利用状況を送信"><span class="knob"></span></button>
+      </div>
+    </div>
+    <p class="note">名前・作品・声・クイズ内容・機種は送信しません。<a href="privacy.html">集計とプライバシーについて</a></p>
+  </div>
+
+  <div class="panel" style="text-align:left">
     <h2>💾 設定・データのバックアップ</h2>
     <p class="note">
       取り込んだ絵・写真、動き設定、まちがいスポット、オリジナルクイズ、ランキングを
@@ -81,8 +95,8 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=4"></script>
-<script src="js/core.js?v=53"></script>
+<script src="js/i18n.js?v=5"></script>
+<script src="js/core.js?v=54"></script>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -114,6 +128,18 @@ $("hideAuthorToggle").onclick = () => {
   Sound.tap();
 };
 syncAuthorPrivacy();
+
+function syncAnalyticsSetting() {
+  const enabled = Analytics.enabled();
+  $("analyticsToggle").classList.toggle("on", enabled);
+  $("analyticsToggle").setAttribute("aria-checked", String(enabled));
+}
+$("analyticsToggle").onclick = () => {
+  Analytics.setEnabled(!Analytics.enabled());
+  syncAnalyticsSetting();
+  Sound.tap();
+};
+syncAnalyticsSetting();
 
 $("exportBtn").onclick = async () => {
   try {

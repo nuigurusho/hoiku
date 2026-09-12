@@ -169,6 +169,10 @@ const I18n = (() => {
   /* 全画面の初期表示を横断検査して拾った、共通辞書以外のUI文言。 */
   const UI_CODES = ["en", "id", "ko", "zh-Hans", "zh-Hant", "de"];
   const UI_ROWS = [
+    ["📊 匿名の利用状況", "📊 Anonymous usage", "📊 Penggunaan anonim", "📊 익명 사용 현황", "📊 匿名使用情况", "📊 匿名使用狀況", "📊 Anonyme Nutzung"],
+    ["匿名の利用状況を送信", "Send anonymous usage data", "Kirim data penggunaan anonim", "익명 사용 데이터 보내기", "发送匿名使用数据", "傳送匿名使用資料", "Anonyme Nutzungsdaten senden"],
+    ["ゲームごとの開始・クリア回数を送ります", "Sends game starts and completions", "Mengirim jumlah mulai dan selesai per game", "게임별 시작 및 완료 횟수를 보냅니다", "发送各游戏的开始和完成次数", "傳送各遊戲的開始與完成次數", "Sendet Starts und Abschlüsse je Spiel"],
+    ["集計とプライバシーについて", "Usage data and privacy", "Data penggunaan dan privasi", "사용 데이터 및 개인정보 보호", "使用数据与隐私", "使用資料與隱私權", "Nutzungsdaten und Datenschutz"],
     ["おえかきする", "Draw", "Menggambar", "그리기", "画画", "畫畫", "Malen"],
     ["ファイルをえらぶ", "Choose file", "Pilih file", "파일 선택", "选择文件", "選擇檔案", "Datei wählen"],
     ["さつえいする", "Take photo", "Ambil foto", "사진 찍기", "拍照", "拍照", "Foto aufnehmen"],

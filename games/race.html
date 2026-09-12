@@ -47,8 +47,8 @@
   </div>
 </main>
 
-<script src="../js/i18n.js?v=4"></script>
-<script src="../js/core.js?v=53"></script>
+<script src="../js/i18n.js?v=5"></script>
+<script src="../js/core.js?v=54"></script>
 <script src="../js/rig.js?v=18"></script>
 <script>
 "use strict";
@@ -497,6 +497,7 @@ function update(dt) {
           Sound.playVoice(r.voices, ["joy"]);
         } else Sound.good();
         if (g.finished === g.racers.length) {
+          Analytics.complete();
           preparePodium(g);
           $("endRow").classList.remove("hidden");
         }
@@ -509,6 +510,7 @@ function update(dt) {
 /* CPUたいせん:さきに ゴールした ほうで しょうはい */
 function finishCpu(g, r) {
   g.ended = true;
+  Analytics.complete();
   preparePodium(g);
   $("endRow").classList.remove("hidden");
   // さきに ゴールした(=かった)キャラの よろこびの こえ だけ 鳴らす

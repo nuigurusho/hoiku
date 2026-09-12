@@ -368,6 +368,151 @@ const Util = {
   },
 };
 
+/* ---------------- Analytics(個人を追跡しないゲーム利用集計) ----------------
+   ・本番のGitHub Pagesだけで送信し、localhostや複製サイトでは動かさない
+   ・日次IDは毎日作り直し、名前・作品・機種・言語・IPは送信しない
+   ・オフライン中は最大200件を端末へ保留し、オンライン復帰時に送る */
+const Analytics = {
+  ENDPOINT: "https://asia-northeast1-nuigurusho-gamepack.cloudfunctions.net/collectGameEvent",
+  QUEUE_KEY: "hoikuAnalyticsQueue",
+  DAY_KEY: "hoikuAnalyticsDay",
+  ENABLED_KEY: "hoikuAnalyticsEnabled",
+  game: "",
+  started: false,
+  flushing: false,
+
+  gameFromLocation() {
+    if (location.protocol !== "https:" || location.hostname !== "nuigurusho.github.io") return "";
+    const match = location.pathname.match(/^\/hoiku\/games\/([a-z]+)\.html$/);
+    if (match) return match[1];
+    const rootMatch = location.pathname.match(/^\/hoiku\/(draw|undoukai)\.html$/);
+    return rootMatch ? rootMatch[1] : "";
+  },
+
+  day() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  },
+
+  randomId() {
+    if (crypto.randomUUID) return crypto.randomUUID().replaceAll("-", "_");
+    const bytes = new Uint8Array(18);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (v) => v.toString(36).padStart(2, "0")).join("");
+  },
+
+  enabled() {
+    try { return localStorage.getItem(this.ENABLED_KEY) !== "0"; }
+    catch (_) { return true; }
+  },
+
+  setEnabled(enabled) {
+    try {
+      localStorage.setItem(this.ENABLED_KEY, enabled ? "1" : "0");
+      if (!enabled) {
+        localStorage.removeItem(this.QUEUE_KEY);
+        localStorage.removeItem(this.DAY_KEY);
+      }
+    } catch (_) {}
+  },
+
+  dayId(day) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.DAY_KEY) || "null");
+      if (saved && saved.day === day && typeof saved.id === "string") return saved.id;
+      const next = { day, id: this.randomId() };
+      localStorage.setItem(this.DAY_KEY, JSON.stringify(next));
+      return next.id;
+    } catch (_) {
+      return this.randomId();
+    }
+  },
+
+  queue() {
+    try {
+      const value = JSON.parse(localStorage.getItem(this.QUEUE_KEY) || "[]");
+      return Array.isArray(value) ? value.slice(-200) : [];
+    } catch (_) {
+      return [];
+    }
+  },
+
+  saveQueue(queue) {
+    try { localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue.slice(-200))); } catch (_) {}
+  },
+
+  track(event) {
+    if (!this.enabled() || !this.game || !["open", "start", "complete"].includes(event)) return;
+    const day = this.day();
+    const payload = {
+      schema: 1,
+      game: this.game,
+      event,
+      day,
+      eventId: this.randomId(),
+    };
+    if (event === "start") payload.dayId = this.dayId(day);
+    const queue = this.queue();
+    queue.push(payload);
+    this.saveQueue(queue);
+    this.flush();
+  },
+
+  async flush() {
+    if (this.flushing || !this.enabled() || !this.game || !navigator.onLine) return;
+    this.flushing = true;
+    try {
+      let queue = this.queue();
+      while (queue.length) {
+        let response;
+        try {
+          response = await fetch(this.ENDPOINT, {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            referrerPolicy: "no-referrer",
+            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            body: JSON.stringify(queue[0]),
+            keepalive: true,
+          });
+        } catch (_) {
+          break;
+        }
+        if (!response.ok && response.status >= 500) break;
+        queue.shift();
+        this.saveQueue(queue);
+      }
+    } finally {
+      this.flushing = false;
+    }
+  },
+
+  syncPlayState() {
+    if (this.started || !document.body.classList.contains("ingame")) return;
+    this.started = true;
+    this.track("start");
+  },
+
+  complete() {
+    if (this.started) this.track("complete");
+  },
+
+  init() {
+    this.game = this.gameFromLocation();
+    if (!this.game) return;
+    this.track("open");
+    this.syncPlayState();
+    new MutationObserver(() => this.syncPlayState()).observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    addEventListener("online", () => this.flush());
+  },
+};
+
 /* ---------------- Sound(WebAudioで合成、音源ファイル不要) ---------------- */
 const Sound = {
   ctx: null,
@@ -1297,6 +1442,7 @@ const Ui = {
       val.textContent = metric;
       box.appendChild(val);
     }
+    if (/クリア|かんせい|ぜんぶ\s*みつけた/.test(String(title))) Analytics.complete();
     return box;
   },
 
@@ -2138,6 +2284,7 @@ const Backup = {
     const ls = {};
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
+      if (k.startsWith("hoikuAnalytics")) continue;
       ls[k] = localStorage.getItem(k);
     }
     const manifest = {
@@ -2156,6 +2303,7 @@ const Backup = {
     const arrayKeys = new Set([CustomQuiz.KEY, CustomQuiz.HIDDEN_DEFAULTS_KEY]);
     const lowerIsBetter = new Set(["diff", "puzzle", "memory", "race"]);
     for (const key of Object.keys(incoming || {})) {
+      if (key.startsWith("hoikuAnalytics")) continue;
       const current = localStorage.getItem(key);
       if (current == null) {
         localStorage.setItem(key, incoming[key]);
@@ -2204,13 +2352,21 @@ const Backup = {
     const samples = currentImages.filter((rec) => Samples.isBuiltIn(rec));
     const currentIds = new Set(currentImages.map((rec) => rec.id));
     if (replace) {
+      const analyticsLocal = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith("hoikuAnalytics")) analyticsLocal[key] = localStorage.getItem(key);
+      }
       await Store.clear();
       for (const rec of samples) await Store.put(rec);
       localStorage.clear();
+      for (const [key, value] of Object.entries(analyticsLocal)) localStorage.setItem(key, value);
     }
     const ls = manifest.localStorage || {};
     if (replace) {
-      for (const k of Object.keys(ls)) localStorage.setItem(k, ls[k]);
+      for (const k of Object.keys(ls)) {
+        if (!k.startsWith("hoikuAnalytics")) localStorage.setItem(k, ls[k]);
+      }
     } else {
       this._mergeLocalStorage(ls);
     }
@@ -3049,7 +3205,7 @@ const Pwa = {
   },
 };
 
-function initChrome() { Nav.init(); GameChrome.init(); Stage.init(); Fullscreen.init(); Entry.init(); Pwa.init(); }
+function initChrome() { Nav.init(); GameChrome.init(); Stage.init(); Fullscreen.init(); Entry.init(); Analytics.init(); Pwa.init(); }
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initChrome);
 } else {
